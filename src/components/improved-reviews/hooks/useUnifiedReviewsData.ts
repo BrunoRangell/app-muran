@@ -4,6 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMetaReviewsWorker } from "@/hooks/useMetaReviewsWorker";
 import { logger } from "@/lib/logger";
 
+// Verifica se o funding foi nos últimos 60 dias
+const isFundingRecent = (fundingDate: string | null | undefined): boolean => {
+  if (!fundingDate) return false;
+  
+  const funding = new Date(fundingDate);
+  const now = new Date();
+  const sixtyDaysAgo = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
+  
+  return funding >= sixtyDaysAgo;
+};
+
 export type ClientMetrics = {
   totalClients: number;
   clientsWithoutAccount: number;
@@ -139,7 +150,11 @@ export function useUnifiedReviewsData() {
           
           const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
             balance: account.saldo_restante || 0,
-            balance_type: account.saldo_restante !== null ? "numeric" : (account.is_prepay_account === false ? "credit_card" : "unavailable"),
+            balance_type: account.saldo_restante !== null 
+              ? "numeric" 
+              : (account.is_prepay_account === false && !isFundingRecent(account.last_funding_detected_at)) 
+                ? "credit_card" 
+                : "unavailable",
             balance_value: account.saldo_restante,
             billing_model: account.is_prepay_account ? "pre" : "pos"
           } : null;

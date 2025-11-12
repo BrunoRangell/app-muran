@@ -105,11 +105,11 @@ function Card({ platform, obj }: CardProps) {
     saldoValue = <div className="text-2xl font-extrabold">{money(obj.saldo.value)}</div>;
     batteryClass = pctToClass(batteryPercent);
   } else if (obj.saldo?.type === "credit_card") {
-    saldoValue = <div className="text-2xl font-bold text-gray-500">Cartão de crédito</div>;
+    saldoValue = <div className="text-2xl font-bold text-blue-600">💳 Cartão de crédito</div>;
     batteryClass = "info";
     batteryPercent = 0;
   } else {
-    saldoValue = <div className="text-2xl font-bold text-gray-500">Indisponível</div>;
+    saldoValue = <div className="text-2xl font-bold text-gray-500">Saldo não encontrado</div>;
     batteryClass = "crit";
     batteryPercent = 0;
   }

@@ -1,6 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Verifica se o funding foi nos últimos 60 dias
+const isFundingRecent = (fundingDate: string | null | undefined): boolean => {
+  if (!fundingDate) return false;
+  
+  const funding = new Date(fundingDate);
+  const now = new Date();
+  const sixtyDaysAgo = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
+  
+  return funding >= sixtyDaysAgo;
+};
+
 export interface ApiAccount {
   id: string | null;
   account_name?: string;
@@ -12,6 +23,7 @@ export interface ApiAccount {
   balance_value?: number;
   balance_source?: string;
   balance_percent?: number;
+  last_funding_detected_at?: string | null;
   last_recharge_date?: string;
   last_recharge_amount?: number;
   badges?: string[];
@@ -47,7 +59,7 @@ export function useMetaBalance() {
       // Buscar contas Meta
       const { data: metaAccounts, error: metaError } = await supabase
         .from("client_accounts")
-        .select("*")
+        .select("*, last_funding_detected_at")
         .eq("platform", "meta")
         .eq("status", "active");
 
@@ -70,9 +82,14 @@ export function useMetaBalance() {
             status_label: "Ativa",
             status_tone: "ok",
             billing_model: metaAccount.is_prepay_account ? "pre" : "pos",
-            balance_type: metaAccount.saldo_restante !== null ? "numeric" : "unavailable",
+            balance_type: metaAccount.saldo_restante !== null 
+              ? "numeric" 
+              : (metaAccount.is_prepay_account === false && !isFundingRecent(metaAccount.last_funding_detected_at)) 
+                ? "credit_card" 
+                : "unavailable",
             balance_value: metaAccount.saldo_restante || undefined,
             balance_percent: metaAccount.saldo_restante ? Math.min(1, metaAccount.saldo_restante / 1000) : 0,
+            last_funding_detected_at: metaAccount.last_funding_detected_at,
           };
 
           result.push({

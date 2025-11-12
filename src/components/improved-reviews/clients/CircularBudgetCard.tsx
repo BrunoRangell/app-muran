@@ -24,8 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
-import { useManualBalance } from "@/hooks/useManualBalance";
-import { ManualBalanceModal } from "../common/ManualBalanceModal";
+
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -50,33 +49,6 @@ export function CircularBudgetCard({
     });
   }, [client.last_funding_detected_at, client.last_funding_amount]);
 
-  // Hook para saldo manual
-  const {
-    isModalOpen: isBalanceModalOpen,
-    isLoading: isBalanceLoading,
-    openModal: openBalanceModal,
-    closeModal: closeBalanceModal,
-    setBalance,
-  } = useManualBalance();
-
-  // Verificar se deve mostrar o botão de definir saldo manual
-  const shouldShowManualBalanceButton = () => {
-    // Só para Meta Ads
-    if (platform !== "meta") return false;
-
-    // Só mostrar para contas pós-pagas
-    if (client.balance_info?.billing_model === "pre") return false;
-
-    // Verificar se tem funding detectado nos últimos 60 dias
-    const lastFundingDetectedAt = client.last_funding_detected_at;
-    if (!lastFundingDetectedAt) return false;
-
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-    const fundingDate = new Date(lastFundingDetectedAt);
-
-    return fundingDate >= sixtyDaysAgo;
-  };
   const { reviewClient, processingIds } = useBatchOperations({
     platform: platform as "meta" | "google",
     onIndividualComplete: () => {
@@ -459,32 +431,7 @@ export function CircularBudgetCard({
                 </div>
               ) : (
                 <div className="text-gray-600">
-                  <span className="text-sm">Saldo indisponível</span>
-                </div>
-              )}
-
-              {/* Botão para definir saldo manual - apenas para contas não pré-pagas com funding recente */}
-              {shouldShowManualBalanceButton() && (
-                <div className="mt-3 pt-2 border-t border-blue-200">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openBalanceModal(client.id, accountInfo.id)}
-                    disabled={isBalanceLoading}
-                    className="w-full text-xs bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800"
-                  >
-                    {isBalanceLoading ? (
-                      <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <BadgeDollarSign className="h-3 w-3 mr-1" />
-                        Definir saldo atual
-                      </>
-                    )}
-                  </Button>
+                  <span className="text-sm">Saldo não encontrado</span>
                 </div>
               )}
             </div>
@@ -741,17 +688,6 @@ export function CircularBudgetCard({
         onOpenChange={setIsDialogOpen}
         onConfirm={handleWarningIgnored}
         clientName={companyName}
-      />
-
-      {/* Modal para definir saldo manual */}
-      <ManualBalanceModal
-        isOpen={isBalanceModalOpen}
-        isLoading={isBalanceLoading}
-        onClose={closeBalanceModal}
-        onConfirm={setBalance}
-        currentBalance={client.balance_info?.balance_value}
-        clientName={companyName}
-        accountName={accountInfo.name}
       />
     </>
   );

@@ -159,6 +159,23 @@ export async function processBatchReview(request: BatchReviewRequest) {
       successRate: `${((successCount / clientIds.length) * 100).toFixed(1)}%`
     });
     
+    // Registrar log da revisão em massa para exibição na interface
+    await supabase.from('system_logs').insert({
+      event_type: 'batch_review_completed',
+      message: 'Revisão em massa Meta Ads concluída automaticamente',
+      details: {
+        platform: 'meta',
+        source: 'automatic',
+        successCount,
+        errorCount,
+        totalClients: clientIds.length,
+        completedAt: new Date().toISOString(),
+        processing_time: batchTime
+      }
+    });
+    
+    console.log(`📝 [BATCH] Log registrado em system_logs para atualização da interface`);
+    
     return {
       success: true,
       data: {
