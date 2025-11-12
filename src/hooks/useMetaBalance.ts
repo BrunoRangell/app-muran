@@ -1,6 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Verifica se o funding foi nos últimos 60 dias
+const isFundingRecent = (fundingDate: string | null | undefined): boolean => {
+  if (!fundingDate) return false;
+  
+  const funding = new Date(fundingDate);
+  const now = new Date();
+  const sixtyDaysAgo = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
+  
+  return funding >= sixtyDaysAgo;
+};
+
 export interface ApiAccount {
   id: string | null;
   account_name?: string;
@@ -73,7 +84,7 @@ export function useMetaBalance() {
             billing_model: metaAccount.is_prepay_account ? "pre" : "pos",
             balance_type: metaAccount.saldo_restante !== null 
               ? "numeric" 
-              : (metaAccount.is_prepay_account === false && !metaAccount.last_funding_detected_at) 
+              : (metaAccount.is_prepay_account === false && !isFundingRecent(metaAccount.last_funding_detected_at)) 
                 ? "credit_card" 
                 : "unavailable",
             balance_value: metaAccount.saldo_restante || undefined,
