@@ -111,6 +111,31 @@ export async function fetchPrimaryMetaAccount(
   return metaAccount;
 }
 
+// Buscar todas as contas Meta ativas do cliente
+export async function fetchAllMetaAccounts(
+  supabase: any,
+  clientId: string
+): Promise<MetaAccount[]> {
+  console.log(`🔍 [DATABASE] Buscando todas as contas Meta para cliente ${clientId}`);
+  
+  const { data: metaAccounts, error: accountError } = await supabase
+    .from("client_accounts")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("platform", "meta")
+    .eq("status", "active")
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (accountError) {
+    console.error(`❌ [DATABASE] Erro ao buscar contas Meta: ${accountError.message}`);
+    return [];
+  }
+
+  console.log(`✅ [DATABASE] ${metaAccounts?.length || 0} conta(s) Meta encontrada(s)`);
+  return metaAccounts || [];
+}
+
 // Buscar orçamento personalizado ativo
 export async function fetchActiveCustomBudget(
   supabase: any, 

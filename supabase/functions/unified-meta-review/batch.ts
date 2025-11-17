@@ -1,6 +1,6 @@
 import { processIndividualReview } from "./individual.ts";
 import { BatchReviewRequest } from "./types.ts";
-import { createSupabaseClient, cleanupOldReviews } from "./database.ts";
+import { createSupabaseClient, cleanupOldReviews, fetchAllMetaAccounts } from "./database.ts";
 
 export async function processBatchReview(request: BatchReviewRequest) {
   const batchStartTime = Date.now();
@@ -35,28 +35,56 @@ export async function processBatchReview(request: BatchReviewRequest) {
       deleted_today_duplicates: cleanupResult.deleted_today_duplicates
     });
     
-    console.log(`📊 [BATCH] Processando ${clientIds.length} clientes em PARALELO para data ${today}`);
+    console.log(`📊 [BATCH] Buscando contas Meta para ${clientIds.length} clientes...`);
     
-    // Processar TODOS os clientes em paralelo (estratégia do Google Ads)
+    // Buscar todas as contas Meta de todos os clientes
+    const clientAccountsMap = new Map();
+    for (const clientId of clientIds) {
+      const accounts = await fetchAllMetaAccounts(supabase, clientId);
+      if (accounts.length > 0) {
+        clientAccountsMap.set(clientId, accounts);
+      }
+    }
+    
+    // Criar lista de tarefas individuais (clientId + accountId)
+    const allReviewTasks: Array<{clientId: string, accountId: string, accountName: string}> = [];
+    clientAccountsMap.forEach((accounts, clientId) => {
+      accounts.forEach(account => {
+        allReviewTasks.push({ 
+          clientId, 
+          accountId: account.account_id,
+          accountName: account.account_name
+        });
+      });
+    });
+    
+    console.log(`📊 [BATCH] Total de ${allReviewTasks.length} conta(s) Meta para processar em PARALELO`);
+    
+    // Processar TODAS as contas em paralelo
     const processingStartTime = Date.now();
-    const clientResults = await Promise.allSettled(
-      clientIds.map((clientId: string) => {
-        const clientStartTime = Date.now();
-        console.log(`\n🚀 [BATCH] Iniciando processamento paralelo - Cliente ID: ${clientId}`);
+    const accountResults = await Promise.allSettled(
+      allReviewTasks.map((task) => {
+        const taskStartTime = Date.now();
+        console.log(`\n🚀 [BATCH] Iniciando processamento - Cliente: ${task.clientId} | Conta: ${task.accountName}`);
         
         return processIndividualReview({
-          clientId,
+          clientId: task.clientId,
+          metaAccountId: task.accountId,
           reviewDate: today
         }).then(result => ({
           ...result,
-          clientId,
-          processing_time: Date.now() - clientStartTime
+          clientId: task.clientId,
+          accountId: task.accountId,
+          accountName: task.accountName,
+          processing_time: Date.now() - taskStartTime
         })).catch(error => ({
           success: false,
           error: error.message || 'Erro inesperado',
           stack_trace: error.stack || 'Sem stack trace',
-          clientId,
-          processing_time: Date.now() - clientStartTime
+          clientId: task.clientId,
+          accountId: task.accountId,
+          accountName: task.accountName,
+          processing_time: Date.now() - taskStartTime
         }));
       })
     );
@@ -70,8 +98,8 @@ export async function processBatchReview(request: BatchReviewRequest) {
     let successCount = 0;
     let errorCount = 0;
     
-    clientResults.forEach((promiseResult, index) => {
-      const clientId = clientIds[index];
+    accountResults.forEach((promiseResult, index) => {
+      const task = allReviewTasks[index];
       
       if (promiseResult.status === 'fulfilled') {
         const result = promiseResult.value;
@@ -80,15 +108,18 @@ export async function processBatchReview(request: BatchReviewRequest) {
         if (result.success) {
           successCount++;
           console.log(`✅ [BATCH] ========================================`);
-          console.log(`✅ [BATCH] Cliente ${index + 1}/${clientIds.length} SUCESSO (${clientTime}ms)`);
-          console.log(`✅ [BATCH] Cliente ID: ${clientId}`);
+          console.log(`✅ [BATCH] Conta ${index + 1}/${allReviewTasks.length} SUCESSO (${clientTime}ms)`);
+          console.log(`✅ [BATCH] Cliente ID: ${task.clientId}`);
+          console.log(`✅ [BATCH] Conta ID: ${task.accountId}`);
           console.log(`✅ [BATCH] Nome: ${result.data?.client?.name || 'N/A'}`);
-          console.log(`✅ [BATCH] Conta: ${result.data?.account?.name || 'N/A'}`);
+          console.log(`✅ [BATCH] Conta: ${result.data?.account?.name || task.accountName}`);
           console.log(`✅ [BATCH] Gasto: R$ ${result.data?.review?.total_spent?.toFixed(2) || '0.00'}`);
           console.log(`✅ [BATCH] ========================================\n`);
           
           results.push({
-            clientId,
+            clientId: task.clientId,
+            accountId: task.accountId,
+            accountName: task.accountName,
             status: 'success',
             data: result.data,
             processing_time: clientTime
@@ -97,8 +128,9 @@ export async function processBatchReview(request: BatchReviewRequest) {
           errorCount++;
           const errorMsg = result.error || 'Erro desconhecido';
           console.error(`❌ [BATCH] ========================================`);
-          console.error(`❌ [BATCH] Cliente ${index + 1}/${clientIds.length} ERRO (${clientTime}ms)`);
-          console.error(`❌ [BATCH] Cliente ID: ${clientId}`);
+          console.error(`❌ [BATCH] Conta ${index + 1}/${allReviewTasks.length} ERRO (${clientTime}ms)`);
+          console.error(`❌ [BATCH] Cliente ID: ${task.clientId}`);
+          console.error(`❌ [BATCH] Conta ID: ${task.accountId}`);
           console.error(`❌ [BATCH] Erro: ${errorMsg}`);
           if (result.stack_trace) {
             console.error(`❌ [BATCH] Stack Trace:`);
@@ -107,14 +139,18 @@ export async function processBatchReview(request: BatchReviewRequest) {
           console.error(`❌ [BATCH] ========================================\n`);
           
           errors.push({
-            clientId,
+            clientId: task.clientId,
+            accountId: task.accountId,
+            accountName: task.accountName,
             error: errorMsg,
             stack_trace: result.stack_trace,
             processing_time: clientTime
           });
           
           results.push({
-            clientId,
+            clientId: task.clientId,
+            accountId: task.accountId,
+            accountName: task.accountName,
             status: 'error',
             error: errorMsg,
             processing_time: clientTime
@@ -127,22 +163,27 @@ export async function processBatchReview(request: BatchReviewRequest) {
         const errorStack = promiseResult.reason?.stack || 'Sem stack trace';
         
         console.error(`❌ [BATCH] ========================================`);
-        console.error(`❌ [BATCH] Cliente ${index + 1}/${clientIds.length} EXCEPTION`);
-        console.error(`❌ [BATCH] Cliente ID: ${clientId}`);
+        console.error(`❌ [BATCH] Conta ${index + 1}/${allReviewTasks.length} EXCEPTION`);
+        console.error(`❌ [BATCH] Cliente ID: ${task.clientId}`);
+        console.error(`❌ [BATCH] Conta ID: ${task.accountId}`);
         console.error(`❌ [BATCH] Mensagem: ${errorMsg}`);
         console.error(`❌ [BATCH] Stack Trace:`);
         console.error(errorStack);
         console.error(`❌ [BATCH] ========================================\n`);
         
         errors.push({
-          clientId,
+          clientId: task.clientId,
+          accountId: task.accountId,
+          accountName: task.accountName,
           error: errorMsg,
           stack_trace: errorStack,
           processing_time: 0
         });
         
         results.push({
-          clientId,
+          clientId: task.clientId,
+          accountId: task.accountId,
+          accountName: task.accountName,
           status: 'error',
           error: errorMsg,
           processing_time: 0
@@ -154,9 +195,10 @@ export async function processBatchReview(request: BatchReviewRequest) {
     
     console.log(`🎉 [BATCH] PROCESSAMENTO EM LOTE CONCLUÍDO (${batchTime}ms):`, {
       totalClients: clientIds.length,
+      totalAccounts: allReviewTasks.length,
       successCount,
       errorCount,
-      successRate: `${((successCount / clientIds.length) * 100).toFixed(1)}%`
+      successRate: `${((successCount / allReviewTasks.length) * 100).toFixed(1)}%`
     });
     
     // Registrar log da revisão em massa para exibição na interface
@@ -166,24 +208,41 @@ export async function processBatchReview(request: BatchReviewRequest) {
       details: {
         platform: 'meta',
         source: 'automatic',
+        reviewDate: today,
+        totalClients: clientIds.length,
+        totalAccounts: allReviewTasks.length,
         successCount,
         errorCount,
-        totalClients: clientIds.length,
         completedAt: new Date().toISOString(),
         processing_time: batchTime
       }
     });
     
-    console.log(`📝 [BATCH] Log registrado em system_logs para atualização da interface`);
+    // Registrar na tabela de batch logs
+    await supabase.from('batch_review_logs').insert({
+      platform: 'meta',
+      review_date: today,
+      total_clients: clientIds.length,
+      success_count: successCount,
+      error_count: errorCount,
+      execution_time_ms: batchTime,
+      global_updates_performed: true,
+      details: {
+        total_accounts: allReviewTasks.length
+      }
+    });
+    
+    console.log(`📝 [BATCH] Logs registrados em system_logs e batch_review_logs`);
     
     return {
       success: true,
       data: {
         summary: {
           total_clients: clientIds.length,
+          total_accounts: allReviewTasks.length,
           success_count: successCount,
           error_count: errorCount,
-          success_rate: (successCount / clientIds.length) * 100,
+          success_rate: (successCount / allReviewTasks.length) * 100,
           processing_time: batchTime,
           review_date: today
         },
