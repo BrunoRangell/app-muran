@@ -38,3 +38,9 @@ verify_jwt = false
 [functions.refresh-meta-token]
 verify_jwt = false
 
+[functions.create-clickup-offboarding]
+verify_jwt = false
+
+[functions.orchestrate-client-offboarding]
+verify_jwt = false
+
