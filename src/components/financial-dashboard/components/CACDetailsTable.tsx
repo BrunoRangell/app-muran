@@ -5,6 +5,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseMonthString } from "@/utils/monthParser";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface CACDetailsTableProps {
   monthStr: string; // formato "Jan/25"
@@ -140,7 +141,7 @@ export const CACDetailsTable = ({ monthStr }: CACDetailsTableProps) => {
                   <TableCell>{client.acquisition_channel || 'Não informado'}</TableCell>
                   <TableCell>{formatCurrency(client.contract_value)}</TableCell>
                   <TableCell>
-                    {format(new Date(client.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })}
+                    {format(parseLocalDate(client.first_payment_date.split('T')[0]), 'dd/MM/yyyy', { locale: ptBR })}
                   </TableCell>
                 </TableRow>
               ))}

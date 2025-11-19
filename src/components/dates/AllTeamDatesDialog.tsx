@@ -5,7 +5,7 @@ import { Calendar, Clock, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { isDateToday, isDateTomorrow, parseLocalDate } from "@/utils/dateHelpers";
 import { TeamMember } from "@/types/team";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -116,7 +116,7 @@ export const AllTeamDatesDialog = ({ dates, totalCount, getInitials }: AllTeamDa
                         {date.type === 'birthday' 
                           ? format(date.date, "dd 'de' MMMM", { locale: ptBR })
                           : date.originalDate 
-                            ? format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                            ? format(parseLocalDate(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                             : format(date.date, "dd 'de' MMMM", { locale: ptBR })}
                       </span>
                       {!isToday && (

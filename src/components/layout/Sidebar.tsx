@@ -14,7 +14,8 @@ import {
   UserPlus,
   Settings2,
   Target,
-  TrendingUp
+  TrendingUp,
+  UserX
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -46,6 +47,7 @@ const adminMenuItems: MenuItem[] = [
     submenu: financialSubMenu
   },
   { icon: Settings2, label: "Onboarding", path: "/onboarding" },
+  { icon: UserX, label: "Offboarding", path: "/offboarding" },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },

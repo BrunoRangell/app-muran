@@ -42,7 +42,20 @@ export const formatDate = (dateString: string | Date | null | undefined): string
   if (!dateString) return '';
   
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    let date: Date;
+    
+    if (typeof dateString === 'string') {
+      // Se for string no formato YYYY-MM-DD, usar parsing local
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+        const dateOnly = dateString.split('T')[0];
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        date = new Date(year, month - 1, day);
+      } else {
+        date = new Date(dateString);
+      }
+    } else {
+      date = dateString;
+    }
     
     // Verificar se a data é válida
     if (isNaN(date.getTime())) {

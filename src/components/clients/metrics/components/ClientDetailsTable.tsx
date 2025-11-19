@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
 import { Client } from "../../types";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface ClientDetailsTableProps {
   clients: Client[];
@@ -53,11 +54,11 @@ export const ClientDetailsTable = ({ clients, metric }: ClientDetailsTableProps)
             </TableCell>
             <TableCell>{client.acquisition_channel}</TableCell>
             <TableCell>
-              {format(new Date(client.first_payment_date), 'dd/MM/yyyy')}
+              {format(parseLocalDate(client.first_payment_date.split('T')[0]), 'dd/MM/yyyy')}
             </TableCell>
             {metric === 'Clientes Cancelados' && client.last_payment_date && (
               <TableCell>
-                {format(new Date(client.last_payment_date), 'dd/MM/yyyy')}
+                {format(parseLocalDate(client.last_payment_date.split('T')[0]), 'dd/MM/yyyy')}
               </TableCell>
             )}
           </TableRow>
