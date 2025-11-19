@@ -722,6 +722,53 @@ export type Database = {
         }
         Relationships: []
       }
+      offboarding: {
+        Row: {
+          clickup_completed_at: string | null
+          clickup_error: Json | null
+          clickup_list_id: string | null
+          clickup_status: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          clickup_completed_at?: string | null
+          clickup_error?: Json | null
+          clickup_list_id?: string | null
+          clickup_status?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          clickup_completed_at?: string | null
+          clickup_error?: Json | null
+          clickup_list_id?: string | null
+          clickup_status?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offboarding_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding: {
         Row: {
           clickup_completed_at: string | null
