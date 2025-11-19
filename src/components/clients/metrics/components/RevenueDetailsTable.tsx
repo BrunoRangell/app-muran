@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { Client } from "../../types";
 import { isClientActiveInMonth } from "../utils/dateFilters";
 import { parseMonthString } from "@/utils/monthParser";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface RevenueDetailsTableProps {
   monthStr: string; // formato "Jan/25" ou "6/25"
@@ -156,7 +157,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
               </TableCell>
               <TableCell>
                 {item.clients?.first_payment_date 
-                  ? format(new Date(item.clients.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })
+                  ? format(parseLocalDate(item.clients.first_payment_date.split('T')[0]), 'dd/MM/yyyy', { locale: ptBR })
                   : 'Data não disponível'
                 }
               </TableCell>
