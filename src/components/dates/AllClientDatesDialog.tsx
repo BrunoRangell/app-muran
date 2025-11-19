@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Handshake } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { isDateToday, isDateTomorrow, parseLocalDate } from "@/utils/dateHelpers";
 import { UnifiedClient } from "@/hooks/useUnifiedData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -93,7 +93,7 @@ export const AllClientDatesDialog = ({ dates, totalCount }: AllClientDatesDialog
                         isToday ? 'text-white/90' : isTomorrow ? 'text-blue-700' : 'text-gray-600'
                       }`}>
                         <Calendar className="h-3.5 w-3.5" />
-                        {format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        {format(parseLocalDate(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                       </span>
                       {!isToday && (
                         <span className={`flex items-center gap-1.5 font-medium ${
