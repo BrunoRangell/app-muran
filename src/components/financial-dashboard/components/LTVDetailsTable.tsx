@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { parseMonthString } from "@/utils/monthParser";
 import { InfoIcon } from "lucide-react";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface LTVDetailsTableProps {
   monthStr: string; // formato "Jan/25"
@@ -76,8 +77,8 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
 
       // Filtrar clientes que estiveram ativos no período de 12 meses
       const activeClientsInPeriod = (allClients || []).filter(client => {
-        const firstPaymentDate = new Date(client.first_payment_date);
-        const lastPaymentDate = client.last_payment_date ? new Date(client.last_payment_date) : new Date();
+        const firstPaymentDate = parseLocalDate(client.first_payment_date.split('T')[0]);
+        const lastPaymentDate = client.last_payment_date ? parseLocalDate(client.last_payment_date.split('T')[0]) : new Date();
         
         // Cliente esteve ativo se começou antes/durante o período E não cancelou antes do período
         return firstPaymentDate <= endOfPeriod && lastPaymentDate >= startOfPeriod;
