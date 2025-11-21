@@ -18,10 +18,14 @@ serve(async (req) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  let clientId = "";
+  
   try {
     console.log("🚀 [CLICKUP-OFFBOARDING] Iniciando criação de offboarding no ClickUp");
 
-    const { clientName, clientId }: CreateClickUpOffboardingRequest = await req.json();
+    const requestBody: CreateClickUpOffboardingRequest = await req.json();
+    const { clientName } = requestBody;
+    clientId = requestBody.clientId;
 
     if (!clientName || !clientId) {
       throw new Error("clientName e clientId são obrigatórios");
@@ -53,7 +57,7 @@ serve(async (req) => {
       "Content-Type": "application/json",
     };
 
-    // 1. Buscar todas as pastas do Space para encontrar a do cliente
+    // 1. Buscar ou criar pasta do cliente
     console.log(`🔍 Buscando pasta do cliente no Space ${clickupSpaceId}...`);
     
     const foldersResponse = await fetch(
@@ -66,15 +70,34 @@ serve(async (req) => {
     }
 
     const foldersData = await foldersResponse.json();
-    const clientFolder = foldersData.folders?.find(
+    let clientFolder = foldersData.folders?.find(
       (folder: any) => folder.name === clientName
     );
 
     if (!clientFolder) {
-      throw new Error(`Pasta do cliente "${clientName}" não encontrada no ClickUp`);
-    }
+      console.log(`📁 Pasta não encontrada. Criando pasta "${clientName}"...`);
+      
+      const createFolderResponse = await fetch(
+        `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: clientName,
+          }),
+        }
+      );
 
-    console.log(`✅ Pasta encontrada: ${clientFolder.name} (${clientFolder.id})`);
+      if (!createFolderResponse.ok) {
+        const errorText = await createFolderResponse.text();
+        throw new Error(`Erro ao criar pasta: ${errorText}`);
+      }
+
+      clientFolder = await createFolderResponse.json();
+      console.log(`✅ Pasta criada: ${clientFolder.name} (${clientFolder.id})`);
+    } else {
+      console.log(`✅ Pasta encontrada: ${clientFolder.name} (${clientFolder.id})`);
+    }
 
     // 2. Criar lista "Offboarding" na pasta do cliente
     console.log(`📝 Criando lista Offboarding na pasta ${clientFolder.id}...`);
@@ -193,23 +216,24 @@ serve(async (req) => {
   } catch (error) {
     console.error("❌ [CLICKUP-OFFBOARDING] Erro:", error);
 
-    // Tentar atualizar o status de erro no Supabase
-    try {
-      const { clientId } = await req.json();
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    // Tentar atualizar o status de erro no Supabase se temos o clientId
+    if (clientId) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-      await supabase
-        .from("offboarding")
-        .update({
-          clickup_status: "failed",
-          clickup_error: { message: error.message, timestamp: new Date().toISOString() },
-          status: "failed",
-        })
-        .eq("client_id", clientId);
-    } catch (updateError) {
-      console.error("❌ Erro ao atualizar status de erro:", updateError);
+        await supabase
+          .from("offboarding")
+          .update({
+            clickup_status: "failed",
+            clickup_error: { message: error.message, timestamp: new Date().toISOString() },
+            status: "failed",
+          })
+          .eq("client_id", clientId);
+      } catch (updateError) {
+        console.error("❌ Erro ao atualizar status de erro:", updateError);
+      }
     }
 
     return new Response(
