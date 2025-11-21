@@ -111,7 +111,21 @@ serve(async (req) => {
       console.log(`📋 Encontradas ${matchingFolders.length} pasta(s) similar(es)`);
 
       if (matchingFolders.length === 0) {
-        throw new Error(`Nenhuma pasta encontrada para "${clientName}". Por favor, crie a pasta no ClickUp primeiro.`);
+        console.log("⚠️ Nenhuma pasta similar encontrada. Retornando todas as pastas para seleção manual.");
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            needsFolderSelection: true,
+            folders: allFolders.map((folder: any) => ({
+              id: folder.id,
+              name: folder.name,
+              archived: folder.archived || false,
+            })),
+            noSimilarFolder: true,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
       }
 
       if (matchingFolders.length === 1) {
