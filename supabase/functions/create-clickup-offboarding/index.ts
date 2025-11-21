@@ -61,7 +61,7 @@ serve(async (req) => {
     console.log(`🔍 Buscando pasta do cliente no Space ${clickupSpaceId}...`);
     
     const foldersResponse = await fetch(
-      `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder`,
+      `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=false`,
       { headers }
     );
 
@@ -75,7 +75,7 @@ serve(async (req) => {
     );
 
     if (!clientFolder) {
-      console.log(`📁 Pasta não encontrada. Criando pasta "${clientName}"...`);
+      console.log(`📁 Pasta não encontrada na primeira busca. Tentando criar "${clientName}"...`);
       
       const createFolderResponse = await fetch(
         `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder`,
@@ -89,12 +89,38 @@ serve(async (req) => {
       );
 
       if (!createFolderResponse.ok) {
-        const errorText = await createFolderResponse.text();
-        throw new Error(`Erro ao criar pasta: ${errorText}`);
+        const errorData = await createFolderResponse.json();
+        
+        // Se a pasta já existe (nome duplicado), buscar novamente incluindo arquivadas
+        if (errorData.err === "Folder name taken" || errorData.ECODE === "CAT_014") {
+          console.log(`⚠️ Pasta já existe. Buscando incluindo arquivadas...`);
+          
+          const allFoldersResponse = await fetch(
+            `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=true`,
+            { headers }
+          );
+          
+          if (!allFoldersResponse.ok) {
+            throw new Error(`Erro ao buscar todas as pastas: ${allFoldersResponse.statusText}`);
+          }
+          
+          const allFoldersData = await allFoldersResponse.json();
+          clientFolder = allFoldersData.folders?.find(
+            (folder: any) => folder.name === clientName
+          );
+          
+          if (!clientFolder) {
+            throw new Error(`Pasta "${clientName}" existe no ClickUp mas não foi possível localizá-la`);
+          }
+          
+          console.log(`✅ Pasta encontrada (estava arquivada ou oculta): ${clientFolder.name} (${clientFolder.id})`);
+        } else {
+          throw new Error(`Erro ao criar pasta: ${JSON.stringify(errorData)}`);
+        }
+      } else {
+        clientFolder = await createFolderResponse.json();
+        console.log(`✅ Pasta criada: ${clientFolder.name} (${clientFolder.id})`);
       }
-
-      clientFolder = await createFolderResponse.json();
-      console.log(`✅ Pasta criada: ${clientFolder.name} (${clientFolder.id})`);
     } else {
       console.log(`✅ Pasta encontrada: ${clientFolder.name} (${clientFolder.id})`);
     }
