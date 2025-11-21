@@ -13,22 +13,39 @@ export const useOffboarding = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<OffboardingResult | null>(null);
 
-  const executeOffboarding = async (clientId: string) => {
+  const executeOffboarding = async (clientId: string, folderId?: string) => {
     setIsProcessing(true);
     setResult(null);
 
     try {
-      console.log("🚀 Iniciando offboarding para cliente:", clientId);
+      console.log("🚀 Iniciando offboarding para cliente:", clientId, folderId ? `com pasta ${folderId}` : "");
 
       const { data, error } = await supabase.functions.invoke(
         "orchestrate-client-offboarding",
         {
-          body: { clientId },
+          body: { 
+            clientId,
+            ...(folderId && { folderId }),
+          },
         }
       );
 
       if (error) {
         throw new Error(error.message);
+      }
+
+      // Se precisa de seleção de pasta, retornar dados para o componente
+      if (data.needsFolderSelection) {
+        console.log("⚠️ Necessário selecionar pasta");
+        setResult({
+          success: false,
+          data: {
+            needsFolderSelection: true,
+            folders: data.folders,
+          },
+        });
+        setIsProcessing(false);
+        return;
       }
 
       if (!data.success) {

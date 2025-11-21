@@ -10,6 +10,7 @@ const corsHeaders = {
 interface CreateClickUpOffboardingRequest {
   clientName: string;
   clientId: string;
+  folderId?: string; // Opcional: pasta já selecionada pelo usuário
 }
 
 serve(async (req) => {
@@ -24,7 +25,7 @@ serve(async (req) => {
     console.log("🚀 [CLICKUP-OFFBOARDING] Iniciando criação de offboarding no ClickUp");
 
     const requestBody: CreateClickUpOffboardingRequest = await req.json();
-    const { clientName } = requestBody;
+    const { clientName, folderId } = requestBody;
     clientId = requestBody.clientId;
 
     if (!clientName || !clientId) {
@@ -57,72 +58,74 @@ serve(async (req) => {
       "Content-Type": "application/json",
     };
 
-    // 1. Buscar ou criar pasta do cliente
-    console.log(`🔍 Buscando pasta do cliente no Space ${clickupSpaceId}...`);
-    
-    const foldersResponse = await fetch(
-      `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=false`,
-      { headers }
-    );
+    let clientFolder: any;
 
-    if (!foldersResponse.ok) {
-      throw new Error(`Erro ao buscar pastas: ${foldersResponse.statusText}`);
-    }
-
-    const foldersData = await foldersResponse.json();
-    let clientFolder = foldersData.folders?.find(
-      (folder: any) => folder.name === clientName
-    );
-
-    if (!clientFolder) {
-      console.log(`📁 Pasta não encontrada na primeira busca. Tentando criar "${clientName}"...`);
+    // 1. Se já temos folderId, usar diretamente
+    if (folderId) {
+      console.log(`📁 Usando pasta selecionada: ${folderId}`);
       
-      const createFolderResponse = await fetch(
-        `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            name: clientName,
-          }),
-        }
+      const folderResponse = await fetch(
+        `https://api.clickup.com/api/v2/folder/${folderId}`,
+        { headers }
       );
 
-      if (!createFolderResponse.ok) {
-        const errorData = await createFolderResponse.json();
-        
-        // Se a pasta já existe (nome duplicado), buscar novamente incluindo arquivadas
-        if (errorData.err === "Folder name taken" || errorData.ECODE === "CAT_014") {
-          console.log(`⚠️ Pasta já existe. Buscando incluindo arquivadas...`);
-          
-          const allFoldersResponse = await fetch(
-            `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=true`,
-            { headers }
-          );
-          
-          if (!allFoldersResponse.ok) {
-            throw new Error(`Erro ao buscar todas as pastas: ${allFoldersResponse.statusText}`);
-          }
-          
-          const allFoldersData = await allFoldersResponse.json();
-          clientFolder = allFoldersData.folders?.find(
-            (folder: any) => folder.name === clientName
-          );
-          
-          if (!clientFolder) {
-            throw new Error(`Pasta "${clientName}" existe no ClickUp mas não foi possível localizá-la`);
-          }
-          
-          console.log(`✅ Pasta encontrada (estava arquivada ou oculta): ${clientFolder.name} (${clientFolder.id})`);
-        } else {
-          throw new Error(`Erro ao criar pasta: ${JSON.stringify(errorData)}`);
-        }
-      } else {
-        clientFolder = await createFolderResponse.json();
-        console.log(`✅ Pasta criada: ${clientFolder.name} (${clientFolder.id})`);
+      if (!folderResponse.ok) {
+        throw new Error(`Erro ao buscar pasta selecionada: ${folderResponse.statusText}`);
       }
+
+      clientFolder = await folderResponse.json();
+      console.log(`✅ Pasta confirmada: ${clientFolder.name} (${clientFolder.id})`);
     } else {
-      console.log(`✅ Pasta encontrada: ${clientFolder.name} (${clientFolder.id})`);
+      // 2. Buscar pastas que correspondam ao nome do cliente (busca parcial)
+      console.log(`🔍 Buscando pastas similares a "${clientName}" no Space ${clickupSpaceId}...`);
+      
+      // Buscar todas as pastas (incluindo arquivadas)
+      const allFoldersResponse = await fetch(
+        `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=true`,
+        { headers }
+      );
+
+      if (!allFoldersResponse.ok) {
+        throw new Error(`Erro ao buscar pastas: ${allFoldersResponse.statusText}`);
+      }
+
+      const allFoldersData = await allFoldersResponse.json();
+      const allFolders = allFoldersData.folders || [];
+
+      // Buscar correspondências (exata ou parcial)
+      const clientNameLower = clientName.toLowerCase();
+      const matchingFolders = allFolders.filter((folder: any) => {
+        const folderNameLower = folder.name.toLowerCase();
+        return folderNameLower.includes(clientNameLower) || clientNameLower.includes(folderNameLower);
+      });
+
+      console.log(`📋 Encontradas ${matchingFolders.length} pasta(s) similar(es)`);
+
+      if (matchingFolders.length === 0) {
+        throw new Error(`Nenhuma pasta encontrada para "${clientName}". Por favor, crie a pasta no ClickUp primeiro.`);
+      }
+
+      if (matchingFolders.length === 1) {
+        // Apenas uma pasta encontrada, usar automaticamente
+        clientFolder = matchingFolders[0];
+        console.log(`✅ Pasta única encontrada: ${clientFolder.name} (${clientFolder.id})`);
+      } else {
+        // Múltiplas pastas encontradas, retornar para seleção
+        console.log(`⚠️ Múltiplas pastas encontradas, requer seleção do usuário`);
+        
+        return new Response(
+          JSON.stringify({
+            success: false,
+            needsFolderSelection: true,
+            folders: matchingFolders.map((folder: any) => ({
+              id: folder.id,
+              name: folder.name,
+              archived: folder.archived || false,
+            })),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
     }
 
     // 2. Criar lista "Offboarding" na pasta do cliente

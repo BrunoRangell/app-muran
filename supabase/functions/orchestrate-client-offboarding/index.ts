@@ -9,6 +9,7 @@ const corsHeaders = {
 
 interface OrchestrationRequest {
   clientId: string;
+  folderId?: string; // Opcional: pasta já selecionada pelo usuário
 }
 
 serve(async (req) => {
@@ -20,7 +21,7 @@ serve(async (req) => {
   try {
     console.log("🎯 [ORCHESTRATOR-OFFBOARDING] Iniciando orquestração de offboarding");
 
-    const { clientId }: OrchestrationRequest = await req.json();
+    const { clientId, folderId }: OrchestrationRequest = await req.json();
 
     if (!clientId) {
       throw new Error("clientId é obrigatório");
@@ -87,6 +88,7 @@ serve(async (req) => {
       body: {
         clientName: client.company_name,
         clientId: client.id,
+        folderId: folderId || undefined,
       },
     });
 
@@ -103,6 +105,21 @@ serve(async (req) => {
         .eq("id", offboarding.id);
 
       throw new Error(`Erro no ClickUp: ${clickupResult.error.message}`);
+    }
+
+    // Verificar se precisa de seleção de pasta
+    if (clickupResult.data?.needsFolderSelection) {
+      console.log("⚠️ Necessário selecionar pasta do ClickUp");
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          needsFolderSelection: true,
+          folders: clickupResult.data.folders,
+          offboardingId: offboarding.id,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     console.log("✅ Integração ClickUp concluída com sucesso");
