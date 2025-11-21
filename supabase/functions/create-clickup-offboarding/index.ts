@@ -79,18 +79,34 @@ serve(async (req) => {
       // 2. Buscar pastas que correspondam ao nome do cliente (busca parcial)
       console.log(`🔍 Buscando pastas similares a "${clientName}" no Space ${clickupSpaceId}...`);
       
-      // Buscar todas as pastas (incluindo arquivadas)
-      const allFoldersResponse = await fetch(
+      // Buscar pastas ativas primeiro
+      const activeFoldersResponse = await fetch(
+        `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=false`,
+        { headers }
+      );
+
+      if (!activeFoldersResponse.ok) {
+        throw new Error(`Erro ao buscar pastas ativas: ${activeFoldersResponse.statusText}`);
+      }
+
+      const activeFoldersData = await activeFoldersResponse.json();
+      const activeFolders = activeFoldersData.folders || [];
+
+      // Buscar pastas arquivadas também
+      const archivedFoldersResponse = await fetch(
         `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=true`,
         { headers }
       );
 
-      if (!allFoldersResponse.ok) {
-        throw new Error(`Erro ao buscar pastas: ${allFoldersResponse.statusText}`);
+      if (!archivedFoldersResponse.ok) {
+        throw new Error(`Erro ao buscar pastas arquivadas: ${archivedFoldersResponse.statusText}`);
       }
 
-      const allFoldersData = await allFoldersResponse.json();
-      const allFolders = allFoldersData.folders || [];
+      const archivedFoldersData = await archivedFoldersResponse.json();
+      const archivedFolders = archivedFoldersData.folders || [];
+
+      // Combinar todas as pastas (ativas primeiro, depois arquivadas)
+      const allFolders = [...activeFolders, ...archivedFolders];
 
       // Buscar correspondências (exata ou parcial), ignorando acentos/maiúsculas
       const normalize = (str: string) =>
@@ -108,20 +124,29 @@ serve(async (req) => {
         );
       });
 
-      console.log(`📋 Encontradas ${matchingFolders.length} pasta(s) similar(es)`);
+      console.log(`📋 Encontradas ${matchingFolders.length} pasta(s) similar(es) de ${allFolders.length} total`);
 
       if (matchingFolders.length === 0) {
         console.log("⚠️ Nenhuma pasta similar encontrada. Retornando todas as pastas para seleção manual.");
+
+        // Separar ativas de arquivadas para melhor UX
+        const activeFoldersForUI = activeFolders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          archived: false,
+        }));
+
+        const archivedFoldersForUI = archivedFolders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          archived: true,
+        }));
 
         return new Response(
           JSON.stringify({
             success: false,
             needsFolderSelection: true,
-            folders: allFolders.map((folder: any) => ({
-              id: folder.id,
-              name: folder.name,
-              archived: folder.archived || false,
-            })),
+            folders: [...activeFoldersForUI, ...archivedFoldersForUI],
             noSimilarFolder: true,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
