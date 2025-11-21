@@ -92,11 +92,20 @@ serve(async (req) => {
       const allFoldersData = await allFoldersResponse.json();
       const allFolders = allFoldersData.folders || [];
 
-      // Buscar correspondências (exata ou parcial)
-      const clientNameLower = clientName.toLowerCase();
+      // Buscar correspondências (exata ou parcial), ignorando acentos/maiúsculas
+      const normalize = (str: string) =>
+        str
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+
+      const clientNameNormalized = normalize(clientName);
       const matchingFolders = allFolders.filter((folder: any) => {
-        const folderNameLower = folder.name.toLowerCase();
-        return folderNameLower.includes(clientNameLower) || clientNameLower.includes(folderNameLower);
+        const folderNameNormalized = normalize(folder.name || "");
+        return (
+          folderNameNormalized.includes(clientNameNormalized) ||
+          clientNameNormalized.includes(folderNameNormalized)
+        );
       });
 
       console.log(`📋 Encontradas ${matchingFolders.length} pasta(s) similar(es)`);
