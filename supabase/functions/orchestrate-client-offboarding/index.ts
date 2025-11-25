@@ -51,37 +51,7 @@ serve(async (req) => {
       throw new Error(`Cliente não está ativo. Status atual: ${client.status}`);
     }
 
-    // 3. Verificar se já existe offboarding em andamento
-    const { data: existingOffboarding } = await supabase
-      .from("offboarding")
-      .select("*")
-      .eq("client_id", clientId)
-      .in("status", ["pending", "in_progress"])
-      .maybeSingle();
-
-    if (existingOffboarding) {
-      throw new Error("Já existe um processo de offboarding em andamento para este cliente");
-    }
-
-    // 4. Criar registro de offboarding
-    console.log("📝 Criando registro de offboarding...");
-    
-    const { data: offboarding, error: offboardingError } = await supabase
-      .from("offboarding")
-      .insert({
-        client_id: clientId,
-        status: "in_progress",
-      })
-      .select()
-      .single();
-
-    if (offboardingError) {
-      throw new Error(`Erro ao criar registro de offboarding: ${offboardingError.message}`);
-    }
-
-    console.log(`✅ Registro de offboarding criado: ${offboarding.id}`);
-
-    // 5. Executar integração ClickUp
+    // 3. Executar integração ClickUp
     console.log("🔧 Iniciando integração ClickUp...");
     
     const clickupResult = await supabase.functions.invoke("create-clickup-offboarding", {
@@ -94,16 +64,6 @@ serve(async (req) => {
 
     if (clickupResult.error) {
       console.error("❌ Erro na integração ClickUp:", clickupResult.error);
-      
-      await supabase
-        .from("offboarding")
-        .update({
-          status: "failed",
-          clickup_status: "failed",
-          clickup_error: { message: clickupResult.error.message },
-        })
-        .eq("id", offboarding.id);
-
       throw new Error(`Erro no ClickUp: ${clickupResult.error.message}`);
     }
 
@@ -116,21 +76,12 @@ serve(async (req) => {
           success: false,
           needsFolderSelection: true,
           folders: clickupResult.data.folders,
-          offboardingId: offboarding.id,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
     console.log("✅ Integração ClickUp concluída com sucesso");
-
-    // 6. Buscar resultado final do offboarding
-    const { data: finalOffboarding } = await supabase
-      .from("offboarding")
-      .select("*")
-      .eq("id", offboarding.id)
-      .single();
-
     console.log("✅ [ORCHESTRATOR-OFFBOARDING] Processo concluído com sucesso");
 
     return new Response(
@@ -138,7 +89,6 @@ serve(async (req) => {
         success: true,
         message: "Offboarding executado com sucesso",
         data: {
-          offboarding: finalOffboarding,
           client: {
             id: client.id,
             company_name: client.company_name,

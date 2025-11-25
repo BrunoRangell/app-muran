@@ -29,16 +29,6 @@ serve(async (req) => {
       throw new Error('ClickUp credentials not configured');
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Atualizar status para in_progress
-    await supabase
-      .from('onboarding')
-      .update({ clickup_status: 'in_progress' })
-      .eq('client_id', clientId);
-
     const clickupApi = {
       headers: {
         'Content-Type': 'application/json',
@@ -176,16 +166,6 @@ serve(async (req) => {
       }
     }
 
-    // Atualizar onboarding com sucesso
-    await supabase
-      .from('onboarding')
-      .update({
-        clickup_folder_id: newFolder.id,
-        clickup_status: 'completed',
-        clickup_completed_at: new Date().toISOString()
-      })
-      .eq('client_id', clientId);
-
     console.log(`🎉 [CLICKUP] Projeto criado com sucesso!`);
 
     return new Response(
@@ -199,24 +179,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ [CLICKUP] Erro:', error);
-
-    // Atualizar onboarding com erro
-    try {
-      const { clientId } = await req.json();
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      await supabase
-        .from('onboarding')
-        .update({
-          clickup_status: 'failed',
-          clickup_error: { message: error.message, timestamp: new Date().toISOString() }
-        })
-        .eq('client_id', clientId);
-    } catch (e) {
-      console.error('Erro ao atualizar status de erro:', e);
-    }
 
     return new Response(
       JSON.stringify({ success: false, error: error.message }),

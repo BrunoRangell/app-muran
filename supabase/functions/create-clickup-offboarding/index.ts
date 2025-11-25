@@ -45,14 +45,6 @@ serve(async (req) => {
       throw new Error("Variáveis de ambiente do ClickUp não configuradas");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Atualizar status para in_progress
-    await supabase
-      .from("offboarding")
-      .update({ clickup_status: "in_progress" })
-      .eq("client_id", clientId);
-
     const headers = {
       "Authorization": clickupToken,
       "Content-Type": "application/json",
@@ -262,19 +254,6 @@ serve(async (req) => {
     const successCount = createdTasks.filter(t => t !== null).length;
     
     console.log(`✅ ${successCount}/${templateTasks.length} tarefas criadas com sucesso`);
-
-    // Atualizar offboarding no Supabase
-    await supabase
-      .from("offboarding")
-      .update({
-        clickup_status: "completed",
-        clickup_list_id: offboardingList.id,
-        clickup_completed_at: new Date().toISOString(),
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("client_id", clientId);
-
     console.log("✅ [CLICKUP-OFFBOARDING] Processo concluído com sucesso");
 
     return new Response(
@@ -292,26 +271,6 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("❌ [CLICKUP-OFFBOARDING] Erro:", error);
-
-    // Tentar atualizar o status de erro no Supabase se temos o clientId
-    if (clientId) {
-      try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
-        await supabase
-          .from("offboarding")
-          .update({
-            clickup_status: "failed",
-            clickup_error: { message: error.message, timestamp: new Date().toISOString() },
-            status: "failed",
-          })
-          .eq("client_id", clientId);
-      } catch (updateError) {
-        console.error("❌ Erro ao atualizar status de erro:", updateError);
-      }
-    }
 
     return new Response(
       JSON.stringify({
