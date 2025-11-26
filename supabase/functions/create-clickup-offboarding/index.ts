@@ -216,12 +216,18 @@ serve(async (req) => {
     const taskCreationPromises = templateTasks.map(async (task: any) => {
       const taskName = task.name.replace(/Cliente/g, clientName);
       
+      // Extrair responsáveis e tags do template
+      const assigneeIds = task.assignees?.length > 0 
+        ? task.assignees.map((assignee: any) => assignee.id) 
+        : [];
+      const tags = task.tags?.map((tag: any) => tag.name) || [];
+      
       // Data de vencimento: meio-dia de hoje (UTC)
       const today = new Date();
       today.setUTCHours(12, 0, 0, 0);
       const dueDate = today.getTime();
 
-      console.log(`➕ Criando tarefa: ${taskName}`);
+      console.log(`➕ Criando tarefa: ${taskName} (${assigneeIds.length} responsável(is), ${tags.length} tag(s))`);
 
       const createTaskResponse = await fetch(
         `https://api.clickup.com/api/v2/list/${offboardingList.id}/task`,
@@ -231,6 +237,8 @@ serve(async (req) => {
           body: JSON.stringify({
             name: taskName,
             description: task.description || "",
+            assignees: assigneeIds,
+            tags: tags,
             status: task.status?.status || "to do",
             priority: task.priority?.id || null,
             due_date: dueDate,
