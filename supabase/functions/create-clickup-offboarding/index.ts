@@ -10,6 +10,7 @@ const corsHeaders = {
 interface CreateClickUpOffboardingRequest {
   clientName: string;
   clientId: string;
+  folderId?: string; // Opcional: pasta já selecionada pelo usuário
 }
 
 serve(async (req) => {
@@ -18,10 +19,14 @@ serve(async (req) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  let clientId = "";
+  
   try {
     console.log("🚀 [CLICKUP-OFFBOARDING] Iniciando criação de offboarding no ClickUp");
 
-    const { clientName, clientId }: CreateClickUpOffboardingRequest = await req.json();
+    const requestBody: CreateClickUpOffboardingRequest = await req.json();
+    const { clientName, folderId } = requestBody;
+    clientId = requestBody.clientId;
 
     if (!clientName || !clientId) {
       throw new Error("clientName e clientId são obrigatórios");
@@ -40,41 +45,128 @@ serve(async (req) => {
       throw new Error("Variáveis de ambiente do ClickUp não configuradas");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Atualizar status para in_progress
-    await supabase
-      .from("offboarding")
-      .update({ clickup_status: "in_progress" })
-      .eq("client_id", clientId);
-
     const headers = {
       "Authorization": clickupToken,
       "Content-Type": "application/json",
     };
 
-    // 1. Buscar todas as pastas do Space para encontrar a do cliente
-    console.log(`🔍 Buscando pasta do cliente no Space ${clickupSpaceId}...`);
-    
-    const foldersResponse = await fetch(
-      `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder`,
-      { headers }
-    );
+    let clientFolder: any;
 
-    if (!foldersResponse.ok) {
-      throw new Error(`Erro ao buscar pastas: ${foldersResponse.statusText}`);
+    // 1. Se já temos folderId, usar diretamente
+    if (folderId) {
+      console.log(`📁 Usando pasta selecionada: ${folderId}`);
+      
+      const folderResponse = await fetch(
+        `https://api.clickup.com/api/v2/folder/${folderId}`,
+        { headers }
+      );
+
+      if (!folderResponse.ok) {
+        throw new Error(`Erro ao buscar pasta selecionada: ${folderResponse.statusText}`);
+      }
+
+      clientFolder = await folderResponse.json();
+      console.log(`✅ Pasta confirmada: ${clientFolder.name} (${clientFolder.id})`);
+    } else {
+      // 2. Buscar pastas que correspondam ao nome do cliente (busca parcial)
+      console.log(`🔍 Buscando pastas similares a "${clientName}" no Space ${clickupSpaceId}...`);
+      
+      // Buscar pastas ativas primeiro
+      const activeFoldersResponse = await fetch(
+        `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=false`,
+        { headers }
+      );
+
+      if (!activeFoldersResponse.ok) {
+        throw new Error(`Erro ao buscar pastas ativas: ${activeFoldersResponse.statusText}`);
+      }
+
+      const activeFoldersData = await activeFoldersResponse.json();
+      const activeFolders = activeFoldersData.folders || [];
+
+      // Buscar pastas arquivadas também
+      const archivedFoldersResponse = await fetch(
+        `https://api.clickup.com/api/v2/space/${clickupSpaceId}/folder?archived=true`,
+        { headers }
+      );
+
+      if (!archivedFoldersResponse.ok) {
+        throw new Error(`Erro ao buscar pastas arquivadas: ${archivedFoldersResponse.statusText}`);
+      }
+
+      const archivedFoldersData = await archivedFoldersResponse.json();
+      const archivedFolders = archivedFoldersData.folders || [];
+
+      // Combinar todas as pastas (ativas primeiro, depois arquivadas)
+      const allFolders = [...activeFolders, ...archivedFolders];
+
+      // Buscar correspondências (exata ou parcial), ignorando acentos/maiúsculas
+      const normalize = (str: string) =>
+        str
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+
+      const clientNameNormalized = normalize(clientName);
+      const matchingFolders = allFolders.filter((folder: any) => {
+        const folderNameNormalized = normalize(folder.name || "");
+        return (
+          folderNameNormalized.includes(clientNameNormalized) ||
+          clientNameNormalized.includes(folderNameNormalized)
+        );
+      });
+
+      console.log(`📋 Encontradas ${matchingFolders.length} pasta(s) similar(es) de ${allFolders.length} total`);
+
+      if (matchingFolders.length === 0) {
+        console.log("⚠️ Nenhuma pasta similar encontrada. Retornando todas as pastas para seleção manual.");
+
+        // Separar ativas de arquivadas para melhor UX
+        const activeFoldersForUI = activeFolders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          archived: false,
+        }));
+
+        const archivedFoldersForUI = archivedFolders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          archived: true,
+        }));
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            needsFolderSelection: true,
+            folders: [...activeFoldersForUI, ...archivedFoldersForUI],
+            noSimilarFolder: true,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+
+      if (matchingFolders.length === 1) {
+        // Apenas uma pasta encontrada, usar automaticamente
+        clientFolder = matchingFolders[0];
+        console.log(`✅ Pasta única encontrada: ${clientFolder.name} (${clientFolder.id})`);
+      } else {
+        // Múltiplas pastas encontradas, retornar para seleção
+        console.log(`⚠️ Múltiplas pastas encontradas, requer seleção do usuário`);
+        
+        return new Response(
+          JSON.stringify({
+            success: false,
+            needsFolderSelection: true,
+            folders: matchingFolders.map((folder: any) => ({
+              id: folder.id,
+              name: folder.name,
+              archived: folder.archived || false,
+            })),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
     }
-
-    const foldersData = await foldersResponse.json();
-    const clientFolder = foldersData.folders?.find(
-      (folder: any) => folder.name === clientName
-    );
-
-    if (!clientFolder) {
-      throw new Error(`Pasta do cliente "${clientName}" não encontrada no ClickUp`);
-    }
-
-    console.log(`✅ Pasta encontrada: ${clientFolder.name} (${clientFolder.id})`);
 
     // 2. Criar lista "Offboarding" na pasta do cliente
     console.log(`📝 Criando lista Offboarding na pasta ${clientFolder.id}...`);
@@ -124,12 +216,18 @@ serve(async (req) => {
     const taskCreationPromises = templateTasks.map(async (task: any) => {
       const taskName = task.name.replace(/Cliente/g, clientName);
       
+      // Extrair responsáveis e tags do template
+      const assigneeIds = task.assignees?.length > 0 
+        ? task.assignees.map((assignee: any) => assignee.id) 
+        : [];
+      const tags = task.tags?.map((tag: any) => tag.name) || [];
+      
       // Data de vencimento: meio-dia de hoje (UTC)
       const today = new Date();
       today.setUTCHours(12, 0, 0, 0);
       const dueDate = today.getTime();
 
-      console.log(`➕ Criando tarefa: ${taskName}`);
+      console.log(`➕ Criando tarefa: ${taskName} (${assigneeIds.length} responsável(is), ${tags.length} tag(s))`);
 
       const createTaskResponse = await fetch(
         `https://api.clickup.com/api/v2/list/${offboardingList.id}/task`,
@@ -139,6 +237,8 @@ serve(async (req) => {
           body: JSON.stringify({
             name: taskName,
             description: task.description || "",
+            assignees: assigneeIds,
+            tags: tags,
             status: task.status?.status || "to do",
             priority: task.priority?.id || null,
             due_date: dueDate,
@@ -162,19 +262,6 @@ serve(async (req) => {
     const successCount = createdTasks.filter(t => t !== null).length;
     
     console.log(`✅ ${successCount}/${templateTasks.length} tarefas criadas com sucesso`);
-
-    // Atualizar offboarding no Supabase
-    await supabase
-      .from("offboarding")
-      .update({
-        clickup_status: "completed",
-        clickup_list_id: offboardingList.id,
-        clickup_completed_at: new Date().toISOString(),
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("client_id", clientId);
-
     console.log("✅ [CLICKUP-OFFBOARDING] Processo concluído com sucesso");
 
     return new Response(
@@ -192,25 +279,6 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("❌ [CLICKUP-OFFBOARDING] Erro:", error);
-
-    // Tentar atualizar o status de erro no Supabase
-    try {
-      const { clientId } = await req.json();
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      await supabase
-        .from("offboarding")
-        .update({
-          clickup_status: "failed",
-          clickup_error: { message: error.message, timestamp: new Date().toISOString() },
-          status: "failed",
-        })
-        .eq("client_id", clientId);
-    } catch (updateError) {
-      console.error("❌ Erro ao atualizar status de erro:", updateError);
-    }
 
     return new Response(
       JSON.stringify({

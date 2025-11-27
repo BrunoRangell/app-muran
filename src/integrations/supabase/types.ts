@@ -722,133 +722,6 @@ export type Database = {
         }
         Relationships: []
       }
-      offboarding: {
-        Row: {
-          clickup_completed_at: string | null
-          clickup_error: Json | null
-          clickup_list_id: string | null
-          clickup_status: string | null
-          client_id: string
-          completed_at: string | null
-          created_at: string
-          id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          clickup_completed_at?: string | null
-          clickup_error?: Json | null
-          clickup_list_id?: string | null
-          clickup_status?: string | null
-          client_id: string
-          completed_at?: string | null
-          created_at?: string
-          id?: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          clickup_completed_at?: string | null
-          clickup_error?: Json | null
-          clickup_list_id?: string | null
-          clickup_status?: string | null
-          client_id?: string
-          completed_at?: string | null
-          created_at?: string
-          id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "offboarding_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      onboarding: {
-        Row: {
-          clickup_completed_at: string | null
-          clickup_error: Json | null
-          clickup_folder_id: string | null
-          clickup_status: string | null
-          client_id: string
-          completed_at: string | null
-          created_at: string
-          discord_channel_id: string | null
-          discord_channel_link: string | null
-          discord_completed_at: string | null
-          discord_error: Json | null
-          discord_status: string | null
-          drive_completed_at: string | null
-          drive_error: Json | null
-          drive_folder_id: string | null
-          drive_folder_link: string | null
-          drive_status: string | null
-          drive_subfolders: Json | null
-          id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          clickup_completed_at?: string | null
-          clickup_error?: Json | null
-          clickup_folder_id?: string | null
-          clickup_status?: string | null
-          client_id: string
-          completed_at?: string | null
-          created_at?: string
-          discord_channel_id?: string | null
-          discord_channel_link?: string | null
-          discord_completed_at?: string | null
-          discord_error?: Json | null
-          discord_status?: string | null
-          drive_completed_at?: string | null
-          drive_error?: Json | null
-          drive_folder_id?: string | null
-          drive_folder_link?: string | null
-          drive_status?: string | null
-          drive_subfolders?: Json | null
-          id?: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          clickup_completed_at?: string | null
-          clickup_error?: Json | null
-          clickup_folder_id?: string | null
-          clickup_status?: string | null
-          client_id?: string
-          completed_at?: string | null
-          created_at?: string
-          discord_channel_id?: string | null
-          discord_channel_link?: string | null
-          discord_completed_at?: string | null
-          discord_error?: Json | null
-          discord_status?: string | null
-          drive_completed_at?: string | null
-          drive_error?: Json | null
-          drive_folder_id?: string | null
-          drive_folder_link?: string | null
-          drive_status?: string | null
-          drive_subfolders?: Json | null
-          id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "onboarding_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: true
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payments: {
         Row: {
           amount: number
@@ -880,6 +753,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string
+          is_global: boolean | null
+          name: string
+          sections: Json
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_global?: boolean | null
+          name: string
+          sections?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_global?: boolean | null
+          name?: string
+          sections?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

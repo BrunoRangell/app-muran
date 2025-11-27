@@ -5,6 +5,7 @@ import { UserX, AlertTriangle } from "lucide-react";
 import { ClientSelector } from "@/components/offboarding/ClientSelector";
 import { OffboardingProgress } from "@/components/offboarding/OffboardingProgress";
 import { OffboardingResult } from "@/components/offboarding/OffboardingResult";
+import { FolderSelector } from "@/components/offboarding/FolderSelector";
 import { useOffboarding } from "@/hooks/useOffboarding";
 import {
   AlertDialog,
@@ -28,7 +29,10 @@ interface SelectedClient {
 const Offboarding = () => {
   const [selectedClient, setSelectedClient] = useState<SelectedClient | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const { executeOffboarding, resetOffboarding, isProcessing, result } = useOffboarding();
+
+  const folderOptions = result?.data?.needsFolderSelection ? result.data.folders : null;
 
   const handleExecuteOffboarding = () => {
     if (selectedClient) {
@@ -43,9 +47,20 @@ const Offboarding = () => {
     }
   };
 
+  const handleFolderSelect = (folderId: string) => {
+    setSelectedFolderId(folderId);
+  };
+
+  const handleFolderConfirm = async () => {
+    if (selectedClient && selectedFolderId) {
+      await executeOffboarding(selectedClient.id, selectedFolderId);
+    }
+  };
+
   const handleReset = () => {
     resetOffboarding();
     setSelectedClient(null);
+    setSelectedFolderId(null);
   };
 
   const formatCurrency = (value: number) => {
@@ -150,7 +165,27 @@ const Offboarding = () => {
 
       {isProcessing && <OffboardingProgress />}
 
-      {result && (
+      {folderOptions && !isProcessing && (
+        <FolderSelector
+          folders={folderOptions}
+          selectedFolderId={selectedFolderId}
+          onSelect={handleFolderSelect}
+          onConfirm={handleFolderConfirm}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {result && result.success && (
+        <OffboardingResult
+          success={result.success}
+          message={result.message}
+          data={result.data}
+          error={result.error}
+          onReset={handleReset}
+        />
+      )}
+
+      {result && !result.success && !result.data?.needsFolderSelection && (
         <OffboardingResult
           success={result.success}
           message={result.message}

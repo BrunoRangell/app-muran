@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -26,6 +34,8 @@ interface ClientSelectorProps {
 export const ClientSelector = ({ onClientSelect, disabled }: ClientSelectorProps) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   useEffect(() => {
     fetchActiveClients();
@@ -49,9 +59,11 @@ export const ClientSelector = ({ onClientSelect, disabled }: ClientSelectorProps
     }
   };
 
-  const handleValueChange = (value: string) => {
-    const selectedClient = clients.find((c) => c.id === value);
+  const handleSelect = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const selectedClient = clients.find((c) => c.id === clientId);
     onClientSelect(selectedClient || null);
+    setOpen(false);
   };
 
   if (loading) {
@@ -72,19 +84,48 @@ export const ClientSelector = ({ onClientSelect, disabled }: ClientSelectorProps
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="client-select">Selecione o Cliente</Label>
-      <Select onValueChange={handleValueChange} disabled={disabled}>
-        <SelectTrigger id="client-select">
-          <SelectValue placeholder="Escolha um cliente..." />
-        </SelectTrigger>
-        <SelectContent>
-          {clients.map((client) => (
-            <SelectItem key={client.id} value={client.id}>
-              {client.company_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Label>Selecione o Cliente</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+            disabled={disabled}
+          >
+            {selectedClientId
+              ? clients.find((client) => client.id === selectedClientId)?.company_name
+              : "Escolha um cliente..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0">
+          <Command>
+            <CommandInput placeholder="Buscar cliente..." />
+            <CommandList>
+              <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+              <CommandGroup>
+                {clients.map((client) => (
+                  <CommandItem
+                    key={client.id}
+                    value={client.company_name}
+                    onSelect={() => handleSelect(client.id)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedClientId === client.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {client.company_name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
