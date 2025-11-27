@@ -10,20 +10,34 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
+    
+    /* Muran Colors */
+    --muran-primary: 24 100% 50%;
+    --muran-primary-glow: 24 100% 62%;
+    --muran-complementary: 300 28% 16%;
+    --muran-secondary: 240 10% 93%;
+    
     --primary: 24 100% 50%;
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 24 100% 50%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 24 100% 50%;
     --radius: 0.75rem;
+    
+    /* Chart Colors */
+    --chart-meta: 24 100% 50%;
+    --chart-google: 217 89% 61%;
+    --chart-success: 142 76% 36%;
+    --chart-warning: 48 96% 53%;
+    --chart-danger: 0 84% 60%;
   }
 }
  
@@ -36,6 +50,35 @@
   }
 }
 
+/* Gradients */
 .muran-gradient {
-  background: linear-gradient(135deg, #ff6e00 0%, #321e32 100%);
+  background: linear-gradient(135deg, hsl(var(--muran-primary)) 0%, hsl(var(--muran-primary-glow)) 100%);
+}
+
+.muran-gradient-radial {
+  background: radial-gradient(circle at top right, hsl(var(--muran-primary) / 0.1), transparent);
+}
+
+/* Shadows */
+.card-shadow {
+  box-shadow: 0 4px 20px hsl(var(--muran-primary) / 0.1);
+}
+
+.card-shadow-hover {
+  box-shadow: 0 8px 30px hsl(var(--muran-primary) / 0.2);
+}
+
+/* Glassmorphism */
+.glass-card {
+  @apply backdrop-blur-lg bg-white/90 dark:bg-gray-900/90 border-muran-primary/20;
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }

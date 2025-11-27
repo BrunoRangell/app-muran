@@ -51,6 +51,44 @@ export interface TimeSeriesData {
   spend: number;
 }
 
+export interface DemographicData {
+  label: string;
+  value: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  spend: number;
+  ctr: number;
+  cpa: number;
+}
+
+export interface Demographics {
+  byAge: DemographicData[];
+  byGender: DemographicData[];
+  byLocation: DemographicData[];
+}
+
+export interface TopAd {
+  id: string;
+  name: string;
+  platform: 'meta' | 'google';
+  creative: {
+    thumbnail?: string;
+    title?: string;
+    body?: string;
+    type?: string;
+  };
+  metrics: {
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    conversions: number;
+    cpa: number;
+    cpc: number;
+    spend: number;
+  };
+}
+
 export interface TrafficInsightsResponse {
   success: boolean;
   platform: 'meta' | 'google' | 'both';
@@ -63,6 +101,8 @@ export interface TrafficInsightsResponse {
   overview: OverviewMetrics;
   campaigns: CampaignInsight[];
   timeSeries: TimeSeriesData[];
+  demographics?: Demographics;
+  topAds?: TopAd[];
   metaData?: TrafficInsightsResponse;
   googleData?: TrafficInsightsResponse;
   error?: string;
