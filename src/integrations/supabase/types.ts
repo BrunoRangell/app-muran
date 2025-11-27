@@ -760,6 +760,44 @@ export type Database = {
           },
         ]
       }
+      report_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string
+          is_global: boolean | null
+          name: string
+          sections: Json
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_global?: boolean | null
+          name: string
+          sections?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_global?: boolean | null
+          name?: string
+          sections?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_audit_log: {
         Row: {
           action: string

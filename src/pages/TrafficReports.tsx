@@ -5,9 +5,14 @@ import { InsightsOverview } from "@/components/traffic-reports/InsightsOverview"
 import { CampaignsInsightsTable } from "@/components/traffic-reports/CampaignsInsightsTable";
 import { InsightsConversionFunnel } from "@/components/traffic-reports/InsightsConversionFunnel";
 import { TrendCharts } from "@/components/traffic-reports/TrendCharts";
+import { DemographicsCharts } from "@/components/traffic-reports/DemographicsCharts";
+import { TopCreativesSection } from "@/components/traffic-reports/TopCreativesSection";
+import { TemplateSelector } from "@/components/traffic-reports/TemplateSelector";
+import { TemplateCustomizer } from "@/components/traffic-reports/TemplateCustomizer";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
+import { ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -19,6 +24,8 @@ const TrafficReports = () => {
     start: subDays(new Date(), 30),
     end: new Date()
   });
+  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   // Buscar clientes
   const { data: clientsData, isLoading: isLoadingClients } = useUnifiedData();
@@ -78,11 +85,21 @@ const TrafficReports = () => {
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Relatórios de Tráfego</h1>
-          <p className="text-muted-foreground">
-            Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary-glow bg-clip-text text-transparent">
+              Relatórios de Tráfego
+            </h1>
+            <p className="text-muted-foreground">
+              Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
+            </p>
+          </div>
+          <TemplateSelector
+            selectedTemplateId={selectedTemplate?.id}
+            onTemplateSelect={setSelectedTemplate}
+            onCustomize={() => setCustomizerOpen(true)}
+            clientId={selectedClient}
+          />
         </div>
 
         {/* Filtros */}
@@ -142,14 +159,17 @@ const TrafficReports = () => {
 
         {/* Dados */}
         {insightsData && !isLoadingInsights && hasSelection && (
-          <div className="space-y-8">
-            {/* Overview Cards */}
-            <InsightsOverview 
-              overview={insightsData.overview}
-              platform={insightsData.platform}
-            />
+          <div className="space-y-8 animate-fade-in">
+            <InsightsOverview overview={insightsData.overview} platform={insightsData.platform} />
 
-            {/* Funil de Conversão */}
+            {insightsData.demographics && (
+              <DemographicsCharts demographics={insightsData.demographics} platform={insightsData.platform} />
+            )}
+
+            {insightsData.topAds && insightsData.topAds.length > 0 && (
+              <TopCreativesSection topAds={insightsData.topAds} limit={10} />
+            )}
+
             <InsightsConversionFunnel
               data={{
                 impressions: insightsData.overview.impressions.current,
@@ -162,7 +182,6 @@ const TrafficReports = () => {
               platform={insightsData.platform}
             />
 
-            {/* Gráficos de Tendência */}
             {insightsData.timeSeries && insightsData.timeSeries.length > 0 && (
               <TrendCharts
                 timeSeries={insightsData.timeSeries}
@@ -171,13 +190,19 @@ const TrafficReports = () => {
               />
             )}
 
-            {/* Tabela de Campanhas */}
             <CampaignsInsightsTable 
               campaigns={insightsData.campaigns}
               accountId={accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id}
             />
           </div>
         )}
+
+        <TemplateCustomizer
+          open={customizerOpen}
+          onOpenChange={setCustomizerOpen}
+          template={selectedTemplate}
+          clientId={selectedClient}
+        />
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { TrafficInsightsResponse, CampaignInsight, TimeSeriesData } from "./types.ts";
+import { TrafficInsightsResponse, CampaignInsight, TimeSeriesData, DemographicData, Demographics } from "./types.ts";
+import { processDemographics } from "./demographics-processor.ts";
+import { fetchMetaTopAds } from "./ads-processor.ts";
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -54,7 +56,7 @@ export async function fetchMetaInsights(
   const previousEnd = new Date(startDate);
   previousEnd.setDate(previousEnd.getDate() - 1);
 
-  // Buscar insights do período atual
+  // Buscar insights do período atual (agora incluindo demographics)
   const currentInsights = await fetchMetaApiInsights(
     metaAccountId,
     accessToken,
@@ -72,6 +74,15 @@ export async function fetchMetaInsights(
       previousEnd.toISOString().split('T')[0]
     );
   }
+
+  // Buscar top ads
+  const topAds = await fetchMetaTopAds(
+    metaAccountId,
+    accessToken,
+    dateRange.start,
+    dateRange.end,
+    10
+  );
 
   // Processar dados agregados
   const overview = {
@@ -142,7 +153,9 @@ export async function fetchMetaInsights(
     dateRange,
     overview,
     campaigns: currentInsights.campaigns,
-    timeSeries: currentInsights.timeSeries
+    timeSeries: currentInsights.timeSeries,
+    demographics: currentInsights.demographics,
+    topAds
   };
 }
 
@@ -170,7 +183,8 @@ async function fetchMetaApiInsights(
     'video_play_actions'
   ].join(',');
 
-  const params = new URLSearchParams({
+  // Fetch campaign insights
+  const campaignParams = new URLSearchParams({
     access_token: accessToken,
     fields: fields,
     time_range: JSON.stringify({ since, until }),
@@ -179,19 +193,97 @@ async function fetchMetaApiInsights(
     limit: '500'
   });
 
-  const url = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${params}`;
+  const campaignUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${campaignParams}`;
 
-  console.log(`🌐 [META-API] Fetching insights for ${formattedAccountId}: ${since} to ${until}`);
+  console.log(`🌐 [META-API] Fetching campaign insights for ${formattedAccountId}: ${since} to ${until}`);
 
-  const response = await fetch(url);
+  const campaignResponse = await fetch(campaignUrl);
   
-  if (!response.ok) {
-    const errorText = await response.text();
+  if (!campaignResponse.ok) {
+    const errorText = await campaignResponse.text();
     console.error(`❌ [META-API] Error:`, errorText);
-    throw new Error(`Meta API error: ${response.status} - ${errorText}`);
+    throw new Error(`Meta API error: ${campaignResponse.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await campaignResponse.json();
+
+  // Fetch demographic insights (age, gender, region)
+  const demographicData: {
+    age: any[];
+    gender: any[];
+    region: any[];
+  } = {
+    age: [],
+    gender: [],
+    region: []
+  };
+
+  // Fetch age demographics
+  try {
+    const ageParams = new URLSearchParams({
+      access_token: accessToken,
+      fields: fields,
+      time_range: JSON.stringify({ since, until }),
+      level: 'account',
+      breakdowns: 'age',
+      limit: '100'
+    });
+    const ageUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${ageParams}`;
+    const ageResponse = await fetch(ageUrl);
+    if (ageResponse.ok) {
+      const ageData = await ageResponse.json();
+      demographicData.age = ageData.data || [];
+    }
+  } catch (e) {
+    console.log('⚠️ [META-API] Could not fetch age demographics:', e);
+  }
+
+  // Fetch gender demographics
+  try {
+    const genderParams = new URLSearchParams({
+      access_token: accessToken,
+      fields: fields,
+      time_range: JSON.stringify({ since, until }),
+      level: 'account',
+      breakdowns: 'gender',
+      limit: '100'
+    });
+    const genderUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${genderParams}`;
+    const genderResponse = await fetch(genderUrl);
+    if (genderResponse.ok) {
+      const genderData = await genderResponse.json();
+      demographicData.gender = genderData.data || [];
+    }
+  } catch (e) {
+    console.log('⚠️ [META-API] Could not fetch gender demographics:', e);
+  }
+
+  // Fetch region demographics
+  try {
+    const regionParams = new URLSearchParams({
+      access_token: accessToken,
+      fields: fields,
+      time_range: JSON.stringify({ since, until }),
+      level: 'account',
+      breakdowns: 'region',
+      limit: '100'
+    });
+    const regionUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${regionParams}`;
+    const regionResponse = await fetch(regionUrl);
+    if (regionResponse.ok) {
+      const regionData = await regionResponse.json();
+      demographicData.region = regionData.data || [];
+    }
+  } catch (e) {
+    console.log('⚠️ [META-API] Could not fetch region demographics:', e);
+  }
+
+  // Process demographics
+  const demographics = processDemographics(
+    demographicData.age,
+    demographicData.gender,
+    demographicData.region
+  );
 
   // Processar dados por campanha
   const campaignsMap = new Map<string, any>();
@@ -307,7 +399,8 @@ async function fetchMetaApiInsights(
       conversions: totalConversions
     },
     campaigns,
-    timeSeries
+    timeSeries,
+    demographics
   };
 }
 
