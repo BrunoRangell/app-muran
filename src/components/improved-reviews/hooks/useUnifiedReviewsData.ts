@@ -134,7 +134,7 @@ export function useUnifiedReviewsData() {
             }
           }
           
-          const remainingDays = Math.max(budgetEndDay - currentDay, 1);
+          const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
           const totalSpent = review?.total_spent || 0;
           const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
           const idealDailyBudget = remainingBudget / remainingDays;

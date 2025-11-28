@@ -47,7 +47,7 @@ const calculateBudget = (input: {
     }
   }
   
-  const remainingDays = Math.max(budgetEndDay - currentDay, 1);
+  const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
   const remainingBudget = Math.max(input.monthlyBudget - input.totalSpent, 0);
   const idealDailyBudget = remainingBudget / remainingDays;
   const budgetDifference = idealDailyBudget - input.currentDailyBudget;
