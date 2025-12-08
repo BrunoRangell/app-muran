@@ -74,14 +74,31 @@ export function PortalHeader({
             </div>
           </div>
           
-          {/* Right: Live badge */}
-          <div className="hidden sm:flex bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 
-                        border border-gray-200/50 shadow-sm items-center gap-2.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span className="text-xs font-medium text-gray-600">Dados ao vivo</span>
+          {/* Right: Muran branding + Live badge */}
+          <div className="hidden sm:flex items-center gap-4">
+            {/* Muran Logo + Text */}
+            <div className="flex items-center gap-2">
+              <img 
+                src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png" 
+                alt="Muran" 
+                className="h-7 w-auto"
+              />
+              <span className="font-space-grotesk font-medium text-gray-700 tracking-tight">
+                muran
+              </span>
+            </div>
+            
+            {/* Separator */}
+            <div className="h-6 w-px bg-gray-200" />
+            
+            {/* Live badge */}
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-xs font-medium text-gray-600">Ao vivo</span>
+            </div>
           </div>
         </div>
         
@@ -152,10 +169,9 @@ export function PortalHeader({
           </div>
         )}
         
-        {/* Mobile: Live badge + Powered by */}
+        {/* Mobile: Live badge + Muran branding */}
         <div className="sm:hidden pb-4 flex items-center justify-between">
-          <div className="flex bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 
-                        border border-gray-200/50 shadow-sm items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
@@ -163,9 +179,15 @@ export function PortalHeader({
             <span className="text-[10px] font-medium text-gray-600">Ao vivo</span>
           </div>
           
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-            <span>Powered by</span>
-            <span className="font-semibold text-[#ff6e00]">Muran</span>
+          <div className="flex items-center gap-1.5">
+            <img 
+              src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png" 
+              alt="Muran" 
+              className="h-5 w-auto"
+            />
+            <span className="font-space-grotesk font-medium text-xs text-gray-600">
+              muran
+            </span>
           </div>
         </div>
       </div>
