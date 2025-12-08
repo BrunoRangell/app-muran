@@ -14,10 +14,11 @@ export function ClientPortalLayout({ children, clientName }: ClientPortalLayoutP
           <div className="flex items-center gap-4">
             {/* Logo Muran */}
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-muran-primary to-muran-primary-glow flex items-center justify-center">
-                <span className="text-white font-bold text-lg">M</span>
-              </div>
-              <span className="font-semibold text-lg hidden sm:block">Muran</span>
+              <img 
+                src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png" 
+                alt="Muran" 
+                className="h-10 w-auto"
+              />
             </div>
             
             {/* Separator */}
