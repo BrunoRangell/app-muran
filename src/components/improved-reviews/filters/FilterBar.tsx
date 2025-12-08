@@ -108,6 +108,13 @@ export function FilterBar({
                       Ajuste de orçamento
                     </ToggleGroupItem>
                     <ToggleGroupItem 
+                      value="campaigns" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      Campanhas com problemas
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
                       value="without-account" 
                       className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
                     >

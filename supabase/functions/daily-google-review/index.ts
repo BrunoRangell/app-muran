@@ -301,6 +301,218 @@ async function fetchDailySpend(
   }
 }
 
+// Interface para dados detalhados de campanhas
+interface CampaignDetail {
+  id: string;
+  name: string;
+  cost: number;
+  impressions: number;
+  status: string;
+}
+
+interface CampaignHealthData {
+  cost: number;
+  impressions: number;
+  activeCampaigns: number;
+  unservedCampaigns: number;
+  campaignsDetails: CampaignDetail[];
+}
+
+// Função para buscar campanhas ativas com métricas de hoje
+async function fetchGoogleActiveCampaigns(
+  googleAccountId: string,
+  headers: Record<string, string>,
+  targetDate: string
+): Promise<CampaignHealthData> {
+  try {
+    console.log(`📊 [CAMPAIGNS] Buscando campanhas ativas para ${targetDate} da conta ${googleAccountId}`);
+    
+    // Query para buscar campanhas ativas com gastos e impressões de hoje
+    const query = `
+      SELECT
+          campaign.id,
+          campaign.name,
+          campaign.status,
+          metrics.cost_micros,
+          metrics.impressions
+      FROM
+          campaign
+      WHERE
+          campaign.status = 'ENABLED'
+          AND segments.date = '${targetDate}'
+    `;
+    
+    const response = await fetch(
+      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ query })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [CAMPAIGNS] Erro na API do Google Ads:`, errorText);
+      return {
+        cost: 0,
+        impressions: 0,
+        activeCampaigns: 0,
+        unservedCampaigns: 0,
+        campaignsDetails: []
+      };
+    }
+    
+    const data = await response.json();
+    
+    if (!data || !data.results || data.results.length === 0) {
+      console.log(`📊 [CAMPAIGNS] Nenhuma campanha ativa encontrada para ${targetDate}`);
+      return {
+        cost: 0,
+        impressions: 0,
+        activeCampaigns: 0,
+        unservedCampaigns: 0,
+        campaignsDetails: []
+      };
+    }
+    
+    const campaignsDetails: CampaignDetail[] = [];
+    let totalCost = 0;
+    let totalImpressions = 0;
+    let unservedCount = 0;
+    
+    for (const campaignResult of data.results) {
+      const campaignId = campaignResult.campaign?.id || 'unknown';
+      const campaignName = campaignResult.campaign?.name || 'Campanha sem nome';
+      const cost = campaignResult.metrics?.costMicros ? campaignResult.metrics.costMicros / 1e6 : 0;
+      const impressions = campaignResult.metrics?.impressions ? parseInt(campaignResult.metrics.impressions) : 0;
+      const status = campaignResult.campaign?.status || 'UNKNOWN';
+      
+      totalCost += cost;
+      totalImpressions += impressions;
+      
+      // Campanha sem veiculação = ativa mas sem gasto e sem impressões
+      if (cost === 0 && impressions === 0) {
+        unservedCount++;
+      }
+      
+      campaignsDetails.push({
+        id: campaignId,
+        name: campaignName,
+        cost,
+        impressions,
+        status
+      });
+    }
+    
+    console.log(`📊 [CAMPAIGNS] Resultado: ${campaignsDetails.length} campanhas ativas, ${unservedCount} sem veiculação`);
+    console.log(`💰 [CAMPAIGNS] Custo total: ${totalCost.toFixed(2)}, Impressões: ${totalImpressions}`);
+    
+    return {
+      cost: totalCost,
+      impressions: totalImpressions,
+      activeCampaigns: campaignsDetails.length,
+      unservedCampaigns: unservedCount,
+      campaignsDetails
+    };
+    
+  } catch (error) {
+    console.error(`❌ [CAMPAIGNS] Erro ao buscar campanhas ativas:`, error);
+    return {
+      cost: 0,
+      impressions: 0,
+      activeCampaigns: 0,
+      unservedCampaigns: 0,
+      campaignsDetails: []
+    };
+  }
+}
+
+// Função para salvar dados de saúde das campanhas no campaign_health
+async function updateGoogleCampaignHealth(
+  supabaseUrl: string,
+  supabaseKey: string,
+  clientId: string,
+  accountIdUuid: string,
+  campaignData: CampaignHealthData,
+  snapshotDate: string
+): Promise<boolean> {
+  try {
+    console.log(`💾 [CAMPAIGN_HEALTH] Salvando dados de saúde para conta ${accountIdUuid}...`);
+    
+    // Primeiro, remover registros antigos (anteriores a hoje)
+    const deleteOldResponse = await fetch(
+      `${supabaseUrl}/rest/v1/campaign_health?platform=eq.google&snapshot_date=lt.${snapshotDate}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!deleteOldResponse.ok) {
+      console.warn(`⚠️ [CAMPAIGN_HEALTH] Erro ao limpar registros antigos`);
+    }
+    
+    // Remover registro existente de hoje para esta conta
+    const deleteTodayResponse = await fetch(
+      `${supabaseUrl}/rest/v1/campaign_health?platform=eq.google&client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&snapshot_date=eq.${snapshotDate}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!deleteTodayResponse.ok) {
+      console.warn(`⚠️ [CAMPAIGN_HEALTH] Erro ao remover registro duplicado de hoje`);
+    }
+    
+    // Inserir novo registro
+    const healthSnapshot = {
+      client_id: clientId,
+      account_id: accountIdUuid,
+      snapshot_date: snapshotDate,
+      platform: 'google',
+      has_account: true,
+      active_campaigns_count: campaignData.activeCampaigns,
+      unserved_campaigns_count: campaignData.unservedCampaigns,
+      cost_today: campaignData.cost,
+      impressions_today: campaignData.impressions,
+      campaigns_detailed: campaignData.campaignsDetails,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    const insertResponse = await fetch(
+      `${supabaseUrl}/rest/v1/campaign_health`, {
+      method: "POST",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(healthSnapshot)
+    });
+    
+    if (!insertResponse.ok) {
+      const errorText = await insertResponse.text();
+      console.error(`❌ [CAMPAIGN_HEALTH] Erro ao salvar:`, errorText);
+      return false;
+    }
+    
+    console.log(`✅ [CAMPAIGN_HEALTH] Dados salvos: ${campaignData.activeCampaigns} campanhas, ${campaignData.unservedCampaigns} sem veiculação`);
+    return true;
+    
+  } catch (error) {
+    console.error(`❌ [CAMPAIGN_HEALTH] Erro ao salvar dados de saúde:`, error);
+    return false;
+  }
+}
+
 // Função auxiliar para registrar log de conclusão em lote
 async function logBatchCompletion(
   supabaseUrl: string,
@@ -688,6 +900,24 @@ async function processIndividualGoogleReview(
         console.error("❌ Erro ao obter orçamentos das campanhas:", errorText);
         currentDailyBudget = 0;
       }
+      
+      // 🆕 NOVO: Buscar dados de saúde das campanhas para campaign_health
+      console.log("📊 [CAMPAIGN_HEALTH] Buscando dados de campanhas ativas para health check...");
+      const campaignHealthData = await fetchGoogleActiveCampaigns(
+        googleAccountId,
+        headers,
+        reviewDate
+      );
+      
+      // 🆕 NOVO: Salvar dados de saúde no campaign_health
+      await updateGoogleCampaignHealth(
+        supabaseUrl,
+        supabaseKey,
+        clientId,
+        accountIdUuid,
+        campaignHealthData,
+        reviewDate
+      );
       
     } catch (apiError: any) {
       console.error("❌ Erro ao acessar API do Google Ads - usando valores zerados:", apiError);
