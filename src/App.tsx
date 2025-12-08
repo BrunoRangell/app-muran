@@ -73,6 +73,25 @@ function App() {
         <Route path="/cliente/:accessToken" element={<TrafficReports />} />
         
         <Route path="/login" element={<Login />} />
+
+        {/* Editor de Templates - Fullscreen sem sidebar */}
+        <Route
+          path="/relatorios-trafego/templates/novo"
+          element={
+            <PrivateRoute>
+              <TemplateEditorPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/relatorios-trafego/templates/:templateId"
+          element={
+            <PrivateRoute>
+              <TemplateEditorPage />
+            </PrivateRoute>
+          }
+        />
+
         <Route
           element={
             <PrivateRoute>
@@ -145,8 +164,6 @@ function App() {
           {/* Relatórios de Tráfego */}
           <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
           <Route path="/relatorios-trafego/templates" element={<TrafficReportsTemplates />} />
-          <Route path="/relatorios-trafego/templates/novo" element={<TemplateEditorPage />} />
-          <Route path="/relatorios-trafego/templates/:templateId" element={<TemplateEditorPage />} />
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReportsViewer />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
