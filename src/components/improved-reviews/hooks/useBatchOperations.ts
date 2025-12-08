@@ -102,7 +102,7 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
     
     // Invalidar queries principais
     await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["google-ads-clients-data"] });
     await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
     await queryClient.invalidateQueries({ queryKey: ["last-batch-review-meta"] });
     await queryClient.invalidateQueries({ queryKey: ["last-batch-review-google"] });

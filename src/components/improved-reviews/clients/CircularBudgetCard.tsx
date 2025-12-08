@@ -24,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
+import { useRecentlyReviewed } from "../context/RecentlyReviewedContext";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -41,6 +42,7 @@ export function CircularBudgetCard({
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
+  const { markAsReviewed } = useRecentlyReviewed();
 
   useEffect(() => {
     console.log("CircularBudgetCard mounted/updated:", {
@@ -162,6 +164,10 @@ export function CircularBudgetCard({
     });
     try {
       const accountId = platform === "meta" ? client.meta_account_id : client.google_account_id;
+      
+      // Marcar como recém-revisado ANTES da revisão para manter posição durante atualização
+      markAsReviewed(client.id);
+      
       await reviewClient(client.id, accountId);
       console.log("Depois de reviewClient:", {
         last_funding_detected_at: client.last_funding_detected_at,
@@ -223,7 +229,7 @@ export function CircularBudgetCard({
         });
       } else {
         await queryClient.invalidateQueries({
-          queryKey: ["improved-google-reviews"],
+          queryKey: ["google-ads-clients-data"],
         });
       }
 
