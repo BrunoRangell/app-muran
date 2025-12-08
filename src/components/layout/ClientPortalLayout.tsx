@@ -1,11 +1,22 @@
 import { ReactNode } from "react";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ClientPortalLayoutProps {
   children: ReactNode;
   clientName?: string;
+  showEditButton?: boolean;
+  isEditing?: boolean;
+  onEditClick?: () => void;
 }
 
-export function ClientPortalLayout({ children, clientName }: ClientPortalLayoutProps) {
+export function ClientPortalLayout({ 
+  children, 
+  clientName,
+  showEditButton = false,
+  isEditing = false,
+  onEditClick
+}: ClientPortalLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       {/* Header - Fundo escuro para logo com texto branco */}
@@ -30,10 +41,28 @@ export function ClientPortalLayout({ children, clientName }: ClientPortalLayoutP
             )}
           </div>
 
-          {/* Badge de relatório */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muran-primary/20 text-muran-primary text-sm font-medium">
-            <span className="hidden sm:inline">Relatório de Performance</span>
-            <span className="sm:hidden">Relatório</span>
+          <div className="flex items-center gap-3">
+            {/* Badge de relatório */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muran-primary/20 text-muran-primary text-sm font-medium">
+              <span className="hidden sm:inline">Relatório de Performance</span>
+              <span className="sm:hidden">Relatório</span>
+            </div>
+
+            {/* Botão Editar (apenas para team members logados) */}
+            {showEditButton && (
+              <Button
+                variant={isEditing ? "default" : "secondary"}
+                size="sm"
+                onClick={onEditClick}
+                className={isEditing 
+                  ? "bg-muran-primary hover:bg-muran-primary/90 text-white" 
+                  : "bg-white/10 hover:bg-white/20 text-white border-0"
+                }
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                {isEditing ? "Editando" : "Editar"}
+              </Button>
+            )}
           </div>
         </div>
       </header>
