@@ -116,6 +116,17 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
   const reviewClient = async (clientId: string, accountId?: string) => {
     if (processingIds.includes(clientId)) return;
     
+    // Validar se accountId existe para evitar chamadas inválidas
+    if (!accountId) {
+      console.warn(`⚠️ Cliente ${clientId} não tem conta ${platform} cadastrada. Pulando revisão.`);
+      toast({
+        title: "Conta não encontrada",
+        description: `Este cliente não possui conta ${platform === "meta" ? "Meta Ads" : "Google Ads"} cadastrada.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     console.log(`🔍 Iniciando revisão individual do cliente ${clientId} (plataforma: ${platform})`);
     setProcessingIds(prev => [...prev, clientId]);
     
@@ -165,6 +176,11 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
       
     } catch (error) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
+      toast({
+        title: "Erro na revisão",
+        description: `Não foi possível revisar este cliente. Tente novamente.`,
+        variant: "destructive"
+      });
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
@@ -188,11 +204,17 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
         setCurrentClientName(client.company_name || `Cliente ${i + 1}`);
         setProgress(i + 1);
         
+        const accountId = platform === "meta" 
+          ? client.meta_account_id 
+          : client.google_account_id;
+        
+        // Pular clientes sem conta cadastrada
+        if (!accountId) {
+          console.warn(`⚠️ Cliente ${client.company_name} não tem conta ${platform} cadastrada. Pulando...`);
+          continue;
+        }
+        
         try {
-          const accountId = platform === "meta" 
-            ? client.meta_account_id 
-            : client.google_account_id;
-          
           // Executar revisão usando função unificada
           if (platform === "meta") {
             const { data, error } = await supabase.functions.invoke("unified-meta-review", {
