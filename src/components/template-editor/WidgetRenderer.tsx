@@ -19,9 +19,6 @@ import { TemplateWidget, WIDGET_CATALOG, METRIC_LABELS } from '@/types/template-
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
-  OverviewPreview,
-  TrendsPreview,
-  DemographicsPreview,
   TopCreativesPreview,
   CampaignsTablePreview,
   MetricCardPreview,
@@ -70,12 +67,6 @@ export function WidgetRenderer({
   // Renderiza o conteúdo real do widget com dados mock
   const renderWidgetContent = () => {
     switch (widget.type) {
-      case 'overview-full':
-        return <OverviewPreview />;
-      case 'trends-full':
-        return <TrendsPreview />;
-      case 'demographics-full':
-        return <DemographicsPreview />;
       case 'campaigns-table':
         return <CampaignsTablePreview />;
       case 'top-creatives':

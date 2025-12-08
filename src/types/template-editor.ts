@@ -15,22 +15,26 @@ export type ChartType = 'line' | 'bar' | 'area' | 'pie';
 // Fonte de dados
 export type DataSource = 'timeSeries' | 'demographics' | 'campaigns' | 'creatives';
 
-// Tipos de widgets disponíveis
-export type WidgetType = 
-  // Pré-configurados (blocos prontos)
+// Tipos de presets (expandem em múltiplos widgets ao adicionar)
+export type PresetType =
   | 'overview-full'        // Visão geral completa (8 métricas)
   | 'trends-full'          // Todos os gráficos de tendência
-  | 'demographics-full'    // Demografia completa
-  | 'campaigns-table'      // Tabela de campanhas
-  | 'top-creatives'        // Top criativos
-  
-  // Individuais (configuráveis)
+  | 'demographics-full';   // Demografia completa
+
+// Tipos de widgets disponíveis (agora todos são editáveis)
+export type WidgetType = 
+  // Individuais (todos configuráveis)
   | 'metric-card'          // Card de métrica única
   | 'line-chart'           // Gráfico de linha
   | 'bar-chart'            // Gráfico de barras
   | 'area-chart'           // Gráfico de área
   | 'pie-chart'            // Gráfico de pizza
-  | 'simple-table';        // Tabela simples
+  | 'simple-table'         // Tabela simples
+  | 'campaigns-table'      // Tabela de campanhas
+  | 'top-creatives';       // Top criativos
+
+// Tipo combinado para uso na paleta e em alguns componentes
+export type WidgetOrPresetType = WidgetType | PresetType;
 
 // Layout do widget no grid
 export interface WidgetLayout {
@@ -82,7 +86,7 @@ export interface TemplateData {
 
 // Metadados dos widgets para exibição na paleta
 export interface WidgetMetadata {
-  type: WidgetType;
+  type: WidgetType | PresetType;
   name: string;
   description: string;
   icon: string;                  // Nome do ícone Lucide
@@ -93,11 +97,11 @@ export interface WidgetMetadata {
 
 // Catálogo de widgets disponíveis
 export const WIDGET_CATALOG: WidgetMetadata[] = [
-  // Pré-configurados
+  // Pré-configurados (expandem em múltiplos widgets)
   {
     type: 'overview-full',
     name: 'Visão Geral Completa',
-    description: 'Grid com todas as métricas principais (impressões, cliques, conversões, etc.)',
+    description: 'Adiciona 8 cards de métricas lado a lado (editáveis individualmente)',
     icon: 'LayoutGrid',
     category: 'preset',
     defaultLayout: { w: 12, h: 2, minW: 6, minH: 2 },
@@ -106,7 +110,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
   {
     type: 'trends-full',
     name: 'Gráficos de Tendência',
-    description: 'Todos os gráficos de tendência ao longo do tempo',
+    description: 'Adiciona 4 gráficos de linha/área (editáveis individualmente)',
     icon: 'TrendingUp',
     category: 'preset',
     defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
@@ -115,29 +119,11 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
   {
     type: 'demographics-full',
     name: 'Demografia Completa',
-    description: 'Gráficos de idade, gênero e localização',
+    description: 'Adiciona gráficos de idade, gênero e localização (editáveis individualmente)',
     icon: 'Users',
     category: 'preset',
     defaultLayout: { w: 12, h: 3, minW: 8, minH: 2 },
     defaultConfig: { showTitle: true, title: 'Demografia' }
-  },
-  {
-    type: 'campaigns-table',
-    name: 'Tabela de Campanhas',
-    description: 'Tabela detalhada com todas as campanhas',
-    icon: 'Table',
-    category: 'preset',
-    defaultLayout: { w: 12, h: 3, minW: 8, minH: 2 },
-    defaultConfig: { showTitle: true, title: 'Campanhas' }
-  },
-  {
-    type: 'top-creatives',
-    name: 'Top Criativos',
-    description: 'Melhores anúncios com preview visual',
-    icon: 'Image',
-    category: 'preset',
-    defaultLayout: { w: 12, h: 3, minW: 6, minH: 2 },
-    defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
   },
   
   // Individuais
@@ -147,7 +133,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Exibe uma métrica individual com destaque',
     icon: 'CreditCard',
     category: 'individual',
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1 },
+    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxH: 2 },
     defaultConfig: { metrics: ['impressions'], showComparison: true }
   },
   {
@@ -194,6 +180,24 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     category: 'individual',
     defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
     defaultConfig: { metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
+  },
+  {
+    type: 'campaigns-table',
+    name: 'Tabela de Campanhas',
+    description: 'Tabela detalhada com campanhas ativas',
+    icon: 'Table',
+    category: 'individual',
+    defaultLayout: { w: 12, h: 3, minW: 8, minH: 2 },
+    defaultConfig: { showTitle: true, title: 'Campanhas', limit: 10 }
+  },
+  {
+    type: 'top-creatives',
+    name: 'Top Criativos',
+    description: 'Melhores anúncios com preview visual',
+    icon: 'Image',
+    category: 'individual',
+    defaultLayout: { w: 12, h: 3, minW: 6, minH: 2 },
+    defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
   }
 ];
 
@@ -208,6 +212,9 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
   cpa: 'CPA',
   cpc: 'CPC'
 };
+
+// Todas as métricas disponíveis em ordem
+export const ALL_METRICS: MetricKey[] = ['impressions', 'reach', 'clicks', 'ctr', 'conversions', 'spend', 'cpa', 'cpc'];
 
 // Helper para criar um novo widget
 export function createWidget(
@@ -229,6 +236,118 @@ export function createWidget(
     },
     config: { ...metadata.defaultConfig }
   };
+}
+
+// Helper para expandir um preset em múltiplos widgets individuais
+export function expandPresetToWidgets(
+  presetType: PresetType, 
+  startY: number
+): TemplateWidget[] {
+  const widgets: TemplateWidget[] = [];
+  
+  switch (presetType) {
+    case 'overview-full': {
+      // 8 cards de métrica em 2 linhas de 4
+      ALL_METRICS.forEach((metric, index) => {
+        widgets.push({
+          id: crypto.randomUUID(),
+          type: 'metric-card',
+          layout: {
+            x: (index % 4) * 3,  // 4 colunas de largura 3
+            y: startY + Math.floor(index / 4),
+            w: 3,
+            h: 1,
+            minW: 2,
+            minH: 1,
+            maxH: 2
+          },
+          config: {
+            metrics: [metric],
+            showComparison: true
+          }
+        });
+      });
+      break;
+    }
+    
+    case 'trends-full': {
+      // 4 gráficos de tendência: impressões, cliques, conversões, investimento
+      const trendMetrics: { metrics: MetricKey[]; type: 'line-chart' | 'area-chart' }[] = [
+        { metrics: ['impressions', 'reach'], type: 'line-chart' },
+        { metrics: ['clicks'], type: 'line-chart' },
+        { metrics: ['conversions'], type: 'area-chart' },
+        { metrics: ['spend'], type: 'area-chart' }
+      ];
+      
+      trendMetrics.forEach((config, index) => {
+        widgets.push({
+          id: crypto.randomUUID(),
+          type: config.type,
+          layout: {
+            x: (index % 2) * 6,  // 2 colunas de largura 6
+            y: startY + Math.floor(index / 2) * 2,
+            w: 6,
+            h: 2,
+            minW: 4,
+            minH: 2
+          },
+          config: {
+            metrics: config.metrics,
+            showLegend: true,
+            chartType: config.type === 'line-chart' ? 'line' : 'area',
+            title: METRIC_LABELS[config.metrics[0]]
+          }
+        });
+      });
+      break;
+    }
+    
+    case 'demographics-full': {
+      // 3 widgets: idade (bar), gênero (pie), localização (table)
+      widgets.push(
+        {
+          id: crypto.randomUUID(),
+          type: 'bar-chart',
+          layout: { x: 0, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          config: {
+            title: 'Idade',
+            dataSource: 'demographics',
+            showLegend: false,
+            chartType: 'bar'
+          }
+        },
+        {
+          id: crypto.randomUUID(),
+          type: 'pie-chart',
+          layout: { x: 4, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          config: {
+            title: 'Gênero',
+            dataSource: 'demographics',
+            showLegend: true,
+            chartType: 'pie'
+          }
+        },
+        {
+          id: crypto.randomUUID(),
+          type: 'simple-table',
+          layout: { x: 8, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          config: {
+            title: 'Localização',
+            dataSource: 'demographics',
+            limit: 5
+          }
+        }
+      );
+      break;
+    }
+  }
+  
+  return widgets;
+}
+
+// Verifica se é um tipo de preset
+export function isPresetType(type: string): type is PresetType {
+  return ['overview-full', 'trends-full', 'demographics-full'].includes(type);
 }
 
 // Configuração padrão do grid

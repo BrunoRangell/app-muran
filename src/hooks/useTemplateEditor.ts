@@ -4,8 +4,11 @@ import {
   TemplateWidget, 
   TemplateData, 
   WidgetType,
+  PresetType,
   DEFAULT_TEMPLATE_DATA,
   createWidget,
+  expandPresetToWidgets,
+  isPresetType,
   WIDGET_CATALOG
 } from '@/types/template-editor';
 
@@ -21,7 +24,7 @@ interface UseTemplateEditorReturn {
   setTemplateName: (name: string) => void;
   setIsGlobal: (isGlobal: boolean) => void;
   selectWidget: (id: string | null) => void;
-  addWidget: (type: WidgetType, position?: { x: number; y: number }) => void;
+  addWidget: (type: WidgetType | PresetType, position?: { x: number; y: number }) => void;
   removeWidget: (id: string) => void;
   updateWidgetConfig: (id: string, config: Partial<TemplateWidget['config']>) => void;
   updateLayout: (layout: Layout[]) => void;
@@ -47,15 +50,27 @@ export function useTemplateEditor(): UseTemplateEditorReturn {
     setSelectedWidgetId(id);
   }, []);
 
-  // Adicionar widget
-  const addWidget = useCallback((type: WidgetType, position?: { x: number; y: number }) => {
+  // Adicionar widget (ou expandir preset)
+  const addWidget = useCallback((type: WidgetType | PresetType, position?: { x: number; y: number }) => {
     // Calcular próxima posição Y se não especificada
     const nextY = position?.y ?? Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
-    const pos = position ?? { x: 0, y: nextY };
     
-    const newWidget = createWidget(type, pos);
-    setWidgets(prev => [...prev, newWidget]);
-    setSelectedWidgetId(newWidget.id);
+    // Verificar se é um preset que deve ser expandido
+    if (isPresetType(type)) {
+      const newWidgets = expandPresetToWidgets(type, nextY);
+      setWidgets(prev => [...prev, ...newWidgets]);
+      // Selecionar o primeiro widget adicionado
+      if (newWidgets.length > 0) {
+        setSelectedWidgetId(newWidgets[0].id);
+      }
+    } else {
+      // Widget individual normal
+      const pos = position ?? { x: 0, y: nextY };
+      const newWidget = createWidget(type, pos);
+      setWidgets(prev => [...prev, newWidget]);
+      setSelectedWidgetId(newWidget.id);
+    }
+    
     setIsDirty(true);
   }, [widgets]);
 

@@ -10,16 +10,24 @@ interface MetricCardPreviewProps {
   compact?: boolean;
 }
 
+// Variações fictícias para cada métrica
+const MOCK_CHANGES: Record<MetricKey, { value: number; positive: boolean }> = {
+  impressions: { value: 12.5, positive: true },
+  reach: { value: 8.3, positive: true },
+  clicks: { value: 15.2, positive: true },
+  ctr: { value: 3.1, positive: true },
+  conversions: { value: 22.4, positive: true },
+  spend: { value: 5.8, positive: false },
+  cpa: { value: 8.7, positive: true },
+  cpc: { value: 4.2, positive: true }
+};
+
 export function MetricCardPreview({ metric, showComparison = true, compact = false }: MetricCardPreviewProps) {
   const value = mockOverview[metric];
   const formattedValue = formatMetricValue(metric, value);
   const label = METRIC_LABELS[metric];
   const color = METRIC_COLORS[metric];
-  
-  // Variação fictícia (positiva ou negativa aleatória baseada na métrica)
-  const isPositiveMetric = !['cpa', 'cpc', 'spend'].includes(metric);
-  const changePercent = metric === 'ctr' ? 12.5 : metric === 'conversions' ? 18.3 : 8.7;
-  const isPositiveChange = isPositiveMetric;
+  const change = MOCK_CHANGES[metric];
 
   if (compact) {
     return (
@@ -42,16 +50,16 @@ export function MetricCardPreview({ metric, showComparison = true, compact = fal
         {showComparison && (
           <div className={cn(
             "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-            isPositiveChange 
+            change.positive 
               ? "bg-green-500/10 text-green-600" 
               : "bg-red-500/10 text-red-600"
           )}>
-            {isPositiveChange ? (
+            {change.positive ? (
               <TrendingUp className="w-3 h-3" />
             ) : (
               <TrendingDown className="w-3 h-3" />
             )}
-            {changePercent}%
+            {change.value}%
           </div>
         )}
       </div>
