@@ -169,8 +169,11 @@ export function WidgetRenderer({
           </span>
         </div>
         
-        {isEditing && isSelected && (
-          <div className="flex items-center gap-1 flex-shrink-0">
+        {isEditing && (
+          <div className={cn(
+            "flex items-center gap-1 flex-shrink-0 transition-opacity",
+            !isSelected && "opacity-50 hover:opacity-100"
+          )}>
             <Button
               variant="ghost"
               size="icon"
