@@ -62,19 +62,13 @@ const TrafficReportsTemplates = () => {
   const [sections, setSections] = useState(DEFAULT_SECTIONS);
 
   const handleOpenCreate = () => {
-    setEditingTemplate(null);
-    setName("");
-    setIsGlobal(true);
-    setSections(DEFAULT_SECTIONS);
-    setDialogOpen(true);
+    // Navegar para o novo editor visual
+    navigate("/relatorios-trafego/templates/novo");
   };
 
   const handleOpenEdit = (template: ReportTemplate) => {
-    setEditingTemplate(template);
-    setName(template.name);
-    setIsGlobal(template.is_global);
-    setSections(template.sections as typeof DEFAULT_SECTIONS);
-    setDialogOpen(true);
+    // Navegar para o editor visual com o template
+    navigate(`/relatorios-trafego/templates/${template.id}`);
   };
 
   const handleSectionToggle = (sectionKey: string, enabled: boolean) => {
