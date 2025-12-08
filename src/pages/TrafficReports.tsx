@@ -9,6 +9,9 @@ import { DemographicsCharts } from "@/components/traffic-reports/DemographicsCha
 import { TopCreativesSection } from "@/components/traffic-reports/TopCreativesSection";
 import { TemplateSelector } from "@/components/traffic-reports/TemplateSelector";
 import { TemplateCustomizer } from "@/components/traffic-reports/TemplateCustomizer";
+import { PlatformViewSelector } from "@/components/traffic-reports/PlatformViewSelector";
+import { CombinedOverview } from "@/components/traffic-reports/CombinedOverview";
+import { ComparativeTrendCharts } from "@/components/traffic-reports/ComparativeTrendCharts";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
@@ -34,10 +37,13 @@ interface SectionConfig {
   limit?: number;
 }
 
+type ViewMode = 'combined' | 'meta' | 'google';
+
 const TrafficReports = () => {
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'meta' | 'google' | 'both'>('both');
+  const [viewMode, setViewMode] = useState<ViewMode>('combined');
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 30),
     end: new Date()
@@ -79,6 +85,13 @@ const TrafficReports = () => {
   const handlePlatformChange = (platform: 'meta' | 'google' | 'both') => {
     setSelectedPlatform(platform);
     
+    // Reset view mode quando mudar plataforma
+    if (platform !== 'both') {
+      setViewMode('combined'); // Não usado para plataforma única
+    } else {
+      setViewMode('combined');
+    }
+    
     // Auto-selecionar contas principais
     if (platform === 'both') {
       const metaPrimary = accountsData?.find(a => a.platform === 'meta' && a.is_primary);
@@ -96,6 +109,26 @@ const TrafficReports = () => {
       setSelectedAccounts(primaryAccount ? [primaryAccount.id] : []);
     }
   };
+
+  // Determinar quais dados usar baseado no viewMode
+  const activeData = useMemo(() => {
+    if (!insightsData) return null;
+    
+    if (selectedPlatform !== 'both') {
+      return insightsData;
+    }
+
+    // Para platform='both', escolher dados baseado no viewMode
+    switch (viewMode) {
+      case 'meta':
+        return insightsData.metaData || null;
+      case 'google':
+        return insightsData.googleData || null;
+      case 'combined':
+      default:
+        return insightsData;
+    }
+  }, [insightsData, viewMode, selectedPlatform]);
 
   // Calcular seções ordenadas baseado no template
   const sortedSections = useMemo(() => {
@@ -117,34 +150,34 @@ const TrafficReports = () => {
 
   // Função para renderizar seção
   const renderSection = (key: SectionKey, config: SectionConfig) => {
-    if (!insightsData) return null;
+    if (!activeData) return null;
 
     switch (key) {
       case 'overview':
         return (
           <InsightsOverview 
             key={key}
-            overview={insightsData.overview} 
-            platform={insightsData.platform} 
+            overview={activeData.overview} 
+            platform={activeData.platform} 
           />
         );
       
       case 'demographics':
-        if (!insightsData.demographics) return null;
+        if (!activeData.demographics) return null;
         return (
           <DemographicsCharts 
             key={key}
-            demographics={insightsData.demographics} 
-            platform={insightsData.platform} 
+            demographics={activeData.demographics} 
+            platform={activeData.platform} 
           />
         );
       
       case 'topCreatives':
-        if (!insightsData.topAds || insightsData.topAds.length === 0) return null;
+        if (!activeData.topAds || activeData.topAds.length === 0) return null;
         return (
           <TopCreativesSection 
             key={key}
-            topAds={insightsData.topAds} 
+            topAds={activeData.topAds} 
             limit={config.limit || 10} 
           />
         );
@@ -154,25 +187,25 @@ const TrafficReports = () => {
           <InsightsConversionFunnel
             key={key}
             data={{
-              impressions: insightsData.overview.impressions.current,
-              clicks: insightsData.overview.clicks.current,
-              conversions: insightsData.overview.conversions.current,
-              spend: insightsData.overview.spend.current,
-              cpc: insightsData.overview.cpc.current,
-              cpa: insightsData.overview.cpa.current,
+              impressions: activeData.overview.impressions.current,
+              clicks: activeData.overview.clicks.current,
+              conversions: activeData.overview.conversions.current,
+              spend: activeData.overview.spend.current,
+              cpc: activeData.overview.cpc.current,
+              cpa: activeData.overview.cpa.current,
             }}
-            platform={insightsData.platform}
+            platform={activeData.platform}
           />
         );
       
       case 'trendCharts':
-        if (!insightsData.timeSeries || insightsData.timeSeries.length === 0) return null;
+        if (!activeData.timeSeries || activeData.timeSeries.length === 0) return null;
         return (
           <TrendCharts
             key={key}
-            timeSeries={insightsData.timeSeries}
-            overview={insightsData.overview}
-            platform={insightsData.platform}
+            timeSeries={activeData.timeSeries}
+            overview={activeData.overview}
+            platform={activeData.platform}
           />
         );
       
@@ -180,14 +213,55 @@ const TrafficReports = () => {
         return (
           <CampaignsInsightsTable 
             key={key}
-            campaigns={insightsData.campaigns}
+            campaigns={activeData.campaigns}
             accountId={accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id}
+            showPlatformFilter={selectedPlatform === 'both' && viewMode === 'combined'}
           />
         );
       
       default:
         return null;
     }
+  };
+
+  // Renderizar conteúdo para "Visão Geral" (combinado)
+  const renderCombinedView = () => {
+    if (!insightsData) return null;
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        {/* Overview Combinado com breakdown */}
+        <CombinedOverview
+          combined={insightsData.overview}
+          meta={insightsData.metaData?.overview}
+          google={insightsData.googleData?.overview}
+        />
+
+        {/* Gráficos Comparativos */}
+        <ComparativeTrendCharts
+          metaTimeSeries={insightsData.metaData?.timeSeries || []}
+          googleTimeSeries={insightsData.googleData?.timeSeries || []}
+        />
+
+        {/* Tabela de campanhas com filtro de plataforma */}
+        <CampaignsInsightsTable
+          campaigns={insightsData.campaigns}
+          accountId={accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id}
+          showPlatformFilter={true}
+        />
+      </div>
+    );
+  };
+
+  // Renderizar conteúdo para plataforma específica (Meta ou Google)
+  const renderPlatformView = () => {
+    if (!activeData) return null;
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        {sortedSections.map(({ key, config }) => renderSection(key, config))}
+      </div>
+    );
   };
 
   return (
@@ -265,11 +339,26 @@ const TrafficReports = () => {
           </Alert>
         )}
 
-        {/* Dados - Renderizar seções ordenadas pelo template */}
-        {insightsData && !isLoadingInsights && hasSelection && (
-          <div className="space-y-8 animate-fade-in">
-            {sortedSections.map(({ key, config }) => renderSection(key, config))}
+        {/* Seletor de View para platform='both' */}
+        {insightsData && !isLoadingInsights && hasSelection && selectedPlatform === 'both' && (
+          <div className="flex justify-center">
+            <PlatformViewSelector
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              hasMetaData={!!insightsData.metaData}
+              hasGoogleData={!!insightsData.googleData}
+            />
           </div>
+        )}
+
+        {/* Dados - Renderizar baseado no viewMode */}
+        {insightsData && !isLoadingInsights && hasSelection && (
+          <>
+            {selectedPlatform === 'both' && viewMode === 'combined' 
+              ? renderCombinedView()
+              : renderPlatformView()
+            }
+          </>
         )}
 
         <TemplateCustomizer

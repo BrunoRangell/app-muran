@@ -31,16 +31,19 @@ interface Campaign {
 interface CampaignsInsightsTableProps {
   campaigns: Campaign[];
   accountId?: string;
+  showPlatformFilter?: boolean;
 }
 
-export function CampaignsInsightsTable({ campaigns, accountId }: CampaignsInsightsTableProps) {
+export function CampaignsInsightsTable({ campaigns, accountId, showPlatformFilter = false }: CampaignsInsightsTableProps) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<keyof Campaign>("spend");
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'meta' | 'google'>('all');
 
   const filteredCampaigns = campaigns
     .filter(campaign => 
-      campaign.name.toLowerCase().includes(search.toLowerCase())
+      campaign.name.toLowerCase().includes(search.toLowerCase()) &&
+      (platformFilter === 'all' || campaign.platform === platformFilter)
     )
     .sort((a, b) => {
       const aVal = a[sortField] as number;
@@ -84,17 +87,57 @@ export function CampaignsInsightsTable({ campaigns, accountId }: CampaignsInsigh
   };
 
   return (
-    <Card className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <Card className="glass-card p-6 space-y-4 border border-border/30">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-xl font-semibold">Campanhas Detalhadas</h2>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar campanha..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
+        <div className="flex items-center gap-3">
+          {/* Filtro de plataforma */}
+          {showPlatformFilter && (
+            <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+              <button
+                onClick={() => setPlatformFilter('all')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  platformFilter === 'all' 
+                    ? 'bg-background shadow-sm text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setPlatformFilter('meta')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                  platformFilter === 'meta' 
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-current" />
+                Meta
+              </button>
+              <button
+                onClick={() => setPlatformFilter('google')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                  platformFilter === 'google' 
+                    ? 'bg-yellow-500 text-white shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-current" />
+                Google
+              </button>
+            </div>
+          )}
+          
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar campanha..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
       </div>
 
@@ -159,7 +202,17 @@ export function CampaignsInsightsTable({ campaigns, accountId }: CampaignsInsigh
                   </TableCell>
                   <TableCell>{getStatusBadge(campaign.status)}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">
+                    <Badge 
+                      variant="outline"
+                      className={
+                        campaign.platform === 'meta' 
+                          ? 'border-blue-500/50 text-blue-600 bg-blue-500/10' 
+                          : 'border-yellow-500/50 text-yellow-600 bg-yellow-500/10'
+                      }
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                        campaign.platform === 'meta' ? 'bg-blue-500' : 'bg-yellow-500'
+                      }`} />
                       {campaign.platform === 'meta' ? 'Meta' : 'Google'}
                     </Badge>
                   </TableCell>
