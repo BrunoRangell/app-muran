@@ -11,6 +11,7 @@ import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
 import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
 import { AlertTriangle } from "lucide-react";
+import { RecentlyReviewedProvider } from "../context/RecentlyReviewedContext";
 
 interface MetaAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -112,35 +113,37 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   }
 
   return (
-    <div className="space-y-6">
-      <MetricsPanel
-        metrics={metrics}
-        onBatchReview={handleBatchReview}
-        isProcessing={isProcessing}
-        progress={progress}
-        total={total}
-        currentClientName={currentClientName}
-        platform="meta"
-        onCancelBatchProcessing={cancelBatchProcessing}
-      />
+    <RecentlyReviewedProvider>
+      <div className="space-y-6">
+        <MetricsPanel
+          metrics={metrics}
+          onBatchReview={handleBatchReview}
+          isProcessing={isProcessing}
+          progress={progress}
+          total={total}
+          currentClientName={currentClientName}
+          platform="meta"
+          onCancelBatchProcessing={cancelBatchProcessing}
+        />
 
-      <FilterBar
-        searchQuery={searchQuery}
-        activeFilter={activeFilter}
-        showWithoutAccount={activeFilter === "without-account"}
-        onSearchChange={handleSearchChange}
-        onActiveFilterChange={handleActiveFilterChange}
-        onAccountFilterChange={handleAccountFilterChange}
-        platform="meta"
-      />
-      
-      <ClientsList 
-        data={data}
-        searchQuery={searchQuery}
-        activeFilter={activeFilter}
-            showWithoutAccount={activeFilter === "without-account"}
-        platform="meta"
-      />
-    </div>
+        <FilterBar
+          searchQuery={searchQuery}
+          activeFilter={activeFilter}
+          showWithoutAccount={activeFilter === "without-account"}
+          onSearchChange={handleSearchChange}
+          onActiveFilterChange={handleActiveFilterChange}
+          onAccountFilterChange={handleAccountFilterChange}
+          platform="meta"
+        />
+        
+        <ClientsList 
+          data={data}
+          searchQuery={searchQuery}
+          activeFilter={activeFilter}
+              showWithoutAccount={activeFilter === "without-account"}
+          platform="meta"
+        />
+      </div>
+    </RecentlyReviewedProvider>
   );
 }

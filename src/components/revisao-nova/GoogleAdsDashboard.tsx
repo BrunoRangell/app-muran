@@ -9,6 +9,7 @@ import { useGoogleAdsData } from "@/components/improved-reviews/hooks/useGoogleA
 import { ClientsList } from "@/components/improved-reviews/clients/ClientsList";
 import { FilterBar } from "@/components/improved-reviews/filters/FilterBar";
 import { MetricsPanel } from "@/components/improved-reviews/dashboard/MetricsPanel";
+import { RecentlyReviewedProvider } from "@/components/improved-reviews/context/RecentlyReviewedContext";
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
@@ -92,37 +93,39 @@ export const GoogleAdsDashboard = () => {
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
 
   return (
-    <div className="space-y-6">
-      {/* Painel de métricas unificado */}
-      <MetricsPanel 
-        metrics={metrics} 
-        onBatchReview={handleAnalyzeAllAction}
-        isProcessing={isReviewingBatch}
-        progress={progress}
-        total={total}
-        currentClientName={currentClientName}
-        platform="google"
-      />
-      
-      {/* Barra de filtros unificada */}
-      <FilterBar 
-        searchQuery={searchQuery}
-        activeFilter={activeFilter}
-        showWithoutAccount={showWithoutAccount}
-        onSearchChange={handleSearchChange}
-        onActiveFilterChange={handleActiveFilterChange}
-        onAccountFilterChange={handleAccountFilterChange}
-        platform="google"
-      />
-      
-      {/* Lista de clientes unificada */}
-      <ClientsList 
-        data={data}
-        searchQuery={searchQuery}
-        activeFilter={activeFilter}
-        showWithoutAccount={showWithoutAccount}
-        platform="google"
-      />
-    </div>
+    <RecentlyReviewedProvider>
+      <div className="space-y-6">
+        {/* Painel de métricas unificado */}
+        <MetricsPanel 
+          metrics={metrics} 
+          onBatchReview={handleAnalyzeAllAction}
+          isProcessing={isReviewingBatch}
+          progress={progress}
+          total={total}
+          currentClientName={currentClientName}
+          platform="google"
+        />
+        
+        {/* Barra de filtros unificada */}
+        <FilterBar 
+          searchQuery={searchQuery}
+          activeFilter={activeFilter}
+          showWithoutAccount={showWithoutAccount}
+          onSearchChange={handleSearchChange}
+          onActiveFilterChange={handleActiveFilterChange}
+          onAccountFilterChange={handleAccountFilterChange}
+          platform="google"
+        />
+        
+        {/* Lista de clientes unificada */}
+        <ClientsList 
+          data={data}
+          searchQuery={searchQuery}
+          activeFilter={activeFilter}
+          showWithoutAccount={showWithoutAccount}
+          platform="google"
+        />
+      </div>
+    </RecentlyReviewedProvider>
   );
 };
