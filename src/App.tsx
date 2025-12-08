@@ -62,6 +62,7 @@ const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
 const TrafficReportsTemplates = lazyWithTimeout(() => import("@/pages/TrafficReportsTemplates"));
 const TrafficReportsViewer = lazyWithTimeout(() => import("@/pages/TrafficReportsViewer"));
+const TemplateEditorPage = lazyWithTimeout(() => import("@/pages/TemplateEditorPage"));
 
 
 function App() {
@@ -144,6 +145,8 @@ function App() {
           {/* Relatórios de Tráfego */}
           <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
           <Route path="/relatorios-trafego/templates" element={<TrafficReportsTemplates />} />
+          <Route path="/relatorios-trafego/templates/novo" element={<TemplateEditorPage />} />
+          <Route path="/relatorios-trafego/templates/:templateId" element={<TemplateEditorPage />} />
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReportsViewer />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
