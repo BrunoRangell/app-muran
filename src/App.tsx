@@ -59,12 +59,16 @@ const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
 const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
+const ClientPortal = lazyWithTimeout(() => import("@/pages/ClientPortal"));
 
 
 function App() {
   return (
     <TooltipProvider>
       <Routes>
+        {/* Rota pública do portal do cliente */}
+        <Route path="/cliente/:accessToken" element={<ClientPortal />} />
+        
         <Route path="/login" element={<Login />} />
         <Route
           element={
