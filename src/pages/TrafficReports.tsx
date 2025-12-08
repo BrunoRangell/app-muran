@@ -12,7 +12,8 @@ import { useTrafficInsights } from "@/hooks/useTrafficInsights";
 import { useReportTemplates, ReportTemplate } from "@/hooks/useReportTemplates";
 import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClientPortal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Calendar, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Calendar, Lock, Eye, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -46,9 +47,15 @@ const TrafficReports = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const [customizerOpen, setCustomizerOpen] = useState(false);
 
+  // Estado para modo preview (visualizar como cliente)
+  const [previewMode, setPreviewMode] = useState(false);
+
   // Estado para modo portal
   const [period, setPeriod] = useState<string>('30');
   const [hasTrackedAccess, setHasTrackedAccess] = useState(false);
+
+  // Determinar se deve mostrar elementos do portal
+  const showPortalElements = isPortalMode || previewMode;
 
   // Buscar dados do portal (apenas em modo portal)
   const { data: portal, isLoading: isLoadingPortal, error: portalError } = useClientPortalByToken(
@@ -195,9 +202,26 @@ const TrafficReports = () => {
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
-      {/* Header com logo Muran - apenas modo portal */}
-      {isPortalMode && (
-        <header className="bg-gradient-to-r from-[#321e32] to-[#4a2d4a] py-5 px-4 md:px-8 shadow-lg">
+      {/* Banner de modo preview */}
+      {previewMode && !isPortalMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-muran-primary text-white py-2 px-4 flex items-center justify-center gap-3 shadow-lg">
+          <Eye className="h-4 w-4" />
+          <span className="text-sm font-medium">Modo Preview - Visualizando como cliente</span>
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            className="h-7 px-3 text-xs"
+            onClick={() => setPreviewMode(false)}
+          >
+            <X className="h-3 w-3 mr-1" />
+            Sair
+          </Button>
+        </div>
+      )}
+
+      {/* Header com logo Muran - modo portal OU preview */}
+      {showPortalElements && (
+        <header className={`bg-gradient-to-r from-[#321e32] to-[#4a2d4a] py-5 px-4 md:px-8 shadow-lg ${previewMode && !isPortalMode ? 'mt-10' : ''}`}>
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
             <img 
               src="/images/muran-logo-portal.png" 
@@ -229,8 +253,19 @@ const TrafficReports = () => {
           </div>
           
           {/* Botões apenas para modo interno */}
-          {!isPortalMode && (
+          {!isPortalMode && !previewMode && (
             <div className="flex items-center gap-3">
+              {/* Botão de Preview */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPreviewMode(true)}
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                Visualizar como Cliente
+              </Button>
+              
               {selectedClient && (
                 <ClientPortalButton 
                   clientId={selectedClient} 
@@ -266,8 +301,8 @@ const TrafficReports = () => {
           )}
         </div>
 
-        {/* Filtros apenas para modo interno */}
-        {!isPortalMode && (
+        {/* Filtros apenas para modo interno (sem preview) */}
+        {!isPortalMode && !previewMode && (
           <TrafficReportFilters
             clients={clientsData || []}
             accounts={accountsData || []}
@@ -284,8 +319,8 @@ const TrafficReports = () => {
           />
         )}
 
-        {/* Estados de seleção apenas para modo interno */}
-        {!isPortalMode && !selectedClient && (
+        {/* Estados de seleção apenas para modo interno (sem preview) */}
+        {!isPortalMode && !previewMode && !selectedClient && (
           <Alert>
             <AlertDescription>
               Selecione um cliente para visualizar os relatórios de tráfego
@@ -293,7 +328,7 @@ const TrafficReports = () => {
           </Alert>
         )}
 
-        {!isPortalMode && selectedClient && selectedAccounts.length === 0 && (
+        {!isPortalMode && !previewMode && selectedClient && selectedAccounts.length === 0 && (
           <Alert>
             <AlertDescription>
               Selecione pelo menos uma conta de anúncios para visualizar as métricas
@@ -315,8 +350,8 @@ const TrafficReports = () => {
           />
         )}
 
-        {/* Template Customizer apenas para modo interno */}
-        {!isPortalMode && (
+        {/* Template Customizer apenas para modo interno (sem preview) */}
+        {!isPortalMode && !previewMode && (
           <TemplateCustomizer
             open={customizerOpen}
             onOpenChange={setCustomizerOpen}
@@ -326,8 +361,8 @@ const TrafficReports = () => {
         )}
       </div>
 
-      {/* Footer discreto - apenas modo portal */}
-      {isPortalMode && (
+      {/* Footer discreto - modo portal OU preview */}
+      {showPortalElements && (
         <footer className="py-6 text-center border-t border-border/50">
           <p className="text-sm text-muted-foreground">
             Powered by <span className="text-muran-primary font-semibold">Muran</span>
