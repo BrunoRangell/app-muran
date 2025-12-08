@@ -74,24 +74,6 @@ function App() {
         
         <Route path="/login" element={<Login />} />
 
-        {/* Editor de Templates - Fullscreen sem sidebar */}
-        <Route
-          path="/relatorios-trafego/templates/novo"
-          element={
-            <PrivateRoute>
-              <TemplateEditorPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/relatorios-trafego/templates/:templateId"
-          element={
-            <PrivateRoute>
-              <TemplateEditorPage />
-            </PrivateRoute>
-          }
-        />
-
         <Route
           element={
             <PrivateRoute>
@@ -171,6 +153,28 @@ function App() {
           
             <Route path="*" element={<NotFound />} />
           </Route>
+
+        {/* Editor de Templates - Fullscreen sem sidebar (DEPOIS das rotas com Layout) */}
+        <Route
+          path="/relatorios-trafego/templates/novo"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
+                <TemplateEditorPage />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/relatorios-trafego/templates/editar/:templateId"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
+                <TemplateEditorPage />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
         </Routes>
         <Toaster />
       </TooltipProvider>

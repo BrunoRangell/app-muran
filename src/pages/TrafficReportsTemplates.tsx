@@ -68,7 +68,7 @@ const TrafficReportsTemplates = () => {
 
   const handleOpenEdit = (template: ReportTemplate) => {
     // Navegar para o editor visual com o template
-    navigate(`/relatorios-trafego/templates/${template.id}`);
+    navigate(`/relatorios-trafego/templates/editar/${template.id}`);
   };
 
   const handleSectionToggle = (sectionKey: string, enabled: boolean) => {
