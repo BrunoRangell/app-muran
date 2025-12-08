@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from "./cors.ts";
 import { fetchMetaInsights } from "./meta-insights.ts";
 import { fetchGoogleInsights } from "./google-insights.ts";
-import { TrafficInsightsRequest, TrafficInsightsResponse } from "./types.ts";
+import { mergeDemographics } from "./demographics-processor.ts";
+import { TrafficInsightsRequest, TrafficInsightsResponse, Demographics, TopAd } from "./types.ts";
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 serve(async (req: Request) => {
   // Handle CORS
@@ -25,13 +31,55 @@ serve(async (req: Request) => {
 
     let result: TrafficInsightsResponse;
 
+    // Para platform='both', precisamos identificar a plataforma de cada conta
+    let accountsWithPlatform: { id: string; platform: 'meta' | 'google' }[] = [];
+    
+    if (platform === 'both') {
+      // Buscar plataforma de cada conta no banco
+      const { data: accountsData, error: accountsError } = await supabase
+        .from('client_accounts')
+        .select('id, platform')
+        .in('id', accountIds);
+
+      if (accountsError || !accountsData) {
+        console.error('❌ Error fetching accounts:', accountsError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Erro ao buscar informações das contas' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      accountsWithPlatform = accountsData.map(a => ({
+        id: a.id,
+        platform: a.platform as 'meta' | 'google'
+      }));
+
+      console.log(`📊 [TRAFFIC-INSIGHTS] Accounts with platforms:`, accountsWithPlatform);
+    }
+
     // Buscar insights para múltiplas contas
     const allResults = await Promise.all(
       accountIds.map(async (accountId) => {
         try {
-          if (platform === 'meta' || platform === 'both') {
+          // Determinar qual plataforma usar para esta conta
+          let accountPlatform: 'meta' | 'google';
+          
+          if (platform === 'both') {
+            const accountInfo = accountsWithPlatform.find(a => a.id === accountId);
+            if (!accountInfo) {
+              console.error(`❌ Account ${accountId} not found in platform mapping`);
+              return null;
+            }
+            accountPlatform = accountInfo.platform;
+          } else {
+            accountPlatform = platform;
+          }
+
+          console.log(`📊 [TRAFFIC-INSIGHTS] Fetching ${accountPlatform} insights for account ${accountId}`);
+
+          if (accountPlatform === 'meta') {
             return await fetchMetaInsights(clientId, accountId, dateRange, compareWithPrevious);
-          } else if (platform === 'google') {
+          } else if (accountPlatform === 'google') {
             return await fetchGoogleInsights(clientId, accountId, dateRange, compareWithPrevious);
           }
         } catch (error) {
@@ -41,7 +89,7 @@ serve(async (req: Request) => {
       })
     );
 
-    const validResults = allResults.filter(r => r !== null);
+    const validResults = allResults.filter(r => r !== null) as TrafficInsightsResponse[];
 
     if (validResults.length === 0) {
       return new Response(
@@ -58,6 +106,18 @@ serve(async (req: Request) => {
 
       const aggregatedMeta = metaResults.length > 0 ? aggregateResults(metaResults) : null;
       const aggregatedGoogle = googleResults.length > 0 ? aggregateResults(googleResults) : null;
+
+      // Combinar demographics
+      const combinedDemographics = mergeDemographics(
+        aggregatedMeta?.demographics,
+        aggregatedGoogle?.demographics
+      );
+
+      // Combinar topAds
+      const combinedTopAds = mergeTopAds(
+        aggregatedMeta?.topAds || [],
+        aggregatedGoogle?.topAds || []
+      );
 
       // Combinar Meta e Google
       result = {
@@ -93,7 +153,9 @@ serve(async (req: Request) => {
           cpc: { current: 0, previous: 0, change: 0 }
         },
         campaigns: [...(aggregatedMeta?.campaigns || []), ...(aggregatedGoogle?.campaigns || [])],
-        timeSeries: [],
+        timeSeries: mergeTimeSeries(aggregatedMeta?.timeSeries || [], aggregatedGoogle?.timeSeries || []),
+        demographics: combinedDemographics,
+        topAds: combinedTopAds,
         metaData: aggregatedMeta || undefined,
         googleData: aggregatedGoogle || undefined
       };
@@ -172,6 +234,10 @@ function aggregateResults(results: TrafficInsightsResponse[]): TrafficInsightsRe
     timeSeries: []
   };
 
+  // Coletar todos os demographics e topAds
+  const allDemographics: Demographics[] = [];
+  const allTopAds: TopAd[] = [];
+
   // Somar métricas
   results.forEach(result => {
     aggregated.overview.impressions.current += result.overview.impressions.current;
@@ -185,7 +251,46 @@ function aggregateResults(results: TrafficInsightsResponse[]): TrafficInsightsRe
     aggregated.overview.spend.current += result.overview.spend.current;
     aggregated.overview.spend.previous += result.overview.spend.previous;
     aggregated.campaigns.push(...result.campaigns);
+
+    if (result.demographics) {
+      allDemographics.push(result.demographics);
+    }
+    if (result.topAds) {
+      allTopAds.push(...result.topAds);
+    }
   });
+
+  // Agregar demographics de múltiplas contas
+  if (allDemographics.length > 0) {
+    aggregated.demographics = allDemographics.reduce((acc, curr) => 
+      mergeDemographics(acc, curr)
+    );
+  }
+
+  // Agregar e ordenar topAds
+  if (allTopAds.length > 0) {
+    aggregated.topAds = allTopAds
+      .sort((a, b) => b.metrics.impressions - a.metrics.impressions)
+      .slice(0, 10);
+  }
+
+  // Agregar timeSeries
+  const timeSeriesMap = new Map<string, any>();
+  results.forEach(result => {
+    result.timeSeries?.forEach(ts => {
+      if (!timeSeriesMap.has(ts.date)) {
+        timeSeriesMap.set(ts.date, { ...ts });
+      } else {
+        const existing = timeSeriesMap.get(ts.date);
+        existing.impressions += ts.impressions;
+        existing.clicks += ts.clicks;
+        existing.conversions += ts.conversions;
+        existing.spend += ts.spend;
+      }
+    });
+  });
+  aggregated.timeSeries = Array.from(timeSeriesMap.values())
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   // Calcular métricas derivadas
   if (aggregated.overview.impressions.current > 0) {
@@ -218,4 +323,36 @@ function aggregateResults(results: TrafficInsightsResponse[]): TrafficInsightsRe
   });
 
   return aggregated;
+}
+
+// Função para mesclar topAds de Meta e Google
+function mergeTopAds(metaAds: TopAd[], googleAds: TopAd[]): TopAd[] {
+  const combined = [...metaAds, ...googleAds];
+  return combined
+    .sort((a, b) => b.metrics.impressions - a.metrics.impressions)
+    .slice(0, 10);
+}
+
+// Função para mesclar timeSeries de Meta e Google
+function mergeTimeSeries(metaTs: any[], googleTs: any[]): any[] {
+  const merged = new Map<string, any>();
+
+  const process = (arr: any[]) => {
+    arr.forEach(ts => {
+      if (!merged.has(ts.date)) {
+        merged.set(ts.date, { ...ts });
+      } else {
+        const existing = merged.get(ts.date);
+        existing.impressions += ts.impressions;
+        existing.clicks += ts.clicks;
+        existing.conversions += ts.conversions;
+        existing.spend += ts.spend;
+      }
+    });
+  };
+
+  process(metaTs);
+  process(googleTs);
+
+  return Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date));
 }

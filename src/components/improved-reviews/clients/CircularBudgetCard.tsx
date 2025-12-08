@@ -24,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
+import { useRecentlyReviewed } from "../context/RecentlyReviewedContext";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -41,6 +42,7 @@ export function CircularBudgetCard({
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
+  const { markAsReviewed } = useRecentlyReviewed();
 
   useEffect(() => {
     console.log("CircularBudgetCard mounted/updated:", {
@@ -139,13 +141,22 @@ export function CircularBudgetCard({
   const statusInfo = getStatusInfo();
   const accountInfo = getAccountInfo();
 
-  // Buscar informações de veiculação das campanhas - usar o UUID correto do client_accounts
-  const veiculationAccountId =
+  // Buscar informações de veiculação das campanhas
+  // Para Meta Ads: usar hook que busca do banco
+  // Para Google Ads: usar dados já calculados pelo useGoogleAdsData
+  const metaVeiculationAccountId =
     platform === "meta"
       ? client.review?.account_id || client.meta_account_uuid
-      : client.review?.account_id || client.google_account_uuid;
+      : null;
 
-  const { data: veiculationInfo } = useCampaignVeiculationStatus(client.id, veiculationAccountId, platform);
+  const { data: metaVeiculationInfo } = useCampaignVeiculationStatus(
+    client.id, 
+    metaVeiculationAccountId || "", 
+    platform
+  );
+
+  // Para Google Ads, usar os dados já calculados no hook useGoogleAdsData
+  const veiculationInfo = platform === "meta" ? metaVeiculationInfo : client.veiculationStatus;
 
   // Determinar tipo de orçamento
   const getBudgetType = () => {
@@ -162,6 +173,10 @@ export function CircularBudgetCard({
     });
     try {
       const accountId = platform === "meta" ? client.meta_account_id : client.google_account_id;
+      
+      // Marcar como recém-revisado ANTES da revisão para manter posição durante atualização
+      markAsReviewed(client.id);
+      
       await reviewClient(client.id, accountId);
       console.log("Depois de reviewClient:", {
         last_funding_detected_at: client.last_funding_detected_at,
@@ -223,7 +238,7 @@ export function CircularBudgetCard({
         });
       } else {
         await queryClient.invalidateQueries({
-          queryKey: ["improved-google-reviews"],
+          queryKey: ["google-ads-clients-data"],
         });
       }
 

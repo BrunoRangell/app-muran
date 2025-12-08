@@ -12,6 +12,7 @@ import { useRealTimeDataService } from "../services/realTimeDataService";
 import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
 import { DataDebugPanel } from "../debug/DataDebugPanel";
 import { AlertTriangle } from "lucide-react";
+import { RecentlyReviewedProvider } from "../context/RecentlyReviewedContext";
 
 interface GoogleAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -121,53 +122,55 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Debug Panel - mostra automaticamente apenas se há problemas */}
-      {shouldShowDebug && <DataDebugPanel />}
+    <RecentlyReviewedProvider>
+      <div className="space-y-6">
+        {/* Debug Panel - mostra automaticamente apenas se há problemas */}
+        {shouldShowDebug && <DataDebugPanel />}
 
-      {error && (
-        <EmptyState
-          title="Erro ao carregar dados"
-          description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
-          icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
-        />
-      )}
+        {error && (
+          <EmptyState
+            title="Erro ao carregar dados"
+            description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
+            icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
+          />
+        )}
 
-      {!error && (
-        <>
-          <MetricsPanel 
-            metrics={metrics} 
-            onBatchReview={handleBatchReview}
-            isProcessing={isProcessing}
-            progress={progress}
-            total={total}
-            currentClientName={currentClientName}
-            platform="google"
-            onCancelBatchProcessing={cancelBatchProcessing}
-          />
-          
-          <FilterBar 
-            searchQuery={searchQuery}
-            activeFilter={activeFilter}
-            showWithoutAccount={showWithoutAccount}
-            budgetCalculationMode={budgetCalculationMode}
-            onSearchChange={handleSearchChange}
-            onActiveFilterChange={handleActiveFilterChange}
-            onAccountFilterChange={handleAccountFilterChange}
-            onBudgetCalculationModeChange={handleBudgetCalculationModeChange}
-            platform="google"
-          />
-          
-          <ClientsList 
-            data={data}
-            searchQuery={searchQuery}
-            activeFilter={activeFilter}
-            showWithoutAccount={showWithoutAccount}
-            budgetCalculationMode={budgetCalculationMode}
-            platform="google"
-          />
-        </>
-      )}
-    </div>
+        {!error && (
+          <>
+            <MetricsPanel 
+              metrics={metrics} 
+              onBatchReview={handleBatchReview}
+              isProcessing={isProcessing}
+              progress={progress}
+              total={total}
+              currentClientName={currentClientName}
+              platform="google"
+              onCancelBatchProcessing={cancelBatchProcessing}
+            />
+            
+            <FilterBar 
+              searchQuery={searchQuery}
+              activeFilter={activeFilter}
+              showWithoutAccount={showWithoutAccount}
+              budgetCalculationMode={budgetCalculationMode}
+              onSearchChange={handleSearchChange}
+              onActiveFilterChange={handleActiveFilterChange}
+              onAccountFilterChange={handleAccountFilterChange}
+              onBudgetCalculationModeChange={handleBudgetCalculationModeChange}
+              platform="google"
+            />
+            
+            <ClientsList 
+              data={data}
+              searchQuery={searchQuery}
+              activeFilter={activeFilter}
+              showWithoutAccount={showWithoutAccount}
+              budgetCalculationMode={budgetCalculationMode}
+              platform="google"
+            />
+          </>
+        )}
+      </div>
+    </RecentlyReviewedProvider>
   );
 }

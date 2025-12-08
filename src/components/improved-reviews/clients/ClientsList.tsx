@@ -2,6 +2,7 @@
 import { ClientCard } from "./ClientCard";
 import { EmptyState } from "../common/EmptyState";
 import { useMemo } from "react";
+import { useRecentlyReviewed } from "../context/RecentlyReviewedContext";
 
 interface ClientsListProps {
   data: any[] | undefined;
@@ -61,12 +62,22 @@ export function ClientsList({
     });
   }, [data, searchQuery, activeFilter, showWithoutAccount, platform]);
   
-  // Ordenar clientes com nova lógica de saldo
+  // Hook para obter IDs recém-revisados (lock de posição)
+  const { recentlyReviewedIds } = useRecentlyReviewed();
+
+  // Ordenar clientes com nova lógica de saldo e lock de posição
   const sortedClients = useMemo(() => {
     return [...filteredData].sort((a, b) => {
       // VALIDAÇÃO: verificar se ambos os clientes têm company_name
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
+      
+      // LOCK DE POSIÇÃO: Clientes recém-revisados mantêm posição no topo temporariamente
+      const aRecent = recentlyReviewedIds.has(a.id);
+      const bRecent = recentlyReviewedIds.has(b.id);
+      
+      if (aRecent && !bRecent) return -1; // Manter card recente no topo
+      if (!aRecent && bRecent) return 1;
       
       // Se activeFilter "adjustments" está ativo, ordenar por ajuste_recomendado / diário_atual
       if (activeFilter === "adjustments") {
@@ -113,7 +124,7 @@ export function ClientsList({
         return aName < bName ? -1 : aName > bName ? 1 : 0;
       }
     });
-  }, [filteredData, activeFilter, platform]);
+  }, [filteredData, activeFilter, platform, recentlyReviewedIds]);
 
   // Debug log para verificar a lista final
   console.log(`🔍 DEBUG - Lista final de clientes (${platform}):`, {

@@ -5,6 +5,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { getDaysInMonth } from "date-fns";
 import { logger } from "@/lib/logger";
 
+interface CampaignDetail {
+  id: string;
+  name: string;
+  cost: number;
+  impressions: number;
+  status: string;
+}
+
+interface VeiculationStatus {
+  status: "all_running" | "partial_running" | "none_running" | "no_campaigns" | "no_data";
+  activeCampaigns: number;
+  campaignsWithoutDelivery: number;
+  message: string;
+  badgeColor: string;
+  campaignsDetailed: CampaignDetail[];
+}
+
 export interface GoogleAdsClientData {
   id: string;
   company_name: string;
@@ -29,6 +46,7 @@ export interface GoogleAdsClientData {
   weightedAverage?: number;
   isUsingCustomBudget?: boolean;
   customBudget?: any;
+  veiculationStatus?: VeiculationStatus;
 }
 
 export interface GoogleAdsMetrics {
@@ -39,6 +57,69 @@ export interface GoogleAdsMetrics {
   totalSpent: number;
   totalBudget: number;
   spentPercentage: number;
+  clientsWithCampaignIssues: number;
+}
+
+// Função auxiliar para calcular status de veiculação
+function calculateVeiculationStatus(campaignHealth: any): VeiculationStatus {
+  if (!campaignHealth) {
+    return {
+      status: "no_data",
+      activeCampaigns: 0,
+      campaignsWithoutDelivery: 0,
+      message: "Dados não disponíveis",
+      badgeColor: "bg-gray-100 text-gray-600 border-gray-200",
+      campaignsDetailed: []
+    };
+  }
+
+  const campaignsDetailed: CampaignDetail[] = Array.isArray(campaignHealth.campaigns_detailed)
+    ? (campaignHealth.campaigns_detailed as unknown as CampaignDetail[])
+    : [];
+  const activeCampaignsCount = campaignHealth.active_campaigns_count || 0;
+  const unservedCampaignsCount = campaignHealth.unserved_campaigns_count || 0;
+
+  if (activeCampaignsCount === 0) {
+    return {
+      status: "no_campaigns",
+      activeCampaigns: 0,
+      campaignsWithoutDelivery: 0,
+      message: "Nenhuma campanha ativa",
+      badgeColor: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      campaignsDetailed: []
+    };
+  }
+
+  if (unservedCampaignsCount === 0) {
+    return {
+      status: "all_running",
+      activeCampaigns: activeCampaignsCount,
+      campaignsWithoutDelivery: 0,
+      message: "Todas as campanhas rodando",
+      badgeColor: "bg-green-100 text-green-800 border-green-200",
+      campaignsDetailed
+    };
+  }
+
+  if (unservedCampaignsCount === activeCampaignsCount) {
+    return {
+      status: "none_running",
+      activeCampaigns: activeCampaignsCount,
+      campaignsWithoutDelivery: unservedCampaignsCount,
+      message: "Todas as campanhas com erro",
+      badgeColor: "bg-red-100 text-red-800 border-red-200",
+      campaignsDetailed
+    };
+  }
+
+  return {
+    status: "partial_running",
+    activeCampaigns: activeCampaignsCount,
+    campaignsWithoutDelivery: unservedCampaignsCount,
+    message: `${unservedCampaignsCount} campanha${unservedCampaignsCount > 1 ? 's' : ''} sem veiculação`,
+    badgeColor: "bg-amber-100 text-amber-800 border-amber-200",
+    campaignsDetailed
+  };
 }
 
 const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" = "weighted"): Promise<GoogleAdsClientData[]> => {
@@ -57,8 +138,10 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
     const clientIds = clients.map(c => c.id);
     logger.debug(`✅ ${clients.length} clientes encontrados`);
 
-    // FASE 1.2: BATCH QUERIES - buscar tudo em paralelo
-    const [accountsResult, reviewsResult] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0];
+
+    // FASE 1.2: BATCH QUERIES - buscar tudo em paralelo (incluindo campaign_health)
+    const [accountsResult, reviewsResult, campaignHealthResult] = await Promise.all([
       supabase
         .from('client_accounts')
         .select('id, client_id, account_id, account_name, budget_amount, status')
@@ -70,16 +153,27 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
         .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date')
         .in('client_id', clientIds)
         .eq('platform', 'google')
-        .order('review_date', { ascending: false })
+        .order('review_date', { ascending: false }),
+      supabase
+        .from('campaign_health')
+        .select('client_id, account_id, active_campaigns_count, unserved_campaigns_count, campaigns_detailed, snapshot_date')
+        .in('client_id', clientIds)
+        .eq('platform', 'google')
+        .eq('snapshot_date', today)
     ]);
 
     if (accountsResult.error) throw accountsResult.error;
     if (reviewsResult.error) throw reviewsResult.error;
+    // campaign_health pode não existir ainda, não dar erro
+    if (campaignHealthResult.error) {
+      logger.warn("⚠️ Erro ao buscar campaign_health (pode não existir dados ainda):", campaignHealthResult.error);
+    }
 
     const accounts = accountsResult.data || [];
     const allReviews = reviewsResult.data || [];
+    const campaignHealthData = campaignHealthResult.data || [];
 
-    logger.debug(`✅ Batch loaded: ${accounts.length} accounts, ${allReviews.length} reviews`);
+    logger.debug(`✅ Batch loaded: ${accounts.length} accounts, ${allReviews.length} reviews, ${campaignHealthData.length} campaign_health`);
 
     // Indexar dados para acesso rápido
     const accountsByClient = new Map<string, any[]>();
@@ -98,6 +192,12 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
       }
     });
 
+    // Indexar campaign_health por account_id
+    const campaignHealthByAccount = new Map<string, any>();
+    campaignHealthData.forEach(health => {
+      campaignHealthByAccount.set(health.account_id, health);
+    });
+
     // Processar clientes
     const result: GoogleAdsClientData[] = [];
     const currentDate = new Date();
@@ -112,6 +212,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
         for (const account of clientAccounts) {
           const reviewKey = `${client.id}-${account.id}`;
           const latestReview = reviewsByAccount.get(reviewKey);
+          const campaignHealth = campaignHealthByAccount.get(account.id);
 
           const totalSpent = latestReview?.total_spent || 0;
           const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
@@ -123,6 +224,9 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
           const comparisonValue = budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget;
           const budgetDifference = idealDailyBudget - comparisonValue;
           const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
+
+          // Calcular status de veiculação
+          const veiculationStatus = calculateVeiculationStatus(campaignHealth);
 
           result.push({
             id: client.id,
@@ -146,7 +250,8 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
               needsBudgetAdjustment,
               needsAdjustmentBasedOnAverage: needsBudgetAdjustment,
               warningIgnoredToday: latestReview?.warning_ignored_today || false
-            }
+            },
+            veiculationStatus
           });
         }
       } else {
@@ -167,6 +272,14 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             needsBudgetAdjustment: false,
             needsAdjustmentBasedOnAverage: false,
             warningIgnoredToday: false
+          },
+          veiculationStatus: {
+            status: "no_data",
+            activeCampaigns: 0,
+            campaignsWithoutDelivery: 0,
+            message: "Sem conta cadastrada",
+            badgeColor: "bg-gray-100 text-gray-600 border-gray-200",
+            campaignsDetailed: []
           }
         });
       }
@@ -203,7 +316,8 @@ export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" =
         averageSpend: 0,
         totalSpent: 0,
         totalBudget: 0,
-        spentPercentage: 0
+        spentPercentage: 0,
+        clientsWithCampaignIssues: 0
       };
     }
 
@@ -211,6 +325,12 @@ export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" =
     const totalBudget = data.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
     const clientsWithAdjustments = data.filter(client => client.needsAdjustment).length;
     const clientsWithoutAccount = data.filter(client => !client.hasAccount).length;
+    const clientsWithCampaignIssues = data.filter(client => 
+      client.veiculationStatus && 
+      (client.veiculationStatus.status === "none_running" || 
+       client.veiculationStatus.status === "no_campaigns" ||
+       client.veiculationStatus.status === "partial_running")
+    ).length;
 
     const calculatedMetrics = {
       totalClients: data.length,
@@ -219,7 +339,8 @@ export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" =
       averageSpend: data.length > 0 ? totalSpent / data.length : 0,
       totalSpent,
       totalBudget,
-      spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
+      spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0,
+      clientsWithCampaignIssues
     };
 
     logger.debug("📊 Métricas calculadas:", calculatedMetrics);

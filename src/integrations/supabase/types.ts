@@ -340,6 +340,62 @@ export type Database = {
           },
         ]
       }
+      client_portals: {
+        Row: {
+          access_count: number | null
+          access_token: string
+          allow_period_change: boolean | null
+          allow_platform_change: boolean | null
+          client_id: string
+          created_at: string | null
+          created_by: string
+          default_period: number | null
+          default_platform: string | null
+          id: string
+          is_active: boolean | null
+          last_accessed_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_count?: number | null
+          access_token: string
+          allow_period_change?: boolean | null
+          allow_platform_change?: boolean | null
+          client_id: string
+          created_at?: string | null
+          created_by: string
+          default_period?: number | null
+          default_platform?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_accessed_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_count?: number | null
+          access_token?: string
+          allow_period_change?: boolean | null
+          allow_platform_change?: boolean | null
+          client_id?: string
+          created_at?: string | null
+          created_by?: string
+          default_period?: number | null
+          default_platform?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_accessed_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           acquisition_channel: string | null
