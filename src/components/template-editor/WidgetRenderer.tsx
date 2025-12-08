@@ -18,6 +18,17 @@ import {
 import { TemplateWidget, WIDGET_CATALOG, METRIC_LABELS } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  OverviewPreview,
+  TrendsPreview,
+  DemographicsPreview,
+  TopCreativesPreview,
+  CampaignsTablePreview,
+  MetricCardPreview,
+  ChartPreview,
+  PieChartPreview,
+  TablePreview
+} from './widget-previews';
 
 interface WidgetRendererProps {
   widget: TemplateWidget;
@@ -55,7 +66,83 @@ export function WidgetRenderer({
   const Icon = metadata ? ICON_MAP[metadata.icon] : LayoutGrid;
   
   const title = widget.config.title || metadata?.name || 'Widget';
-  const metricsLabel = widget.config.metrics?.map(m => METRIC_LABELS[m]).join(', ');
+
+  // Renderiza o conteúdo real do widget com dados mock
+  const renderWidgetContent = () => {
+    switch (widget.type) {
+      case 'overview-full':
+        return <OverviewPreview />;
+      case 'trends-full':
+        return <TrendsPreview />;
+      case 'demographics-full':
+        return <DemographicsPreview />;
+      case 'campaigns-table':
+        return <CampaignsTablePreview />;
+      case 'top-creatives':
+        return <TopCreativesPreview limit={widget.config.limit} />;
+      case 'metric-card':
+        return (
+          <MetricCardPreview 
+            metric={widget.config.metrics?.[0] || 'impressions'} 
+            showComparison={widget.config.showComparison}
+          />
+        );
+      case 'line-chart':
+        return (
+          <ChartPreview 
+            chartType="line" 
+            metrics={widget.config.metrics || ['impressions']}
+            showLegend={widget.config.showLegend}
+          />
+        );
+      case 'bar-chart':
+        return (
+          <ChartPreview 
+            chartType="bar" 
+            metrics={widget.config.metrics || ['conversions']}
+            showLegend={widget.config.showLegend}
+          />
+        );
+      case 'area-chart':
+        return (
+          <ChartPreview 
+            chartType="area" 
+            metrics={widget.config.metrics || ['spend']}
+            showLegend={widget.config.showLegend}
+          />
+        );
+      case 'pie-chart':
+        return (
+          <PieChartPreview 
+            dataSource={widget.config.dataSource}
+            showLegend={widget.config.showLegend}
+          />
+        );
+      case 'simple-table':
+        return (
+          <TablePreview 
+            metrics={widget.config.metrics}
+            limit={widget.config.limit}
+          />
+        );
+      default:
+        return (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className={cn(
+                "w-12 h-12 mx-auto rounded-xl flex items-center justify-center",
+                "bg-gradient-to-br from-primary/10 to-primary/5"
+              )}>
+                <Icon className="w-6 h-6 text-primary/60" />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Widget não reconhecido
+              </p>
+            </div>
+          </div>
+        );
+    }
+  };
 
   return (
     <div
@@ -72,7 +159,7 @@ export function WidgetRenderer({
       {/* Header com ações */}
       <div className={cn(
         "flex items-center justify-between px-3 py-2 border-b border-border/50",
-        "bg-muted/30"
+        "bg-muted/30 flex-shrink-0"
       )}>
         <div className="flex items-center gap-2 min-w-0">
           <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab flex-shrink-0" />
@@ -110,21 +197,9 @@ export function WidgetRenderer({
         )}
       </div>
       
-      {/* Conteúdo do widget (placeholder) */}
-      <div className="flex-1 p-3 flex items-center justify-center">
-        <div className="text-center">
-          <div className={cn(
-            "w-12 h-12 mx-auto rounded-xl flex items-center justify-center",
-            "bg-gradient-to-br from-primary/10 to-primary/5"
-          )}>
-            <Icon className="w-6 h-6 text-primary/60" />
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            {metadata?.category === 'preset' 
-              ? 'Bloco pré-configurado' 
-              : metricsLabel || 'Configure as métricas'}
-          </p>
-        </div>
+      {/* Conteúdo do widget com visualização real */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        {renderWidgetContent()}
       </div>
     </div>
   );
