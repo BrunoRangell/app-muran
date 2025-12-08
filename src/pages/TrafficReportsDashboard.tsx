@@ -9,10 +9,8 @@ import {
   ExternalLink, 
   Settings2, 
   Users, 
-  Eye,
   Link2,
-  Link2Off,
-  BarChart3
+  Link2Off
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,13 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface ClientPortalData {
   id: string;
@@ -147,7 +138,7 @@ const TrafficReportsDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-card rounded-xl border p-6 space-y-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" />
@@ -163,16 +154,6 @@ const TrafficReportsDashboard = () => {
             </div>
             <p className="text-3xl font-bold">
               {portalsData?.filter(p => p.is_active).length || 0}
-            </p>
-          </div>
-          
-          <div className="bg-card rounded-xl border p-6 space-y-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm">Total de Acessos</span>
-            </div>
-            <p className="text-3xl font-bold">
-              {portalsData?.reduce((acc, p) => acc + (p.access_count || 0), 0) || 0}
             </p>
           </div>
         </div>
@@ -198,21 +179,19 @@ const TrafficReportsDashboard = () => {
                 <TableHead className="w-[300px]">Cliente</TableHead>
                 <TableHead className="w-[120px]">Portal</TableHead>
                 <TableHead className="w-[200px]">Template</TableHead>
-                <TableHead className="w-[120px] text-center">Acessos</TableHead>
-                <TableHead className="w-[180px]">Último Acesso</TableHead>
-                <TableHead className="w-[150px] text-right">Ações</TableHead>
+                <TableHead className="w-[200px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoadingClients ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     Carregando clientes...
                   </TableCell>
                 </TableRow>
               ) : filteredClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     Nenhum cliente encontrado
                   </TableCell>
                 </TableRow>
@@ -275,65 +254,25 @@ const TrafficReportsDashboard = () => {
                         )}
                       </TableCell>
                       
-                      <TableCell className="text-center">
-                        <span className="font-medium">{portal?.access_count || 0}</span>
-                      </TableCell>
-                      
-                      <TableCell>
-                        {portal?.last_accessed_at ? (
-                          <span className="text-sm text-muted-foreground">
-                            {format(new Date(portal.last_accessed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Nunca</span>
-                        )}
-                      </TableCell>
-                      
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleOpenEditor(client.id)}
-                              >
-                                <Settings2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Editar Relatório</TooltipContent>
-                          </Tooltip>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenEditor(client.id)}
+                          >
+                            <Settings2 className="h-4 w-4 mr-1.5" />
+                            Editar
+                          </Button>
                           
-                          {portal?.is_active && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleOpenPortal(portal.access_token)}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Abrir Portal</TooltipContent>
-                            </Tooltip>
-                          )}
-                          
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="default"
-                                size="icon"
-                                className="h-8 w-8 bg-muran-primary hover:bg-muran-primary/90"
-                                onClick={() => handleOpenEditor(client.id)}
-                              >
-                                <BarChart3 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Ver Relatório</TooltipContent>
-                          </Tooltip>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => portal?.is_active ? handleOpenPortal(portal.access_token) : handleOpenEditor(client.id)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1.5" />
+                            Ver Relatório
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
