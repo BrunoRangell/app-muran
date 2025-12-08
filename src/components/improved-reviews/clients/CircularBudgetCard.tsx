@@ -141,13 +141,22 @@ export function CircularBudgetCard({
   const statusInfo = getStatusInfo();
   const accountInfo = getAccountInfo();
 
-  // Buscar informações de veiculação das campanhas - usar o UUID correto do client_accounts
-  const veiculationAccountId =
+  // Buscar informações de veiculação das campanhas
+  // Para Meta Ads: usar hook que busca do banco
+  // Para Google Ads: usar dados já calculados pelo useGoogleAdsData
+  const metaVeiculationAccountId =
     platform === "meta"
       ? client.review?.account_id || client.meta_account_uuid
-      : client.review?.account_id || client.google_account_uuid;
+      : null;
 
-  const { data: veiculationInfo } = useCampaignVeiculationStatus(client.id, veiculationAccountId, platform);
+  const { data: metaVeiculationInfo } = useCampaignVeiculationStatus(
+    client.id, 
+    metaVeiculationAccountId || "", 
+    platform
+  );
+
+  // Para Google Ads, usar os dados já calculados no hook useGoogleAdsData
+  const veiculationInfo = platform === "meta" ? metaVeiculationInfo : client.veiculationStatus;
 
   // Determinar tipo de orçamento
   const getBudgetType = () => {
