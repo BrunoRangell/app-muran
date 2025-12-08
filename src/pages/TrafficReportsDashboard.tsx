@@ -7,10 +7,11 @@ import {
   LayoutGrid, 
   Search, 
   ExternalLink, 
-  Settings2, 
   Users, 
   Link2,
-  Link2Off
+  Link2Off,
+  LayoutTemplate,
+  Eye
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -105,10 +106,6 @@ const TrafficReportsDashboard = () => {
     return templatesData?.find(t => t.is_global);
   }, [templatesData]);
 
-  const handleOpenEditor = (clientId: string) => {
-    navigate(`/relatorios-trafego/editor/${clientId}`);
-  };
-
   const handleOpenPortal = (accessToken: string) => {
     window.open(`/cliente/${accessToken}`, '_blank');
   };
@@ -121,19 +118,34 @@ const TrafficReportsDashboard = () => {
     <div className="min-h-screen bg-muted/30">
       <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
         {/* Header */}
-        <div className="space-y-2">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muran-primary to-muran-primary/80 flex items-center justify-center">
               <LayoutGrid className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary/70 bg-clip-text text-transparent">
-                Central de Relatórios
-              </h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl font-bold">Central de Relatórios</h1>
+              <p className="text-muted-foreground text-sm">
                 Gerencie relatórios de tráfego e portais de clientes
               </p>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/relatorios-trafego/templates")}
+              className="gap-2"
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              Editor de Templates
+            </Button>
+            <Button 
+              onClick={() => navigate("/relatorios-trafego/visualizar")}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              Ver Todos os Relatórios
+            </Button>
           </div>
         </div>
 
@@ -199,7 +211,6 @@ const TrafficReportsDashboard = () => {
                 filteredClients.map((client) => {
                   const portal = portalsMap.get(client.id);
                   const template = templatesMap.get(client.id);
-                  const clientWithLogo = client as typeof client & { logo_url?: string };
                   
                   return (
                     <TableRow key={client.id} className="hover:bg-muted/30">
@@ -207,17 +218,9 @@ const TrafficReportsDashboard = () => {
                         <div className="flex items-center gap-3">
                           {/* Logo ou Inicial */}
                           <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 flex items-center justify-center overflow-hidden border border-border/50">
-                            {clientWithLogo.logo_url ? (
-                              <img 
-                                src={clientWithLogo.logo_url} 
-                                alt={client.company_name}
-                                className="h-full w-full object-contain"
-                              />
-                            ) : (
-                              <span className="text-lg font-bold text-muran-primary">
-                                {getClientInitial(client.company_name)}
-                              </span>
-                            )}
+                            <span className="text-lg font-bold text-muran-primary">
+                              {getClientInitial(client.company_name)}
+                            </span>
                           </div>
                           <span className="font-medium">{client.company_name}</span>
                         </div>
@@ -256,23 +259,21 @@ const TrafficReportsDashboard = () => {
                       
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenEditor(client.id)}
-                          >
-                            <Settings2 className="h-4 w-4 mr-1.5" />
-                            Editar
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => portal?.is_active ? handleOpenPortal(portal.access_token) : handleOpenEditor(client.id)}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1.5" />
-                            Ver Relatório
-                          </Button>
+                          {portal?.access_token ? (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleOpenPortal(portal.access_token)}
+                              className="gap-1.5"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Ver Relatório
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Portal não configurado
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

@@ -60,7 +60,8 @@ const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
-const TrafficReportsEditor = lazyWithTimeout(() => import("@/pages/TrafficReportsEditor"));
+const TrafficReportsTemplates = lazyWithTimeout(() => import("@/pages/TrafficReportsTemplates"));
+const TrafficReportsViewer = lazyWithTimeout(() => import("@/pages/TrafficReportsViewer"));
 
 
 function App() {
@@ -140,9 +141,10 @@ function App() {
           {/* Página principal de revisão diária */}
             <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
           
-          {/* Relatórios de Tráfego - Dashboard Central */}
+          {/* Relatórios de Tráfego */}
           <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
-          <Route path="/relatorios-trafego/editor/:clientId" element={<TrafficReportsEditor />} />
+          <Route path="/relatorios-trafego/templates" element={<TrafficReportsTemplates />} />
+          <Route path="/relatorios-trafego/visualizar" element={<TrafficReportsViewer />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
