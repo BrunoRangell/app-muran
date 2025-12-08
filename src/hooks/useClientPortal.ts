@@ -25,14 +25,35 @@ interface PortalWithClient extends ClientPortal {
   };
 }
 
-// Gerar token único de 32 caracteres
-function generateToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+// Gerar slug a partir do nome da empresa
+function generateSlug(companyName: string): string {
+  return companyName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/[^a-z0-9]+/g, '-') // Substitui caracteres especiais por hífen
+    .replace(/^-+|-+$/g, ''); // Remove hífens do início/fim
+}
+
+// Verificar se slug existe e adicionar sufixo se necessário
+async function getUniqueSlug(baseSlug: string): Promise<string> {
+  let slug = baseSlug;
+  let counter = 1;
+  
+  while (true) {
+    const { data } = await supabase
+      .from('client_portals')
+      .select('id')
+      .eq('access_token', slug)
+      .maybeSingle();
+    
+    if (!data) break;
+    
+    counter++;
+    slug = `${baseSlug}-${counter}`;
   }
-  return result;
+  
+  return slug;
 }
 
 // Hook para buscar portal de um cliente específico
@@ -90,18 +111,21 @@ export function useManageClientPortal() {
   const createPortal = useMutation({
     mutationFn: async ({ 
       clientId, 
-      userId 
+      userId,
+      companyName 
     }: { 
       clientId: string; 
       userId: string;
+      companyName: string;
     }) => {
-      const token = generateToken();
+      const baseSlug = generateSlug(companyName);
+      const slug = await getUniqueSlug(baseSlug);
       
       const { data, error } = await supabase
         .from('client_portals')
         .insert({
           client_id: clientId,
-          access_token: token,
+          access_token: slug,
           created_by: userId,
         })
         .select()
@@ -163,13 +187,14 @@ export function useManageClientPortal() {
   });
 
   const regenerateToken = useMutation({
-    mutationFn: async (portalId: string) => {
-      const newToken = generateToken();
+    mutationFn: async ({ portalId, companyName }: { portalId: string; companyName: string }) => {
+      const baseSlug = generateSlug(companyName);
+      const newSlug = await getUniqueSlug(baseSlug);
       
       const { data, error } = await supabase
         .from('client_portals')
         .update({ 
-          access_token: newToken,
+          access_token: newSlug,
           access_count: 0,
           last_accessed_at: null 
         })

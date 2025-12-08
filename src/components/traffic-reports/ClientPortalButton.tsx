@@ -36,8 +36,8 @@ export function ClientPortalButton({ clientId, clientName }: ClientPortalButtonP
     : null;
 
   const handleCreatePortal = async () => {
-    if (!user?.id) return;
-    await createPortal.mutateAsync({ clientId, userId: user.id });
+    if (!user?.id || !clientName) return;
+    await createPortal.mutateAsync({ clientId, userId: user.id, companyName: clientName });
   };
 
   const handleCopyLink = async () => {
@@ -56,8 +56,8 @@ export function ClientPortalButton({ clientId, clientName }: ClientPortalButtonP
   };
 
   const handleRegenerate = async () => {
-    if (!portal) return;
-    await regenerateToken.mutateAsync(portal.id);
+    if (!portal || !clientName) return;
+    await regenerateToken.mutateAsync({ portalId: portal.id, companyName: clientName });
   };
 
   const handleOpenPortal = () => {
