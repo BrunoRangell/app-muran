@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Save, Eye, RotateCcw } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,14 @@ import { toast } from 'sonner';
 import { WidgetPalette } from './WidgetPalette';
 import { WidgetProperties } from './WidgetProperties';
 import { TemplateEditorCanvas } from './TemplateEditorCanvas';
+import { TemplatePreviewDialog } from './TemplatePreviewDialog';
 import { useTemplateEditor } from '@/hooks/useTemplateEditor';
 import { useReportTemplates } from '@/hooks/useReportTemplates';
 import { TemplateData } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
 
 export function TemplateEditor() {
+  const [previewOpen, setPreviewOpen] = useState(false);
   const navigate = useNavigate();
   const { templateId } = useParams();
   const isEditing = !!templateId;
@@ -210,6 +212,7 @@ export function TemplateEditor() {
               variant="outline"
               size="sm"
               disabled={widgets.length === 0}
+              onClick={() => setPreviewOpen(true)}
             >
               <Eye className="w-4 h-4 mr-2" />
               Visualizar
@@ -263,6 +266,14 @@ export function TemplateEditor() {
           />
         </aside>
       </div>
+
+      {/* Modal de Preview */}
+      <TemplatePreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        widgets={widgets}
+        templateName={templateName}
+      />
     </div>
   );
 }
