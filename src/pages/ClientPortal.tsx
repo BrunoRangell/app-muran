@@ -2,22 +2,12 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { subDays } from "date-fns";
 import { ClientPortalLayout } from "@/components/layout/ClientPortalLayout";
-import { InsightsOverview } from "@/components/traffic-reports/InsightsOverview";
-import { CampaignsInsightsTable } from "@/components/traffic-reports/CampaignsInsightsTable";
-import { InsightsConversionFunnel } from "@/components/traffic-reports/InsightsConversionFunnel";
-import { TrendCharts } from "@/components/traffic-reports/TrendCharts";
-import { DemographicsCharts } from "@/components/traffic-reports/DemographicsCharts";
-import { TopCreativesSection } from "@/components/traffic-reports/TopCreativesSection";
-import { PlatformViewSelector } from "@/components/traffic-reports/PlatformViewSelector";
-import { CombinedOverview } from "@/components/traffic-reports/CombinedOverview";
-import { ComparativeTrendCharts } from "@/components/traffic-reports/ComparativeTrendCharts";
+import { ReportContent, ViewMode } from "@/components/traffic-reports/ReportContent";
 import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClientPortal";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
-import { useReportTemplates, ReportTemplate } from "@/hooks/useReportTemplates";
-import { Loader2, Calendar, AlertCircle, Lock } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { useReportTemplates } from "@/hooks/useReportTemplates";
+import { Loader2, Calendar, Lock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -25,26 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-type ViewMode = 'combined' | 'meta' | 'google';
-
-// Configuração padrão de seções (igual ao TrafficReports)
-const DEFAULT_SECTIONS = {
-  overview: { enabled: true, order: 1 },
-  demographics: { enabled: true, order: 2 },
-  topCreatives: { enabled: true, order: 3, limit: 10 },
-  conversionFunnel: { enabled: true, order: 4 },
-  trendCharts: { enabled: true, order: 5 },
-  campaignTable: { enabled: true, order: 6 }
-};
-
-type SectionKey = keyof typeof DEFAULT_SECTIONS;
-
-interface SectionConfig {
-  enabled: boolean;
-  order: number;
-  limit?: number;
-}
 
 const PERIOD_OPTIONS = [
   { value: '7', label: 'Últimos 7 dias' },
@@ -114,6 +84,11 @@ const ClientPortal = () => {
     return primary ? [primary.id] : [];
   }, [accountsData, selectedPlatform]);
 
+  // Pegar accountId da conta selecionada
+  const accountId = useMemo(() => {
+    return accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id;
+  }, [accountsData, selectedAccounts]);
+
   // Buscar insights
   const { 
     data: insightsData, 
@@ -129,115 +104,6 @@ const ClientPortal = () => {
     },
     compareWithPrevious: true
   });
-
-  // Determinar dados ativos baseado no viewMode
-  const activeData = useMemo(() => {
-    if (!insightsData) return null;
-    
-    if (selectedPlatform !== 'both') {
-      return insightsData;
-    }
-
-    switch (viewMode) {
-      case 'meta':
-        return insightsData.metaData || null;
-      case 'google':
-        return insightsData.googleData || null;
-      case 'combined':
-      default:
-        return insightsData;
-    }
-  }, [insightsData, viewMode, selectedPlatform]);
-
-  // Calcular seções ordenadas baseado no template
-  const sortedSections = useMemo(() => {
-    const sections = activeTemplate?.sections || DEFAULT_SECTIONS;
-    
-    const sectionList: { key: SectionKey; config: SectionConfig }[] = Object.entries(sections)
-      .map(([key, config]) => ({
-        key: key as SectionKey,
-        config: config as SectionConfig
-      }))
-      .filter(s => s.config.enabled !== false)
-      .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
-
-    return sectionList;
-  }, [activeTemplate]);
-
-  // Função para renderizar seção
-  const renderSection = (key: SectionKey, config: SectionConfig) => {
-    if (!activeData) return null;
-
-    switch (key) {
-      case 'overview':
-        return (
-          <InsightsOverview 
-            key={key}
-            overview={activeData.overview} 
-            platform={activeData.platform} 
-          />
-        );
-      
-      case 'demographics':
-        if (!activeData.demographics) return null;
-        return (
-          <DemographicsCharts 
-            key={key}
-            demographics={activeData.demographics} 
-            platform={activeData.platform} 
-          />
-        );
-      
-      case 'topCreatives':
-        if (!activeData.topAds || activeData.topAds.length === 0) return null;
-        return (
-          <TopCreativesSection 
-            key={key}
-            topAds={activeData.topAds} 
-            limit={config.limit || 10} 
-          />
-        );
-      
-      case 'conversionFunnel':
-        return (
-          <InsightsConversionFunnel
-            key={key}
-            data={{
-              impressions: activeData.overview.impressions.current,
-              clicks: activeData.overview.clicks.current,
-              conversions: activeData.overview.conversions.current,
-              spend: activeData.overview.spend.current,
-              cpc: activeData.overview.cpc.current,
-              cpa: activeData.overview.cpa.current,
-            }}
-            platform={activeData.platform}
-          />
-        );
-      
-      case 'trendCharts':
-        if (!activeData.timeSeries || activeData.timeSeries.length === 0) return null;
-        return (
-          <TrendCharts
-            key={key}
-            timeSeries={activeData.timeSeries}
-            overview={activeData.overview}
-            platform={activeData.platform}
-          />
-        );
-      
-      case 'campaignTable':
-        return (
-          <CampaignsInsightsTable 
-            key={key}
-            campaigns={activeData.campaigns}
-            showPlatformFilter={selectedPlatform === 'both' && viewMode === 'combined'}
-          />
-        );
-      
-      default:
-        return null;
-    }
-  };
 
   // Estado de loading inicial
   if (isLoadingPortal) {
@@ -275,42 +141,6 @@ const ClientPortal = () => {
 
   const clientName = portal.clients?.company_name;
 
-  // Renderizar visão combinada
-  const renderCombinedView = () => {
-    if (!insightsData) return null;
-
-    return (
-      <div className="space-y-8 animate-fade-in">
-        <CombinedOverview
-          combined={insightsData.overview}
-          meta={insightsData.metaData?.overview}
-          google={insightsData.googleData?.overview}
-        />
-
-        <ComparativeTrendCharts
-          metaTimeSeries={insightsData.metaData?.timeSeries || []}
-          googleTimeSeries={insightsData.googleData?.timeSeries || []}
-        />
-
-        <CampaignsInsightsTable
-          campaigns={insightsData.campaigns}
-          showPlatformFilter={true}
-        />
-      </div>
-    );
-  };
-
-  // Renderizar visão de plataforma específica usando templates
-  const renderPlatformView = () => {
-    if (!activeData) return null;
-
-    return (
-      <div className="space-y-8 animate-fade-in">
-        {sortedSections.map(({ key, config }) => renderSection(key, config))}
-      </div>
-    );
-  };
-
   return (
     <ClientPortalLayout clientName={clientName}>
       <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
@@ -344,49 +174,17 @@ const ClientPortal = () => {
           )}
         </div>
 
-        {/* Loading insights */}
-        {isLoadingInsights && (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-muran-primary mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Carregando dados das campanhas...
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Erro */}
-        {insightsError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Erro ao carregar dados. Tente novamente mais tarde.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Seletor de View para platform='both' */}
-        {insightsData && !isLoadingInsights && selectedPlatform === 'both' && (
-          <div className="flex justify-center">
-            <PlatformViewSelector
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              hasMetaData={!!insightsData.metaData}
-              hasGoogleData={!!insightsData.googleData}
-            />
-          </div>
-        )}
-
-        {/* Conteúdo */}
-        {insightsData && !isLoadingInsights && (
-          <>
-            {selectedPlatform === 'both' && viewMode === 'combined' 
-              ? renderCombinedView()
-              : renderPlatformView()
-            }
-          </>
-        )}
+        {/* Conteúdo do relatório (componente compartilhado) */}
+        <ReportContent
+          insightsData={insightsData}
+          platform={selectedPlatform}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          template={activeTemplate}
+          accountId={accountId}
+          isLoading={isLoadingInsights}
+          error={insightsError}
+        />
       </div>
     </ClientPortalLayout>
   );
