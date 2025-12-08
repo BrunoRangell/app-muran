@@ -408,6 +408,7 @@ export type Database = {
           first_payment_date: string
           id: string
           last_payment_date: string | null
+          logo_url: string | null
           payment_type: string
           status: string
         }
@@ -422,6 +423,7 @@ export type Database = {
           first_payment_date: string
           id?: string
           last_payment_date?: string | null
+          logo_url?: string | null
           payment_type: string
           status: string
         }
@@ -436,6 +438,7 @@ export type Database = {
           first_payment_date?: string
           id?: string
           last_payment_date?: string | null
+          logo_url?: string | null
           payment_type?: string
           status?: string
         }
