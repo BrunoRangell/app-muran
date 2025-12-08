@@ -9,15 +9,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 
 interface TablePreviewProps {
   metrics?: MetricKey[];
   limit?: number;
 }
 
+// Métricas disponíveis nos dados de campanha
+const AVAILABLE_CAMPAIGN_METRICS: MetricKey[] = ['impressions', 'clicks', 'conversions', 'spend', 'ctr', 'cpa'];
+
 export function TablePreview({ metrics = ['impressions', 'clicks', 'conversions'], limit = 5 }: TablePreviewProps) {
   const campaigns = mockCampaigns.slice(0, limit);
+  
+  // Filtrar apenas métricas que existem nos dados de campanha
+  const validMetrics = metrics.filter(m => AVAILABLE_CAMPAIGN_METRICS.includes(m));
 
   return (
     <div className="h-full w-full overflow-auto p-2">
@@ -25,7 +30,7 @@ export function TablePreview({ metrics = ['impressions', 'clicks', 'conversions'
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="text-xs">Campanha</TableHead>
-            {metrics.map(metric => (
+            {validMetrics.map(metric => (
               <TableHead key={metric} className="text-xs text-right">
                 {METRIC_LABELS[metric]}
               </TableHead>
@@ -38,11 +43,14 @@ export function TablePreview({ metrics = ['impressions', 'clicks', 'conversions'
               <TableCell className="text-xs font-medium max-w-[150px] truncate">
                 {campaign.name}
               </TableCell>
-              {metrics.map(metric => (
-                <TableCell key={metric} className="text-xs text-right">
-                  {formatMetricValue(metric, campaign[metric as keyof typeof campaign] as number)}
-                </TableCell>
-              ))}
+              {validMetrics.map(metric => {
+                const value = campaign[metric as keyof typeof campaign];
+                return (
+                  <TableCell key={metric} className="text-xs text-right">
+                    {value !== undefined ? formatMetricValue(metric, value as number) : '-'}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
