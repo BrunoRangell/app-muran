@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { subDays } from "date-fns";
 import { ClientPortalLayout } from "@/components/layout/ClientPortalLayout";
-import { EditorToolbar } from "@/components/traffic-reports/EditorToolbar";
 import { InsightsOverview } from "@/components/traffic-reports/InsightsOverview";
 import { CampaignsInsightsTable } from "@/components/traffic-reports/CampaignsInsightsTable";
 import { InsightsConversionFunnel } from "@/components/traffic-reports/InsightsConversionFunnel";
@@ -16,11 +15,9 @@ import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClient
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
 import { useReportTemplates, ReportTemplate } from "@/hooks/useReportTemplates";
-import { useUnifiedData } from "@/hooks/useUnifiedData";
-import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
-import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2, Calendar, AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -31,7 +28,7 @@ import {
 
 type ViewMode = 'combined' | 'meta' | 'google';
 
-// Configuração padrão de seções
+// Configuração padrão de seções (igual ao TrafficReports)
 const DEFAULT_SECTIONS = {
   overview: { enabled: true, order: 1 },
   demographics: { enabled: true, order: 2 },
@@ -59,120 +56,63 @@ const PERIOD_OPTIONS = [
 
 const ClientPortal = () => {
   const { accessToken } = useParams<{ accessToken: string }>();
-  
-  // Auth - verificar se usuário logado é team member
-  const { user, isAuthenticated } = useUnifiedAuth();
-  const { data: roleData } = useUserRole();
-  const canEdit = isAuthenticated && roleData?.isTeamMember;
-  
-  // Estado de edição
-  const [isEditing, setIsEditing] = useState(false);
-  
-  // Estados do portal (para cliente)
   const [viewMode, setViewMode] = useState<ViewMode>('combined');
   const [period, setPeriod] = useState<string>('30');
   const [hasTrackedAccess, setHasTrackedAccess] = useState(false);
   
-  // Estados do editor (para team member)
-  const [editorClient, setEditorClient] = useState<string>("");
-  const [editorAccounts, setEditorAccounts] = useState<string[]>([]);
-  const [editorPlatform, setEditorPlatform] = useState<'meta' | 'google' | 'both'>('both');
-  const [editorDateRange, setEditorDateRange] = useState({
-    start: subDays(new Date(), 30),
-    end: new Date()
-  });
-  const [editorTemplate, setEditorTemplate] = useState<ReportTemplate | null>(null);
-  
   // Buscar dados do portal
   const { data: portal, isLoading: isLoadingPortal, error: portalError } = useClientPortalByToken(accessToken);
   const { trackAccess } = useManageClientPortal();
-  
-  // Buscar lista de clientes (para editor)
-  const { data: clientsData } = useUnifiedData();
 
-  // Rastrear acesso uma vez (apenas se não estiver editando)
+  // Rastrear acesso uma vez
   useEffect(() => {
-    if (portal && accessToken && !hasTrackedAccess && !canEdit) {
+    if (portal && accessToken && !hasTrackedAccess) {
       trackAccess.mutate(accessToken);
       setHasTrackedAccess(true);
     }
-  }, [portal, accessToken, hasTrackedAccess, trackAccess, canEdit]);
+  }, [portal, accessToken, hasTrackedAccess, trackAccess]);
 
-  // Sincronizar estado do editor com o portal quando ativa edição
-  useEffect(() => {
-    if (portal && isEditing && !editorClient) {
-      setEditorClient(portal.client_id);
-    }
-  }, [portal, isEditing, editorClient]);
+  // Calcular date range baseado no período
+  const dateRange = useMemo(() => ({
+    start: subDays(new Date(), parseInt(period)),
+    end: new Date()
+  }), [period]);
 
-  // Determinar qual cliente/config usar
-  const activeClientId = isEditing && editorClient ? editorClient : portal?.client_id;
-  const activePlatform = isEditing ? editorPlatform : (portal?.default_platform as 'meta' | 'google' | 'both') || 'both';
-
-  // Calcular date range
-  const dateRange = useMemo(() => {
-    if (isEditing) {
-      return editorDateRange;
-    }
-    return {
-      start: subDays(new Date(), parseInt(period)),
-      end: new Date()
-    };
-  }, [isEditing, editorDateRange, period]);
+  // Determinar plataforma
+  const selectedPlatform = (portal?.default_platform as 'meta' | 'google' | 'both') || 'both';
 
   // Buscar contas do cliente
   const { data: accountsData } = useClientAccounts(
-    activeClientId,
-    activePlatform === 'both' ? undefined : activePlatform
+    portal?.client_id,
+    selectedPlatform === 'both' ? undefined : selectedPlatform
   );
 
-  // Auto-selecionar contas quando mudar cliente/plataforma (modo edição)
-  useEffect(() => {
-    if (isEditing && accountsData && editorClient) {
-      if (editorPlatform === 'both') {
-        const metaPrimary = accountsData.find(a => a.platform === 'meta' && a.is_primary);
-        const googlePrimary = accountsData.find(a => a.platform === 'google' && a.is_primary);
-        const autoSelected = [metaPrimary?.id, googlePrimary?.id].filter(Boolean) as string[];
-        if (editorAccounts.length === 0 || editorAccounts.every(id => !accountsData.some(a => a.id === id))) {
-          setEditorAccounts(autoSelected);
-        }
-      } else {
-        const primary = accountsData.find(a => a.platform === editorPlatform && a.is_primary);
-        if (editorAccounts.length === 0 || editorAccounts.every(id => !accountsData.some(a => a.id === id))) {
-          setEditorAccounts(primary ? [primary.id] : []);
-        }
-      }
-    }
-  }, [isEditing, accountsData, editorClient, editorPlatform]);
-
-  // Buscar templates
-  const { templates } = useReportTemplates(activeClientId);
+  // Buscar templates (usa o template do cliente se existir)
+  const { templates } = useReportTemplates(portal?.client_id);
   
-  // Selecionar template ativo
+  // Selecionar template do cliente ou global padrão
   const activeTemplate = useMemo(() => {
-    if (isEditing && editorTemplate) return editorTemplate;
-    
     if (!templates.length) return null;
-    const clientTemplate = templates.find(t => t.client_id === activeClientId);
+    // Primeiro tenta encontrar um template específico do cliente
+    const clientTemplate = templates.find(t => t.client_id === portal?.client_id);
     if (clientTemplate) return clientTemplate;
+    // Senão, usa o primeiro template global
     return templates.find(t => t.is_global) || null;
-  }, [templates, activeClientId, isEditing, editorTemplate]);
+  }, [templates, portal?.client_id]);
 
-  // Determinar contas selecionadas
+  // Auto-selecionar contas primárias
   const selectedAccounts = useMemo(() => {
-    if (isEditing) return editorAccounts;
-    
     if (!accountsData) return [];
     
-    if (activePlatform === 'both') {
+    if (selectedPlatform === 'both') {
       const metaPrimary = accountsData.find(a => a.platform === 'meta' && a.is_primary);
       const googlePrimary = accountsData.find(a => a.platform === 'google' && a.is_primary);
       return [metaPrimary?.id, googlePrimary?.id].filter(Boolean) as string[];
     }
     
-    const primary = accountsData.find(a => a.platform === activePlatform && a.is_primary);
+    const primary = accountsData.find(a => a.platform === selectedPlatform && a.is_primary);
     return primary ? [primary.id] : [];
-  }, [accountsData, activePlatform, isEditing, editorAccounts]);
+  }, [accountsData, selectedPlatform]);
 
   // Buscar insights
   const { 
@@ -180,9 +120,9 @@ const ClientPortal = () => {
     isLoading: isLoadingInsights,
     error: insightsError
   } = useTrafficInsights({
-    clientId: activeClientId || '',
+    clientId: portal?.client_id || '',
     accountIds: selectedAccounts,
-    platform: activePlatform,
+    platform: selectedPlatform,
     dateRange: {
       start: dateRange.start.toISOString().split('T')[0],
       end: dateRange.end.toISOString().split('T')[0]
@@ -194,7 +134,7 @@ const ClientPortal = () => {
   const activeData = useMemo(() => {
     if (!insightsData) return null;
     
-    if (activePlatform !== 'both') {
+    if (selectedPlatform !== 'both') {
       return insightsData;
     }
 
@@ -207,7 +147,7 @@ const ClientPortal = () => {
       default:
         return insightsData;
     }
-  }, [insightsData, viewMode, activePlatform]);
+  }, [insightsData, viewMode, selectedPlatform]);
 
   // Calcular seções ordenadas baseado no template
   const sortedSections = useMemo(() => {
@@ -223,18 +163,6 @@ const ClientPortal = () => {
 
     return sectionList;
   }, [activeTemplate]);
-
-  // Handler para mudança de cliente no editor
-  const handleEditorClientChange = (clientId: string) => {
-    setEditorClient(clientId);
-    setEditorAccounts([]);
-  };
-
-  // Handler para mudança de plataforma no editor
-  const handleEditorPlatformChange = (platform: 'meta' | 'google' | 'both') => {
-    setEditorPlatform(platform);
-    setViewMode('combined');
-  };
 
   // Função para renderizar seção
   const renderSection = (key: SectionKey, config: SectionConfig) => {
@@ -302,7 +230,7 @@ const ClientPortal = () => {
           <CampaignsInsightsTable 
             key={key}
             campaigns={activeData.campaigns}
-            showPlatformFilter={activePlatform === 'both' && viewMode === 'combined'}
+            showPlatformFilter={selectedPlatform === 'both' && viewMode === 'combined'}
           />
         );
       
@@ -345,10 +273,7 @@ const ClientPortal = () => {
     );
   }
 
-  // Determinar nome do cliente
-  const displayClientName = isEditing && editorClient
-    ? clientsData?.find(c => c.id === editorClient)?.company_name
-    : portal.clients?.company_name;
+  const clientName = portal.clients?.company_name;
 
   // Renderizar visão combinada
   const renderCombinedView = () => {
@@ -375,7 +300,7 @@ const ClientPortal = () => {
     );
   };
 
-  // Renderizar visão de plataforma específica
+  // Renderizar visão de plataforma específica usando templates
   const renderPlatformView = () => {
     if (!activeData) return null;
 
@@ -387,65 +312,37 @@ const ClientPortal = () => {
   };
 
   return (
-    <ClientPortalLayout 
-      clientName={displayClientName}
-      showEditButton={canEdit}
-      isEditing={isEditing}
-      onEditClick={() => setIsEditing(!isEditing)}
-    >
-      {/* Editor Toolbar */}
-      {isEditing && canEdit && (
-        <EditorToolbar
-          clients={clientsData || []}
-          selectedClient={editorClient}
-          onClientChange={handleEditorClientChange}
-          clientName={displayClientName}
-          accounts={accountsData || []}
-          selectedAccounts={editorAccounts}
-          onAccountsChange={setEditorAccounts}
-          selectedPlatform={editorPlatform}
-          onPlatformChange={handleEditorPlatformChange}
-          dateRange={editorDateRange}
-          onDateRangeChange={setEditorDateRange}
-          selectedTemplate={editorTemplate}
-          onTemplateSelect={setEditorTemplate}
-          onClose={() => setIsEditing(false)}
-          isLoading={isLoadingInsights}
-        />
-      )}
-
+    <ClientPortalLayout clientName={clientName}>
       <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
-        {/* Header com seletor de período (apenas para cliente) */}
-        {!isEditing && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary-glow bg-clip-text text-transparent">
-                Relatório de Performance
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Dados atualizados em tempo real das suas campanhas
-              </p>
-            </div>
-
-            {portal.allow_period_change && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <Select value={period} onValueChange={setPeriod}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PERIOD_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+        {/* Header com seletor de período */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary-glow bg-clip-text text-transparent">
+              Relatório de Performance
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Dados atualizados em tempo real das suas campanhas
+            </p>
           </div>
-        )}
+
+          {portal.allow_period_change && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIOD_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
 
         {/* Loading insights */}
         {isLoadingInsights && (
@@ -470,7 +367,7 @@ const ClientPortal = () => {
         )}
 
         {/* Seletor de View para platform='both' */}
-        {insightsData && !isLoadingInsights && activePlatform === 'both' && (
+        {insightsData && !isLoadingInsights && selectedPlatform === 'both' && (
           <div className="flex justify-center">
             <PlatformViewSelector
               viewMode={viewMode}
@@ -484,7 +381,7 @@ const ClientPortal = () => {
         {/* Conteúdo */}
         {insightsData && !isLoadingInsights && (
           <>
-            {activePlatform === 'both' && viewMode === 'combined' 
+            {selectedPlatform === 'both' && viewMode === 'combined' 
               ? renderCombinedView()
               : renderPlatformView()
             }
