@@ -10,6 +10,7 @@ import { TopCreativesSection } from "@/components/traffic-reports/TopCreativesSe
 import { TemplateSelector } from "@/components/traffic-reports/TemplateSelector";
 import { TemplateCustomizer } from "@/components/traffic-reports/TemplateCustomizer";
 import { PlatformViewSelector } from "@/components/traffic-reports/PlatformViewSelector";
+import { ClientPortalButton } from "@/components/traffic-reports/ClientPortalButton";
 import { CombinedOverview } from "@/components/traffic-reports/CombinedOverview";
 import { ComparativeTrendCharts } from "@/components/traffic-reports/ComparativeTrendCharts";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
@@ -276,12 +277,20 @@ const TrafficReports = () => {
               Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
             </p>
           </div>
-          <TemplateSelector
-            selectedTemplateId={selectedTemplate?.id}
-            onTemplateSelect={setSelectedTemplate}
-            onCustomize={() => setCustomizerOpen(true)}
-            clientId={selectedClient}
-          />
+          <div className="flex items-center gap-3">
+            {selectedClient && (
+              <ClientPortalButton 
+                clientId={selectedClient} 
+                clientName={clientsData?.find(c => c.id === selectedClient)?.company_name}
+              />
+            )}
+            <TemplateSelector
+              selectedTemplateId={selectedTemplate?.id}
+              onTemplateSelect={setSelectedTemplate}
+              onCustomize={() => setCustomizerOpen(true)}
+              clientId={selectedClient}
+            />
+          </div>
         </div>
 
         {/* Filtros */}
