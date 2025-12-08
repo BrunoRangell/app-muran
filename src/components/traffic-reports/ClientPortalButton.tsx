@@ -76,9 +76,9 @@ export function ClientPortalButton({ clientId, clientName }: ClientPortalButtonP
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Tooltip>
-          <TooltipTrigger asChild>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
             <Button 
               variant={portal ? "default" : "outline"} 
               size="sm"
@@ -87,12 +87,12 @@ export function ClientPortalButton({ clientId, clientName }: ClientPortalButtonP
               <Link2 className="h-4 w-4 mr-2" />
               {portal ? "Link Ativo" : "Gerar Link"}
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {portal ? "Gerenciar link do cliente" : "Gerar link de acesso para o cliente"}
-          </TooltipContent>
-        </Tooltip>
-      </DialogTrigger>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          {portal ? "Gerenciar link do cliente" : "Gerar link de acesso para o cliente"}
+        </TooltipContent>
+      </Tooltip>
       
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
