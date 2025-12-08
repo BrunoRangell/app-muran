@@ -8,24 +8,22 @@ interface ClientPortalLayoutProps {
 export function ClientPortalLayout({ children, clientName }: ClientPortalLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
+      {/* Header - Fundo escuro para logo com texto branco */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#321e32]">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* Logo Muran */}
-            <div className="flex items-center gap-2">
-              <img 
-                src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png" 
-                alt="Muran" 
-                className="h-10 w-auto"
-              />
-            </div>
+            {/* Logo Muran Completa */}
+            <img 
+              src="/images/muran-logo-complete.png" 
+              alt="Muran - Soluções em Marketing Digital" 
+              className="h-10 w-auto"
+            />
             
             {/* Separator */}
             {clientName && (
               <>
-                <div className="h-6 w-px bg-border" />
-                <h1 className="font-medium text-foreground">
+                <div className="h-6 w-px bg-white/30" />
+                <h1 className="font-medium text-white">
                   {clientName}
                 </h1>
               </>
@@ -33,7 +31,7 @@ export function ClientPortalLayout({ children, clientName }: ClientPortalLayoutP
           </div>
 
           {/* Badge de relatório */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muran-primary/10 text-muran-primary text-sm font-medium">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muran-primary/20 text-muran-primary text-sm font-medium">
             <span className="hidden sm:inline">Relatório de Performance</span>
             <span className="sm:hidden">Relatório</span>
           </div>
