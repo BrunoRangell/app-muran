@@ -213,12 +213,12 @@ const TrafficReportsViewer = () => {
             {/* Template */}
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground whitespace-nowrap">Template:</Label>
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <Select value={selectedTemplateId || "_default"} onValueChange={(val) => setSelectedTemplateId(val === "_default" ? "" : val)}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Padrão" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Visualização Padrão</SelectItem>
+                  <SelectItem value="_default">Visualização Padrão</SelectItem>
                   {templates.map(template => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name}
