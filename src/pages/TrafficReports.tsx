@@ -194,8 +194,30 @@ const TrafficReports = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
+    <div className="min-h-screen bg-muted/30 flex flex-col">
+      {/* Header com logo Muran - apenas modo portal */}
+      {isPortalMode && (
+        <header className="bg-gradient-to-r from-[#321e32] to-[#4a2d4a] py-5 px-4 md:px-8 shadow-lg">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-between">
+            <img 
+              src="/images/muran-logo-portal.png" 
+              alt="Muran - Soluções em Marketing Digital" 
+              className="h-8 md:h-10"
+            />
+            
+            {/* Badge "Dados em tempo real" */}
+            <div className="flex items-center gap-2 text-white/90 bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <span className="text-xs md:text-sm font-medium">Dados em tempo real</span>
+            </div>
+          </div>
+        </header>
+      )}
+
+      <div className="flex-1 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary-glow bg-clip-text text-transparent">
@@ -303,6 +325,15 @@ const TrafficReports = () => {
           />
         )}
       </div>
+
+      {/* Footer discreto - apenas modo portal */}
+      {isPortalMode && (
+        <footer className="py-6 text-center border-t border-border/50">
+          <p className="text-sm text-muted-foreground">
+            Powered by <span className="text-muran-primary font-semibold">Muran</span>
+          </p>
+        </footer>
+      )}
     </div>
   );
 };
