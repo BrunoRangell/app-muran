@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { subDays } from "date-fns";
 import { TrafficReportFilters } from "@/components/traffic-reports/TrafficReportFilters";
 import { InsightsOverview } from "@/components/traffic-reports/InsightsOverview";
@@ -15,6 +15,24 @@ import { useTrafficInsights } from "@/hooks/useTrafficInsights";
 import { ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Configuração padrão de seções
+const DEFAULT_SECTIONS = {
+  overview: { enabled: true, order: 1 },
+  demographics: { enabled: true, order: 2 },
+  topCreatives: { enabled: true, order: 3, limit: 10 },
+  conversionFunnel: { enabled: true, order: 4 },
+  trendCharts: { enabled: true, order: 5 },
+  campaignTable: { enabled: true, order: 6 }
+};
+
+type SectionKey = keyof typeof DEFAULT_SECTIONS;
+
+interface SectionConfig {
+  enabled: boolean;
+  order: number;
+  limit?: number;
+}
 
 const TrafficReports = () => {
   const [selectedClient, setSelectedClient] = useState<string>("");
@@ -79,8 +97,98 @@ const TrafficReports = () => {
     }
   };
 
+  // Calcular seções ordenadas baseado no template
+  const sortedSections = useMemo(() => {
+    const sections = selectedTemplate?.sections || DEFAULT_SECTIONS;
+    
+    const sectionList: { key: SectionKey; config: SectionConfig }[] = Object.entries(sections)
+      .map(([key, config]) => ({
+        key: key as SectionKey,
+        config: config as SectionConfig
+      }))
+      .filter(s => s.config.enabled !== false)
+      .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
+
+    return sectionList;
+  }, [selectedTemplate]);
+
   const isLoading = isLoadingClients || isLoadingAccounts || isLoadingInsights;
   const hasSelection = selectedClient && selectedAccounts.length > 0;
+
+  // Função para renderizar seção
+  const renderSection = (key: SectionKey, config: SectionConfig) => {
+    if (!insightsData) return null;
+
+    switch (key) {
+      case 'overview':
+        return (
+          <InsightsOverview 
+            key={key}
+            overview={insightsData.overview} 
+            platform={insightsData.platform} 
+          />
+        );
+      
+      case 'demographics':
+        if (!insightsData.demographics) return null;
+        return (
+          <DemographicsCharts 
+            key={key}
+            demographics={insightsData.demographics} 
+            platform={insightsData.platform} 
+          />
+        );
+      
+      case 'topCreatives':
+        if (!insightsData.topAds || insightsData.topAds.length === 0) return null;
+        return (
+          <TopCreativesSection 
+            key={key}
+            topAds={insightsData.topAds} 
+            limit={config.limit || 10} 
+          />
+        );
+      
+      case 'conversionFunnel':
+        return (
+          <InsightsConversionFunnel
+            key={key}
+            data={{
+              impressions: insightsData.overview.impressions.current,
+              clicks: insightsData.overview.clicks.current,
+              conversions: insightsData.overview.conversions.current,
+              spend: insightsData.overview.spend.current,
+              cpc: insightsData.overview.cpc.current,
+              cpa: insightsData.overview.cpa.current,
+            }}
+            platform={insightsData.platform}
+          />
+        );
+      
+      case 'trendCharts':
+        if (!insightsData.timeSeries || insightsData.timeSeries.length === 0) return null;
+        return (
+          <TrendCharts
+            key={key}
+            timeSeries={insightsData.timeSeries}
+            overview={insightsData.overview}
+            platform={insightsData.platform}
+          />
+        );
+      
+      case 'campaignTable':
+        return (
+          <CampaignsInsightsTable 
+            key={key}
+            campaigns={insightsData.campaigns}
+            accountId={accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -157,43 +265,10 @@ const TrafficReports = () => {
           </Alert>
         )}
 
-        {/* Dados */}
+        {/* Dados - Renderizar seções ordenadas pelo template */}
         {insightsData && !isLoadingInsights && hasSelection && (
           <div className="space-y-8 animate-fade-in">
-            <InsightsOverview overview={insightsData.overview} platform={insightsData.platform} />
-
-            {insightsData.demographics && (
-              <DemographicsCharts demographics={insightsData.demographics} platform={insightsData.platform} />
-            )}
-
-            {insightsData.topAds && insightsData.topAds.length > 0 && (
-              <TopCreativesSection topAds={insightsData.topAds} limit={10} />
-            )}
-
-            <InsightsConversionFunnel
-              data={{
-                impressions: insightsData.overview.impressions.current,
-                clicks: insightsData.overview.clicks.current,
-                conversions: insightsData.overview.conversions.current,
-                spend: insightsData.overview.spend.current,
-                cpc: insightsData.overview.cpc.current,
-                cpa: insightsData.overview.cpa.current,
-              }}
-              platform={insightsData.platform}
-            />
-
-            {insightsData.timeSeries && insightsData.timeSeries.length > 0 && (
-              <TrendCharts
-                timeSeries={insightsData.timeSeries}
-                overview={insightsData.overview}
-                platform={insightsData.platform}
-              />
-            )}
-
-            <CampaignsInsightsTable 
-              campaigns={insightsData.campaigns}
-              accountId={accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id}
-            />
+            {sortedSections.map(({ key, config }) => renderSection(key, config))}
           </div>
         )}
 
