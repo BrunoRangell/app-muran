@@ -6,6 +6,7 @@ import { TemplateSelector } from "@/components/traffic-reports/TemplateSelector"
 import { TemplateCustomizer } from "@/components/traffic-reports/TemplateCustomizer";
 import { ClientPortalButton } from "@/components/traffic-reports/ClientPortalButton";
 import { ReportContent, ViewMode } from "@/components/traffic-reports/ReportContent";
+import { PortalHeader } from "@/components/traffic-reports/PortalHeader";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
@@ -219,41 +220,33 @@ const TrafficReports = () => {
         </div>
       )}
 
-      {/* Header com logo Muran - modo portal OU preview */}
+      {/* Header integrado do portal - modo portal OU preview */}
       {showPortalElements && (
-        <header className={`bg-gradient-to-r from-[#321e32] to-[#4a2d4a] py-5 px-4 md:px-8 shadow-lg ${previewMode && !isPortalMode ? 'mt-10' : ''}`}>
-          <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-            <img 
-              src="/images/muran-logo-portal.png" 
-              alt="Muran - Soluções em Marketing Digital" 
-              className="h-8 md:h-10"
-            />
-            
-            {/* Badge "Dados em tempo real" */}
-            <div className="flex items-center gap-2 text-white/90 bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <span className="text-xs md:text-sm font-medium">Dados em tempo real</span>
-            </div>
-          </div>
-        </header>
+        <div className={previewMode && !isPortalMode ? 'mt-10' : ''}>
+          <PortalHeader
+            clientName={isPortalMode ? portal?.clients?.company_name : clientsData?.find(c => c.id === selectedClient)?.company_name}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            hasMetaData={!!insightsData?.metaData}
+            hasGoogleData={!!insightsData?.googleData}
+            showTabs={effectivePlatform === 'both'}
+          />
+        </div>
       )}
 
       <div className="flex-1 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 w-full">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary-glow bg-clip-text text-transparent">
-              Relatórios de Tráfego
-            </h1>
-            <p className="text-muted-foreground">
-              Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
-            </p>
-          </div>
-          
-          {/* Botões apenas para modo interno */}
-          {!isPortalMode && !previewMode && (
+        {/* Header do modo interno */}
+        {!showPortalElements && (
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-muran-primary to-muran-primary-glow bg-clip-text text-transparent">
+                Relatórios de Tráfego
+              </h1>
+              <p className="text-muted-foreground">
+                Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
+              </p>
+            </div>
+            
             <div className="flex items-center gap-3">
               {/* Botão de Preview */}
               <Button
@@ -279,27 +272,27 @@ const TrafficReports = () => {
                 clientId={selectedClient}
               />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Seletor de período para modo portal (se permitido) */}
-          {isPortalMode && portal?.allow_period_change && (
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Select value={period} onValueChange={setPeriod}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PERIOD_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
+        {/* Seletor de período para modo portal (se permitido) */}
+        {showPortalElements && isPortalMode && portal?.allow_period_change && (
+          <div className="flex items-center justify-end gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Filtros apenas para modo interno (sem preview) */}
         {!isPortalMode && !previewMode && (
@@ -347,6 +340,7 @@ const TrafficReports = () => {
             accountId={accountId}
             isLoading={isLoadingInsights}
             error={insightsError}
+            hideViewSelector={showPortalElements}
           />
         )}
 
