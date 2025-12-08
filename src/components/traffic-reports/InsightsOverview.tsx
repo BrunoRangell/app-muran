@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { ArrowUp, ArrowDown, Eye, MousePointer, Target, TrendingUp, DollarSign, Calculator } from "lucide-react";
+import { ArrowUp, ArrowDown, Eye, MousePointer, Target, TrendingUp, DollarSign, Calculator, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
@@ -9,9 +9,10 @@ interface MetricCardProps {
   change?: number;
   icon: React.ReactNode;
   format?: 'number' | 'currency' | 'percentage';
+  accentColor?: string;
 }
 
-function MetricCard({ title, value, previousValue, change, icon, format = 'number' }: MetricCardProps) {
+function MetricCard({ title, value, previousValue, change, icon, format = 'number', accentColor = 'muran-primary' }: MetricCardProps) {
   const formatValue = (val: string | number) => {
     if (typeof val === 'string') return val;
     
@@ -29,31 +30,42 @@ function MetricCard({ title, value, previousValue, change, icon, format = 'numbe
   const isNegative = change ? change < 0 : false;
 
   return (
-    <Card className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="p-2 bg-muran-primary/10 rounded-lg">
-          {icon}
-        </div>
-        {change !== undefined && (
-          <div className={cn(
-            "flex items-center gap-1 text-sm font-medium",
-            isPositive && "text-green-600",
-            isNegative && "text-red-600"
-          )}>
-            {isPositive ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
-            {Math.abs(change).toFixed(1)}%
-          </div>
-        )}
-      </div>
+    <Card className="glass-card group relative overflow-hidden p-6 transition-all duration-300 hover:shadow-lg hover:shadow-muran-primary/10 hover:-translate-y-1">
+      {/* Gradient accent line */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-muran-primary to-muran-primary-glow opacity-80" />
       
-      <div>
-        <p className="text-sm text-muted-foreground mb-1">{title}</p>
-        <p className="text-2xl font-bold">{formatValue(value)}</p>
-        {previousValue !== undefined && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Anterior: {formatValue(previousValue)}
+      {/* Background glow effect on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-muran-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      <div className="relative space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="p-2.5 bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 rounded-xl border border-muran-primary/20 shadow-inner">
+            {icon}
+          </div>
+          {change !== undefined && change !== 0 && (
+            <div className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold",
+              isPositive && "bg-green-500/10 text-green-600 dark:text-green-400",
+              isNegative && "bg-red-500/10 text-red-600 dark:text-red-400"
+            )}>
+              {isPositive ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+              {Math.abs(change).toFixed(1)}%
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <p className="text-sm text-muted-foreground font-medium mb-1.5">{title}</p>
+          <p className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+            {formatValue(value)}
           </p>
-        )}
+          {previousValue !== undefined && previousValue > 0 && (
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+              <span className="opacity-60">Anterior:</span>
+              <span className="font-medium">{formatValue(previousValue)}</span>
+            </p>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -75,8 +87,16 @@ interface InsightsOverviewProps {
 
 export function InsightsOverview({ overview, platform }: InsightsOverviewProps) {
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Visão Geral</h2>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 border border-muran-primary/20">
+          <Zap className="h-5 w-5 text-muran-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold">Visão Geral</h2>
+          <p className="text-sm text-muted-foreground">Métricas de performance do período selecionado</p>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
