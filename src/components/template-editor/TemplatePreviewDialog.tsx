@@ -8,11 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TemplateWidget } from '@/types/template-editor';
+import { TemplateWidget, DEFAULT_GRID_CONFIG } from '@/types/template-editor';
 import {
-  OverviewPreview,
-  TrendsPreview,
-  DemographicsPreview,
   TopCreativesPreview,
   CampaignsTablePreview,
   MetricCardPreview,
@@ -34,20 +31,14 @@ export function TemplatePreviewDialog({
   widgets, 
   templateName 
 }: TemplatePreviewDialogProps) {
-  // Ordenar widgets por posição Y e depois X
-  const sortedWidgets = [...widgets].sort((a, b) => {
-    if (a.layout.y !== b.layout.y) return a.layout.y - b.layout.y;
-    return a.layout.x - b.layout.x;
-  });
+  const { rowHeight, margin } = DEFAULT_GRID_CONFIG;
+  const [marginX, marginY] = margin || [16, 16];
+
+  // Agrupar widgets por linha Y para calcular altura total
+  const maxY = Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
 
   const renderWidgetContent = (widget: TemplateWidget) => {
     switch (widget.type) {
-      case 'overview-full':
-        return <OverviewPreview />;
-      case 'trends-full':
-        return <TrendsPreview />;
-      case 'demographics-full':
-        return <DemographicsPreview />;
       case 'campaigns-table':
         return <CampaignsTablePreview />;
       case 'top-creatives':
@@ -102,11 +93,21 @@ export function TemplatePreviewDialog({
     }
   };
 
-  // Calcular altura baseada no layout
-  const getWidgetHeight = (widget: TemplateWidget) => {
-    const baseHeight = 100; // rowHeight
-    return widget.layout.h * baseHeight;
+  // Calcular posição e tamanho absolutos baseados no grid
+  const getWidgetStyle = (widget: TemplateWidget): React.CSSProperties => {
+    const colWidth = 100 / 12; // porcentagem por coluna
+    
+    return {
+      position: 'absolute',
+      left: `calc(${widget.layout.x * colWidth}% + ${marginX / 2}px)`,
+      top: widget.layout.y * (rowHeight + marginY) + marginY / 2,
+      width: `calc(${widget.layout.w * colWidth}% - ${marginX}px)`,
+      height: widget.layout.h * rowHeight + (widget.layout.h - 1) * marginY
+    };
   };
+
+  // Altura total do container
+  const containerHeight = maxY * (rowHeight + marginY) + marginY;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,28 +129,33 @@ export function TemplatePreviewDialog({
         </DialogHeader>
         
         <ScrollArea className="flex-1">
-          <div className="p-6 space-y-4">
-            {sortedWidgets.length === 0 ? (
+          <div className="p-4">
+            {widgets.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-muted-foreground">
                 Adicione widgets ao template para visualizar o preview
               </div>
             ) : (
-              sortedWidgets.map((widget) => (
-                <div 
-                  key={widget.id}
-                  className="rounded-xl border border-border bg-card overflow-hidden"
-                  style={{ height: getWidgetHeight(widget) }}
-                >
-                  {widget.config.showTitle !== false && widget.config.title && (
-                    <div className="px-4 py-2 border-b border-border/50 bg-muted/30">
-                      <h3 className="text-sm font-medium">{widget.config.title}</h3>
+              <div 
+                className="relative w-full"
+                style={{ height: containerHeight }}
+              >
+                {widgets.map((widget) => (
+                  <div 
+                    key={widget.id}
+                    className="rounded-xl border border-border bg-card overflow-hidden shadow-sm"
+                    style={getWidgetStyle(widget)}
+                  >
+                    {widget.config.showTitle !== false && widget.config.title && (
+                      <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+                        <h3 className="text-sm font-medium">{widget.config.title}</h3>
+                      </div>
+                    )}
+                    <div className="h-full overflow-hidden">
+                      {renderWidgetContent(widget)}
                     </div>
-                  )}
-                  <div className="h-full">
-                    {renderWidgetContent(widget)}
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </ScrollArea>

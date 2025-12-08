@@ -1,5 +1,5 @@
 import React from 'react';
-import { WidgetType } from '@/types/template-editor';
+import { WidgetType, PresetType } from '@/types/template-editor';
 import {
   OverviewPreview,
   TrendsPreview,
@@ -13,18 +13,20 @@ import {
 } from './widget-previews';
 
 interface WidgetPreviewThumbnailProps {
-  type: WidgetType;
+  type: WidgetType | PresetType;
 }
 
 export function WidgetPreviewThumbnail({ type }: WidgetPreviewThumbnailProps) {
   const renderPreview = () => {
     switch (type) {
+      // Presets
       case 'overview-full':
         return <OverviewPreview />;
       case 'trends-full':
         return <TrendsPreview />;
       case 'demographics-full':
         return <DemographicsPreview />;
+      // Widgets individuais
       case 'campaigns-table':
         return <CampaignsTablePreview />;
       case 'top-creatives':
