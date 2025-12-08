@@ -14,6 +14,7 @@ import { ComparativeTrendCharts } from "@/components/traffic-reports/Comparative
 import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClientPortal";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
+import { useReportTemplates, ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2, Calendar, AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,24 @@ import {
 } from "@/components/ui/select";
 
 type ViewMode = 'combined' | 'meta' | 'google';
+
+// Configuração padrão de seções (igual ao TrafficReports)
+const DEFAULT_SECTIONS = {
+  overview: { enabled: true, order: 1 },
+  demographics: { enabled: true, order: 2 },
+  topCreatives: { enabled: true, order: 3, limit: 10 },
+  conversionFunnel: { enabled: true, order: 4 },
+  trendCharts: { enabled: true, order: 5 },
+  campaignTable: { enabled: true, order: 6 }
+};
+
+type SectionKey = keyof typeof DEFAULT_SECTIONS;
+
+interface SectionConfig {
+  enabled: boolean;
+  order: number;
+  limit?: number;
+}
 
 const PERIOD_OPTIONS = [
   { value: '7', label: 'Últimos 7 dias' },
@@ -67,6 +86,19 @@ const ClientPortal = () => {
     portal?.client_id,
     selectedPlatform === 'both' ? undefined : selectedPlatform
   );
+
+  // Buscar templates (usa o template do cliente se existir)
+  const { templates } = useReportTemplates(portal?.client_id);
+  
+  // Selecionar template do cliente ou global padrão
+  const activeTemplate = useMemo(() => {
+    if (!templates.length) return null;
+    // Primeiro tenta encontrar um template específico do cliente
+    const clientTemplate = templates.find(t => t.client_id === portal?.client_id);
+    if (clientTemplate) return clientTemplate;
+    // Senão, usa o primeiro template global
+    return templates.find(t => t.is_global) || null;
+  }, [templates, portal?.client_id]);
 
   // Auto-selecionar contas primárias
   const selectedAccounts = useMemo(() => {
@@ -116,6 +148,96 @@ const ClientPortal = () => {
         return insightsData;
     }
   }, [insightsData, viewMode, selectedPlatform]);
+
+  // Calcular seções ordenadas baseado no template
+  const sortedSections = useMemo(() => {
+    const sections = activeTemplate?.sections || DEFAULT_SECTIONS;
+    
+    const sectionList: { key: SectionKey; config: SectionConfig }[] = Object.entries(sections)
+      .map(([key, config]) => ({
+        key: key as SectionKey,
+        config: config as SectionConfig
+      }))
+      .filter(s => s.config.enabled !== false)
+      .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
+
+    return sectionList;
+  }, [activeTemplate]);
+
+  // Função para renderizar seção
+  const renderSection = (key: SectionKey, config: SectionConfig) => {
+    if (!activeData) return null;
+
+    switch (key) {
+      case 'overview':
+        return (
+          <InsightsOverview 
+            key={key}
+            overview={activeData.overview} 
+            platform={activeData.platform} 
+          />
+        );
+      
+      case 'demographics':
+        if (!activeData.demographics) return null;
+        return (
+          <DemographicsCharts 
+            key={key}
+            demographics={activeData.demographics} 
+            platform={activeData.platform} 
+          />
+        );
+      
+      case 'topCreatives':
+        if (!activeData.topAds || activeData.topAds.length === 0) return null;
+        return (
+          <TopCreativesSection 
+            key={key}
+            topAds={activeData.topAds} 
+            limit={config.limit || 10} 
+          />
+        );
+      
+      case 'conversionFunnel':
+        return (
+          <InsightsConversionFunnel
+            key={key}
+            data={{
+              impressions: activeData.overview.impressions.current,
+              clicks: activeData.overview.clicks.current,
+              conversions: activeData.overview.conversions.current,
+              spend: activeData.overview.spend.current,
+              cpc: activeData.overview.cpc.current,
+              cpa: activeData.overview.cpa.current,
+            }}
+            platform={activeData.platform}
+          />
+        );
+      
+      case 'trendCharts':
+        if (!activeData.timeSeries || activeData.timeSeries.length === 0) return null;
+        return (
+          <TrendCharts
+            key={key}
+            timeSeries={activeData.timeSeries}
+            overview={activeData.overview}
+            platform={activeData.platform}
+          />
+        );
+      
+      case 'campaignTable':
+        return (
+          <CampaignsInsightsTable 
+            key={key}
+            campaigns={activeData.campaigns}
+            showPlatformFilter={selectedPlatform === 'both' && viewMode === 'combined'}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
 
   // Estado de loading inicial
   if (isLoadingPortal) {
@@ -178,55 +300,13 @@ const ClientPortal = () => {
     );
   };
 
-  // Renderizar visão de plataforma específica
+  // Renderizar visão de plataforma específica usando templates
   const renderPlatformView = () => {
     if (!activeData) return null;
 
     return (
       <div className="space-y-8 animate-fade-in">
-        <InsightsOverview 
-          overview={activeData.overview} 
-          platform={activeData.platform} 
-        />
-
-        {activeData.demographics && (
-          <DemographicsCharts 
-            demographics={activeData.demographics} 
-            platform={activeData.platform} 
-          />
-        )}
-
-        {activeData.topAds && activeData.topAds.length > 0 && (
-          <TopCreativesSection 
-            topAds={activeData.topAds} 
-            limit={10} 
-          />
-        )}
-
-        <InsightsConversionFunnel
-          data={{
-            impressions: activeData.overview.impressions.current,
-            clicks: activeData.overview.clicks.current,
-            conversions: activeData.overview.conversions.current,
-            spend: activeData.overview.spend.current,
-            cpc: activeData.overview.cpc.current,
-            cpa: activeData.overview.cpa.current,
-          }}
-          platform={activeData.platform}
-        />
-
-        {activeData.timeSeries && activeData.timeSeries.length > 0 && (
-          <TrendCharts
-            timeSeries={activeData.timeSeries}
-            overview={activeData.overview}
-            platform={activeData.platform}
-          />
-        )}
-
-        <CampaignsInsightsTable 
-          campaigns={activeData.campaigns}
-          showPlatformFilter={selectedPlatform === 'both' && viewMode === 'combined'}
-        />
+        {sortedSections.map(({ key, config }) => renderSection(key, config))}
       </div>
     );
   };
