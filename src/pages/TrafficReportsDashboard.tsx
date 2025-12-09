@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { 
   LayoutGrid, 
   Search, 
@@ -36,7 +37,9 @@ interface ClientPortalData {
 
 const TrafficReportsDashboard = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [creatingPortal, setCreatingPortal] = useState<string | null>(null);
 
   // Buscar clientes ativos
   const { data: clientsData, isLoading: isLoadingClients } = useUnifiedData();
@@ -108,6 +111,74 @@ const TrafficReportsDashboard = () => {
 
   const handleOpenPortal = (accessToken: string) => {
     window.open(`/cliente/${accessToken}`, '_blank');
+  };
+
+  const handleCreatePortal = async (clientId: string, companyName: string) => {
+    setCreatingPortal(clientId);
+    
+    try {
+      // Gera slug a partir do nome da empresa
+      const baseSlug = companyName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      
+      // Verificar se slug já existe
+      const { data: existingPortal } = await supabase
+        .from('client_portals')
+        .select('access_token')
+        .eq('access_token', baseSlug)
+        .maybeSingle();
+      
+      let finalSlug = baseSlug;
+      if (existingPortal) {
+        // Adicionar sufixo numérico
+        let counter = 2;
+        while (true) {
+          const testSlug = `${baseSlug}-${counter}`;
+          const { data: exists } = await supabase
+            .from('client_portals')
+            .select('access_token')
+            .eq('access_token', testSlug)
+            .maybeSingle();
+          
+          if (!exists) {
+            finalSlug = testSlug;
+            break;
+          }
+          counter++;
+        }
+      }
+      
+      // Obter o user_id atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+      
+      // Criar portal
+      const { error } = await supabase
+        .from('client_portals')
+        .insert({
+          client_id: clientId,
+          access_token: finalSlug,
+          is_active: true,
+          created_by: user.id,
+        });
+      
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['all-client-portals'] });
+      toast.success('Portal criado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao criar portal:', error);
+      toast.error('Erro ao criar portal');
+    } finally {
+      setCreatingPortal(null);
+    }
   };
 
   const getClientInitial = (name: string) => {
@@ -188,29 +259,27 @@ const TrafficReportsDashboard = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-[300px]">Cliente</TableHead>
-                <TableHead className="w-[120px]">Portal</TableHead>
-                <TableHead className="w-[200px]">Template</TableHead>
-                <TableHead className="w-[200px] text-right">Ações</TableHead>
+                <TableHead className="w-[350px]">Cliente</TableHead>
+                <TableHead className="w-[150px]">Portal</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoadingClients ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                     Carregando clientes...
                   </TableCell>
                 </TableRow>
               ) : filteredClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                     Nenhum cliente encontrado
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredClients.map((client) => {
                   const portal = portalsMap.get(client.id);
-                  const template = templatesMap.get(client.id);
                   
                   return (
                     <TableRow key={client.id} className="hover:bg-muted/30">
@@ -246,34 +315,31 @@ const TrafficReportsDashboard = () => {
                       </TableCell>
                       
                       <TableCell>
-                        {template ? (
-                          <span className="text-sm">{template.name}</span>
-                        ) : globalTemplate ? (
-                          <span className="text-sm text-muted-foreground">
-                            {globalTemplate.name} (global)
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Padrão</span>
-                        )}
-                      </TableCell>
-                      
-                      <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          {portal?.access_token ? (
+                          {/* Botão Criar Link - aparece quando não tem portal ou está inativo */}
+                          {(!portal || !portal.is_active) && (
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleOpenPortal(portal.access_token)}
+                              onClick={() => handleCreatePortal(client.id, client.company_name)}
+                              disabled={creatingPortal === client.id}
                               className="gap-1.5"
                             >
-                              <ExternalLink className="h-4 w-4" />
-                              Ver Relatório
+                              <Link2 className="h-4 w-4" />
+                              {creatingPortal === client.id ? 'Criando...' : 'Criar Link'}
                             </Button>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              Portal não configurado
-                            </span>
                           )}
+                          
+                          {/* Botão Ver Relatório */}
+                          <Button 
+                            variant={portal?.is_active ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => portal?.access_token ? handleOpenPortal(portal.access_token) : navigate('/relatorios-trafego/visualizar')}
+                            className="gap-1.5"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Ver Relatório
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
