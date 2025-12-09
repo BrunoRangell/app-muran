@@ -21,6 +21,7 @@ interface TrafficReportFiltersProps {
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
   onRefresh: () => void;
   isLoading?: boolean;
+  hideClientSelector?: boolean;
 }
 
 export function TrafficReportFilters({
@@ -35,7 +36,8 @@ export function TrafficReportFilters({
   onPlatformChange,
   onDateRangeChange,
   onRefresh,
-  isLoading
+  isLoading,
+  hideClientSelector = false
 }: TrafficReportFiltersProps) {
   const quickRanges = [
     { label: 'Últimos 7 dias', days: 7 },
@@ -66,23 +68,30 @@ export function TrafficReportFilters({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={cn(
+        "grid gap-4",
+        hideClientSelector 
+          ? "grid-cols-1 md:grid-cols-3" 
+          : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+      )}>
         {/* Cliente */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Cliente</label>
-          <Select value={selectedClient} onValueChange={onClientChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.company_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!hideClientSelector && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Cliente</label>
+            <Select value={selectedClient} onValueChange={onClientChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.company_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Plataforma */}
         <div className="space-y-2">

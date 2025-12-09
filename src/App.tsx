@@ -59,6 +59,10 @@ const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
 const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
+const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
+const TrafficReportsTemplates = lazyWithTimeout(() => import("@/pages/TrafficReportsTemplates"));
+const TrafficReportsViewer = lazyWithTimeout(() => import("@/pages/TrafficReportsViewer"));
+const TemplateEditorPage = lazyWithTimeout(() => import("@/pages/TemplateEditorPage"));
 
 
 function App() {
@@ -69,6 +73,7 @@ function App() {
         <Route path="/cliente/:accessToken" element={<TrafficReports />} />
         
         <Route path="/login" element={<Login />} />
+
         <Route
           element={
             <PrivateRoute>
@@ -139,13 +144,37 @@ function App() {
             <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
           
           {/* Relatórios de Tráfego */}
-          <Route path="/relatorios-trafego" element={<TrafficReports />} />
+          <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
+          <Route path="/relatorios-trafego/templates" element={<TrafficReportsTemplates />} />
+          <Route path="/relatorios-trafego/visualizar" element={<TrafficReportsViewer />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
           
             <Route path="*" element={<NotFound />} />
           </Route>
+
+        {/* Editor de Templates - Fullscreen sem sidebar (DEPOIS das rotas com Layout) */}
+        <Route
+          path="/relatorios-trafego/templates/novo"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
+                <TemplateEditorPage />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/relatorios-trafego/templates/editar/:templateId"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
+                <TemplateEditorPage />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
         </Routes>
         <Toaster />
       </TooltipProvider>

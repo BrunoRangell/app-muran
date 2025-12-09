@@ -41,6 +41,7 @@ interface ReportContentProps {
   accountId?: string;
   isLoading?: boolean;
   error?: Error | null;
+  hideViewSelector?: boolean;
 }
 
 export function ReportContent({
@@ -51,7 +52,8 @@ export function ReportContent({
   template,
   accountId,
   isLoading,
-  error
+  error,
+  hideViewSelector = false
 }: ReportContentProps) {
   // Determinar quais dados usar baseado no viewMode
   const activeData = useMemo(() => {
@@ -237,8 +239,8 @@ export function ReportContent({
 
   return (
     <>
-      {/* Seletor de View para platform='both' */}
-      {platform === 'both' && (
+      {/* Seletor de View para platform='both' (esconder quando já tem no header) */}
+      {platform === 'both' && !hideViewSelector && (
         <div className="flex justify-center">
           <PlatformViewSelector
             viewMode={viewMode}
