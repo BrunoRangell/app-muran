@@ -12,7 +12,8 @@ import {
   Link2,
   Link2Off,
   LayoutTemplate,
-  Eye
+  Eye,
+  Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ClientPortalData {
   id: string;
@@ -35,11 +46,20 @@ interface ClientPortalData {
   last_accessed_at: string | null;
 }
 
+interface ConfirmDialogState {
+  open: boolean;
+  clientId: string;
+  companyName: string;
+  generatedUrl: string;
+  slug: string;
+}
+
 const TrafficReportsDashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [creatingPortal, setCreatingPortal] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
   // Buscar clientes ativos
   const { data: clientsData, isLoading: isLoadingClients } = useUnifiedData();
@@ -54,20 +74,6 @@ const TrafficReportsDashboard = () => {
       
       if (error) throw error;
       return data as ClientPortalData[];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Buscar templates
-  const { data: templatesData } = useQuery({
-    queryKey: ['all-report-templates'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('report_templates')
-        .select('id, name, client_id, is_global');
-      
-      if (error) throw error;
-      return data;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -93,65 +99,64 @@ const TrafficReportsDashboard = () => {
     return new Map(portalsData.map(p => [p.client_id, p]));
   }, [portalsData]);
 
-  // Mapear templates por client_id
-  const templatesMap = useMemo(() => {
-    if (!templatesData) return new Map<string, { id: string; name: string }>();
-    const map = new Map<string, { id: string; name: string }>();
-    templatesData.forEach(t => {
-      if (t.client_id) {
-        map.set(t.client_id, { id: t.id, name: t.name });
-      }
-    });
-    return map;
-  }, [templatesData]);
-
-  const globalTemplate = useMemo(() => {
-    return templatesData?.find(t => t.is_global);
-  }, [templatesData]);
-
   const handleOpenPortal = (accessToken: string) => {
     window.open(`/cliente/${accessToken}`, '_blank');
   };
 
-  const handleCreatePortal = async (clientId: string, companyName: string) => {
-    setCreatingPortal(clientId);
+  const generateSlug = (companyName: string) => {
+    return companyName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const handlePreparePortal = async (clientId: string, companyName: string) => {
+    const baseSlug = generateSlug(companyName);
+    
+    // Verificar se slug já existe e determinar o slug final
+    const { data: existingPortal } = await supabase
+      .from('client_portals')
+      .select('access_token')
+      .eq('access_token', baseSlug)
+      .maybeSingle();
+    
+    let finalSlug = baseSlug;
+    if (existingPortal) {
+      let counter = 2;
+      while (true) {
+        const testSlug = `${baseSlug}-${counter}`;
+        const { data: exists } = await supabase
+          .from('client_portals')
+          .select('access_token')
+          .eq('access_token', testSlug)
+          .maybeSingle();
+        
+        if (!exists) {
+          finalSlug = testSlug;
+          break;
+        }
+        counter++;
+      }
+    }
+
+    setConfirmDialog({
+      open: true,
+      clientId,
+      companyName,
+      generatedUrl: `${window.location.origin}/cliente/${finalSlug}`,
+      slug: finalSlug,
+    });
+  };
+
+  const handleCreatePortal = async () => {
+    if (!confirmDialog) return;
+    
+    setCreatingPortal(confirmDialog.clientId);
+    setConfirmDialog(null);
     
     try {
-      // Gera slug a partir do nome da empresa
-      const baseSlug = companyName
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      
-      // Verificar se slug já existe
-      const { data: existingPortal } = await supabase
-        .from('client_portals')
-        .select('access_token')
-        .eq('access_token', baseSlug)
-        .maybeSingle();
-      
-      let finalSlug = baseSlug;
-      if (existingPortal) {
-        // Adicionar sufixo numérico
-        let counter = 2;
-        while (true) {
-          const testSlug = `${baseSlug}-${counter}`;
-          const { data: exists } = await supabase
-            .from('client_portals')
-            .select('access_token')
-            .eq('access_token', testSlug)
-            .maybeSingle();
-          
-          if (!exists) {
-            finalSlug = testSlug;
-            break;
-          }
-          counter++;
-        }
-      }
-      
       // Obter o user_id atual
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -163,8 +168,8 @@ const TrafficReportsDashboard = () => {
       const { error } = await supabase
         .from('client_portals')
         .insert({
-          client_id: clientId,
-          access_token: finalSlug,
+          client_id: confirmDialog.clientId,
+          access_token: confirmDialog.slug,
           is_active: true,
           created_by: user.id,
         });
@@ -172,12 +177,32 @@ const TrafficReportsDashboard = () => {
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ['all-client-portals'] });
-      toast.success('Portal criado com sucesso!');
+      toast.success('Relatório criado com sucesso!');
     } catch (error) {
-      console.error('Erro ao criar portal:', error);
-      toast.error('Erro ao criar portal');
+      console.error('Erro ao criar relatório:', error);
+      toast.error('Erro ao criar relatório');
     } finally {
       setCreatingPortal(null);
+    }
+  };
+
+  const handleDeletePortal = async (portalId: string, companyName: string) => {
+    const confirmed = window.confirm(`Tem certeza que deseja excluir o relatório de "${companyName}"?`);
+    if (!confirmed) return;
+    
+    try {
+      const { error } = await supabase
+        .from('client_portals')
+        .delete()
+        .eq('id', portalId);
+      
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['all-client-portals'] });
+      toast.success('Relatório excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir relatório:', error);
+      toast.error('Erro ao excluir relatório');
     }
   };
 
@@ -197,7 +222,7 @@ const TrafficReportsDashboard = () => {
             <div>
               <h1 className="text-2xl font-bold">Central de Relatórios</h1>
               <p className="text-muted-foreground text-sm">
-                Gerencie relatórios de tráfego e portais de clientes
+                Gerencie relatórios de tráfego dos clientes
               </p>
             </div>
           </div>
@@ -233,7 +258,7 @@ const TrafficReportsDashboard = () => {
           <div className="bg-card rounded-xl border p-6 space-y-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Link2 className="h-4 w-4" />
-              <span className="text-sm">Portais Ativos</span>
+              <span className="text-sm">Relatórios Ativos</span>
             </div>
             <p className="text-3xl font-bold">
               {portalsData?.filter(p => p.is_active).length || 0}
@@ -260,7 +285,7 @@ const TrafficReportsDashboard = () => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[350px]">Cliente</TableHead>
-                <TableHead className="w-[150px]">Portal</TableHead>
+                <TableHead className="w-[150px]">Relatório</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -321,7 +346,7 @@ const TrafficReportsDashboard = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleCreatePortal(client.id, client.company_name)}
+                              onClick={() => handlePreparePortal(client.id, client.company_name)}
                               disabled={creatingPortal === client.id}
                               className="gap-1.5"
                             >
@@ -330,16 +355,31 @@ const TrafficReportsDashboard = () => {
                             </Button>
                           )}
                           
-                          {/* Botão Ver Relatório */}
-                          <Button 
-                            variant={portal?.is_active ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => portal?.access_token ? handleOpenPortal(portal.access_token) : navigate('/relatorios-trafego/visualizar')}
-                            className="gap-1.5"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            Ver Relatório
-                          </Button>
+                          {/* Botão Ver Relatório - só aparece quando portal está ativo */}
+                          {portal?.is_active && (
+                            <Button 
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleOpenPortal(portal.access_token)}
+                              className="gap-1.5"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Ver Relatório
+                            </Button>
+                          )}
+
+                          {/* Botão Excluir - aparece quando portal existe */}
+                          {portal && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeletePortal(portal.id, client.company_name)}
+                              className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Excluir
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -350,6 +390,29 @@ const TrafficReportsDashboard = () => {
           </Table>
         </div>
       </div>
+
+      {/* Dialog de Confirmação */}
+      <AlertDialog open={confirmDialog?.open} onOpenChange={() => setConfirmDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar criação do relatório</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                O link do relatório para <strong className="text-foreground">{confirmDialog?.companyName}</strong> será:
+                <div className="mt-3 p-3 bg-muted rounded-lg font-mono text-sm break-all text-foreground">
+                  {confirmDialog?.generatedUrl}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreatePortal}>
+              Criar Relatório
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
