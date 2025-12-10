@@ -50,8 +50,10 @@ interface ConfirmDialogState {
   open: boolean;
   clientId: string;
   companyName: string;
-  generatedUrl: string;
   slug: string;
+  isValidating: boolean;
+  isSlugAvailable: boolean;
+  validationMessage: string;
 }
 
 const TrafficReportsDashboard = () => {
@@ -115,39 +117,54 @@ const TrafficReportsDashboard = () => {
   const handlePreparePortal = async (clientId: string, companyName: string) => {
     const baseSlug = generateSlug(companyName);
     
-    // Verificar se slug já existe e determinar o slug final
-    const { data: existingPortal } = await supabase
-      .from('client_portals')
-      .select('access_token')
-      .eq('access_token', baseSlug)
-      .maybeSingle();
-    
-    let finalSlug = baseSlug;
-    if (existingPortal) {
-      let counter = 2;
-      while (true) {
-        const testSlug = `${baseSlug}-${counter}`;
-        const { data: exists } = await supabase
-          .from('client_portals')
-          .select('access_token')
-          .eq('access_token', testSlug)
-          .maybeSingle();
-        
-        if (!exists) {
-          finalSlug = testSlug;
-          break;
-        }
-        counter++;
-      }
-    }
-
     setConfirmDialog({
       open: true,
       clientId,
       companyName,
-      generatedUrl: `${window.location.origin}/cliente/${finalSlug}`,
-      slug: finalSlug,
+      slug: baseSlug,
+      isValidating: false,
+      isSlugAvailable: true,
+      validationMessage: '',
     });
+  };
+
+  const validateSlug = async (slug: string) => {
+    if (!confirmDialog) return;
+    
+    const sanitizedSlug = slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    
+    if (sanitizedSlug !== slug) {
+      setConfirmDialog(prev => prev ? { ...prev, slug: sanitizedSlug } : null);
+    }
+    
+    if (!sanitizedSlug) {
+      setConfirmDialog(prev => prev ? { 
+        ...prev, 
+        isSlugAvailable: false, 
+        validationMessage: 'URL não pode estar vazia',
+        isValidating: false 
+      } : null);
+      return;
+    }
+
+    setConfirmDialog(prev => prev ? { ...prev, isValidating: true } : null);
+
+    const { data: existingPortal } = await supabase
+      .from('client_portals')
+      .select('access_token')
+      .eq('access_token', sanitizedSlug)
+      .maybeSingle();
+
+    setConfirmDialog(prev => prev ? {
+      ...prev,
+      isValidating: false,
+      isSlugAvailable: !existingPortal,
+      validationMessage: existingPortal ? 'Esta URL já está em uso' : 'URL disponível'
+    } : null);
   };
 
   const handleCreatePortal = async () => {
@@ -397,17 +414,45 @@ const TrafficReportsDashboard = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar criação do relatório</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div>
-                O link do relatório para <strong className="text-foreground">{confirmDialog?.companyName}</strong> será:
-                <div className="mt-3 p-3 bg-muted rounded-lg font-mono text-sm break-all text-foreground">
-                  {confirmDialog?.generatedUrl}
+              <div className="space-y-4">
+                <p>
+                  Defina a URL do relatório para <strong className="text-foreground">{confirmDialog?.companyName}</strong>:
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg font-mono text-sm">
+                    <span className="text-muted-foreground whitespace-nowrap">{window.location.origin}/cliente/</span>
+                    <Input
+                      value={confirmDialog?.slug || ''}
+                      onChange={(e) => {
+                        const newSlug = e.target.value;
+                        setConfirmDialog(prev => prev ? { ...prev, slug: newSlug } : null);
+                      }}
+                      onBlur={() => validateSlug(confirmDialog?.slug || '')}
+                      className="h-8 font-mono text-sm flex-1 min-w-0"
+                      placeholder="url-do-cliente"
+                    />
+                  </div>
+                  {confirmDialog?.validationMessage && (
+                    <p className={`text-sm flex items-center gap-1 ${
+                      confirmDialog.isSlugAvailable ? 'text-emerald-600' : 'text-destructive'
+                    }`}>
+                      {confirmDialog.isValidating ? (
+                        <>Verificando...</>
+                      ) : (
+                        confirmDialog.validationMessage
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCreatePortal}>
+            <AlertDialogAction 
+              onClick={handleCreatePortal}
+              disabled={!confirmDialog?.isSlugAvailable || confirmDialog?.isValidating || !confirmDialog?.slug}
+            >
               Criar Relatório
             </AlertDialogAction>
           </AlertDialogFooter>
