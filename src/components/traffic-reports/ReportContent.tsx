@@ -66,9 +66,23 @@ export function ReportContent({
     // Para platform='both', escolher dados baseado no viewMode
     switch (viewMode) {
       case 'meta':
-        return insightsData.metaData || null;
+        // Verificar se metaData existe e tem overview
+        if (insightsData.metaData?.overview) {
+          return {
+            ...insightsData.metaData,
+            platform: 'meta' as const
+          };
+        }
+        return null;
       case 'google':
-        return insightsData.googleData || null;
+        // Verificar se googleData existe e tem overview
+        if (insightsData.googleData?.overview) {
+          return {
+            ...insightsData.googleData,
+            platform: 'google' as const
+          };
+        }
+        return null;
       case 'combined':
       default:
         return insightsData;
@@ -76,10 +90,20 @@ export function ReportContent({
   }, [insightsData, viewMode, platform]);
 
   // Calcular seções ordenadas baseado no template
+  // Suporte para formato legado (sections) e novo formato (widgets)
   const sortedSections = useMemo(() => {
-    const sections = template?.sections || DEFAULT_SECTIONS;
+    // Se não tem template ou sections está no formato widgets, usa padrão
+    const templateSections = template?.sections;
+    
+    // Detectar se é formato widgets (novo) ou sections (legado)
+    const isWidgetFormat = templateSections && 
+      (Array.isArray((templateSections as any).widgets) || (templateSections as any).version);
+    
+    // Usar DEFAULT_SECTIONS se for formato widgets ou se não tiver template
+    const sections = isWidgetFormat ? DEFAULT_SECTIONS : (templateSections || DEFAULT_SECTIONS);
     
     const sectionList: { key: SectionKey; config: SectionConfig }[] = Object.entries(sections)
+      .filter(([key]) => ['overview', 'demographics', 'topCreatives', 'conversionFunnel', 'trendCharts', 'campaignTable'].includes(key))
       .map(([key, config]) => ({
         key: key as SectionKey,
         config: config as SectionConfig
@@ -197,7 +221,16 @@ export function ReportContent({
 
   // Renderizar conteúdo para plataforma específica (Meta ou Google)
   const renderPlatformView = () => {
-    if (!activeData) return null;
+    if (!activeData) {
+      const platformName = viewMode === 'meta' ? 'Meta Ads' : 'Google Ads';
+      return (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            Sem dados disponíveis para {platformName} no período selecionado.
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-8 animate-fade-in">
