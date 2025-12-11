@@ -116,16 +116,25 @@ const TrafficReports = () => {
   // Buscar templates
   const { templates } = useReportTemplates(effectiveClientId || undefined);
 
-  // Template ativo (modo portal auto-seleciona, modo interno usa seleção do usuário)
+  // Estado para template selecionado no portal
+  const [portalSelectedTemplateId, setPortalSelectedTemplateId] = useState<string>('');
+
+  // Template ativo (modo portal usa seleção local ou auto-seleciona, modo interno usa seleção do usuário)
   const effectiveTemplate = useMemo(() => {
     if (isPortalMode) {
       if (!templates.length) return null;
+      // Se usuário selecionou um template no portal, usar esse
+      if (portalSelectedTemplateId) {
+        const selected = templates.find(t => t.id === portalSelectedTemplateId);
+        if (selected) return selected;
+      }
+      // Auto-selecionar: template do cliente ou global
       const clientTemplate = templates.find(t => t.client_id === portal?.client_id);
       if (clientTemplate) return clientTemplate;
       return templates.find(t => t.is_global) || null;
     }
     return selectedTemplate;
-  }, [isPortalMode, templates, portal?.client_id, selectedTemplate]);
+  }, [isPortalMode, templates, portal?.client_id, selectedTemplate, portalSelectedTemplateId]);
 
   // Buscar insights de tráfego
   const { 
@@ -275,22 +284,48 @@ const TrafficReports = () => {
           </div>
         )}
 
-        {/* Seletor de período para modo portal (se permitido) */}
-        {showPortalElements && isPortalMode && portal?.allow_period_change && (
-          <div className="flex items-center justify-end gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PERIOD_OPTIONS.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Seletores para modo portal */}
+        {showPortalElements && isPortalMode && (
+          <div className="flex items-center justify-end gap-4 flex-wrap">
+            {/* Seletor de template */}
+            {templates.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Modelo:</span>
+                <Select 
+                  value={portalSelectedTemplateId || '_auto'} 
+                  onValueChange={(val) => setPortalSelectedTemplateId(val === '_auto' ? '' : val)}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Automático" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_auto">Visualização Padrão</SelectItem>
+                    {templates.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {/* Seletor de período (se permitido) */}
+            {portal?.allow_period_change && (
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Select value={period} onValueChange={setPeriod}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERIOD_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         )}
 
