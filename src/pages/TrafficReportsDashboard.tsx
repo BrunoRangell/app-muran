@@ -117,14 +117,21 @@ const TrafficReportsDashboard = () => {
   const handlePreparePortal = async (clientId: string, companyName: string) => {
     const baseSlug = generateSlug(companyName);
     
+    // Validar imediatamente se o slug está disponível
+    const { data: existingPortal } = await supabase
+      .from('client_portals')
+      .select('access_token')
+      .eq('access_token', baseSlug)
+      .maybeSingle();
+    
     setConfirmDialog({
       open: true,
       clientId,
       companyName,
       slug: baseSlug,
       isValidating: false,
-      isSlugAvailable: true,
-      validationMessage: '',
+      isSlugAvailable: !existingPortal,
+      validationMessage: existingPortal ? 'Esta URL já está em uso' : 'URL disponível',
     });
   };
 
@@ -410,40 +417,50 @@ const TrafficReportsDashboard = () => {
 
       {/* Dialog de Confirmação */}
       <AlertDialog open={confirmDialog?.open} onOpenChange={() => setConfirmDialog(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar criação do relatório</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-4">
-                <p>
-                  Defina a URL do relatório para <strong className="text-foreground">{confirmDialog?.companyName}</strong>:
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg font-mono text-sm">
-                    <span className="text-muted-foreground whitespace-nowrap">{window.location.origin}/cliente/</span>
-                    <Input
-                      value={confirmDialog?.slug || ''}
-                      onChange={(e) => {
-                        const newSlug = e.target.value;
-                        setConfirmDialog(prev => prev ? { ...prev, slug: newSlug } : null);
-                      }}
-                      onBlur={() => validateSlug(confirmDialog?.slug || '')}
-                      className="h-8 font-mono text-sm flex-1 min-w-0"
-                      placeholder="url-do-cliente"
-                    />
-                  </div>
-                  {confirmDialog?.validationMessage && (
-                    <p className={`text-sm flex items-center gap-1 ${
-                      confirmDialog.isSlugAvailable ? 'text-emerald-600' : 'text-destructive'
-                    }`}>
-                      {confirmDialog.isValidating ? (
-                        <>Verificando...</>
-                      ) : (
-                        confirmDialog.validationMessage
-                      )}
-                    </p>
-                  )}
+            <AlertDialogDescription className="space-y-4 pt-2">
+              <p>
+                Defina a URL do relatório para <strong className="text-foreground">{confirmDialog?.companyName}</strong>:
+              </p>
+              <div className="space-y-3">
+                {/* Prefix em linha separada para não cortar */}
+                <div className="text-sm text-muted-foreground font-mono bg-muted/50 px-3 py-2 rounded-md">
+                  {window.location.origin}/cliente/
                 </div>
+                {/* Input com largura total */}
+                <Input
+                  value={confirmDialog?.slug || ''}
+                  onChange={(e) => {
+                    // Sanitizar em tempo real
+                    const sanitized = e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9-]/g, '-')
+                      .replace(/-+/g, '-');
+                    setConfirmDialog(prev => prev ? { 
+                      ...prev, 
+                      slug: sanitized,
+                      validationMessage: '',
+                      isSlugAvailable: true
+                    } : null);
+                  }}
+                  onBlur={() => validateSlug(confirmDialog?.slug || '')}
+                  className="font-mono"
+                  placeholder="url-do-cliente"
+                />
+                {/* Validação */}
+                {confirmDialog?.validationMessage && (
+                  <p className={`text-sm flex items-center gap-1 ${
+                    confirmDialog.isSlugAvailable ? 'text-emerald-600' : 'text-destructive'
+                  }`}>
+                    {confirmDialog.isValidating ? (
+                      <>Verificando...</>
+                    ) : (
+                      confirmDialog.validationMessage
+                    )}
+                  </p>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

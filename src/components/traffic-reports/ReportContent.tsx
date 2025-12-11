@@ -92,27 +92,85 @@ export function ReportContent({
   // Calcular seções ordenadas baseado no template
   // Suporte para formato legado (sections) e novo formato (widgets)
   const sortedSections = useMemo(() => {
-    // Se não tem template ou sections está no formato widgets, usa padrão
     const templateSections = template?.sections;
     
+    // Se não tem template, usa padrão
+    if (!templateSections) {
+      return getDefaultSectionList();
+    }
+    
     // Detectar se é formato widgets (novo) ou sections (legado)
-    const isWidgetFormat = templateSections && 
-      (Array.isArray((templateSections as any).widgets) || (templateSections as any).version);
+    const isWidgetFormat = Array.isArray((templateSections as any).widgets) || 
+                           (templateSections as any).version;
     
-    // Usar DEFAULT_SECTIONS se for formato widgets ou se não tiver template
-    const sections = isWidgetFormat ? DEFAULT_SECTIONS : (templateSections || DEFAULT_SECTIONS);
+    if (!isWidgetFormat) {
+      // Formato legado - usar diretamente
+      return Object.entries(templateSections)
+        .filter(([key]) => ['overview', 'demographics', 'topCreatives', 'conversionFunnel', 'trendCharts', 'campaignTable'].includes(key))
+        .map(([key, config]) => ({
+          key: key as SectionKey,
+          config: config as SectionConfig
+        }))
+        .filter(s => s.config.enabled !== false)
+        .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
+    }
     
-    const sectionList: { key: SectionKey; config: SectionConfig }[] = Object.entries(sections)
-      .filter(([key]) => ['overview', 'demographics', 'topCreatives', 'conversionFunnel', 'trendCharts', 'campaignTable'].includes(key))
+    // NOVO: Formato widgets - converter para seções baseadas nos widgets presentes
+    const widgets = (templateSections as any).widgets || [];
+    
+    if (widgets.length === 0) {
+      return getDefaultSectionList();
+    }
+    
+    const sections: { key: SectionKey; config: SectionConfig }[] = [];
+    let order = 1;
+    
+    // Detectar metric-cards -> ativa 'overview'
+    if (widgets.some((w: any) => w.type === 'metric-card')) {
+      sections.push({ key: 'overview', config: { enabled: true, order: order++ } });
+    }
+    
+    // Detectar charts com demographics -> ativa 'demographics'
+    if (widgets.some((w: any) => w.config?.dataSource === 'demographics' || w.type === 'pie-chart')) {
+      sections.push({ key: 'demographics', config: { enabled: true, order: order++ } });
+    }
+    
+    // Detectar top-creatives -> ativa 'topCreatives'
+    const creativesWidget = widgets.find((w: any) => w.type === 'top-creatives');
+    if (creativesWidget) {
+      sections.push({ 
+        key: 'topCreatives', 
+        config: { enabled: true, order: order++, limit: creativesWidget.config?.limit || 10 } 
+      });
+    }
+    
+    // Detectar line/area/bar charts (não demographics) -> ativa 'trendCharts'
+    if (widgets.some((w: any) => 
+      ['line-chart', 'area-chart', 'bar-chart'].includes(w.type) && 
+      w.config?.dataSource !== 'demographics'
+    )) {
+      sections.push({ key: 'trendCharts', config: { enabled: true, order: order++ } });
+    }
+    
+    // Detectar campaigns-table -> ativa 'campaignTable'
+    if (widgets.some((w: any) => w.type === 'campaigns-table' || w.type === 'table')) {
+      sections.push({ key: 'campaignTable', config: { enabled: true, order: order++ } });
+    }
+    
+    // Se não encontrou nenhuma seção, usa padrão
+    return sections.length > 0 ? sections : getDefaultSectionList();
+  }, [template]);
+
+  // Helper para obter lista de seções padrão
+  function getDefaultSectionList(): { key: SectionKey; config: SectionConfig }[] {
+    return Object.entries(DEFAULT_SECTIONS)
       .map(([key, config]) => ({
         key: key as SectionKey,
         config: config as SectionConfig
       }))
       .filter(s => s.config.enabled !== false)
       .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
-
-    return sectionList;
-  }, [template]);
+  }
 
   // Função para renderizar seção
   const renderSection = (key: SectionKey, config: SectionConfig) => {
