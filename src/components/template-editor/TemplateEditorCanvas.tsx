@@ -85,7 +85,7 @@ export function TemplateEditorCanvas({
         className="layout"
         layout={layout}
         cols={12}
-        rowHeight={100}
+        rowHeight={40}
         width={1200}
         margin={[16, 16]}
         containerPadding={[16, 16]}
