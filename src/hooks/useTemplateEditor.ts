@@ -11,6 +11,7 @@ import {
   isPresetType,
   WIDGET_CATALOG
 } from '@/types/template-editor';
+import { expandPresetWidgets } from './useWidgetPresets';
 
 interface UseTemplateEditorReturn {
   // Estado
@@ -24,7 +25,7 @@ interface UseTemplateEditorReturn {
   setTemplateName: (name: string) => void;
   setIsGlobal: (isGlobal: boolean) => void;
   selectWidget: (id: string | null) => void;
-  addWidget: (type: WidgetType | PresetType, position?: { x: number; y: number }) => void;
+  addWidget: (type: WidgetType | PresetType | string, presetWidgetsOrPosition?: { x: number; y: number } | TemplateWidget[]) => void;
   removeWidget: (id: string) => void;
   updateWidgetConfig: (id: string, config: Partial<TemplateWidget['config']>) => void;
   updateLayout: (layout: Layout[]) => void;
@@ -51,22 +52,39 @@ export function useTemplateEditor(): UseTemplateEditorReturn {
   }, []);
 
   // Adicionar widget (ou expandir preset)
-  const addWidget = useCallback((type: WidgetType | PresetType, position?: { x: number; y: number }) => {
-    // Calcular próxima posição Y se não especificada
-    const nextY = position?.y ?? Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
+  const addWidget = useCallback((
+    type: WidgetType | PresetType | string, 
+    presetWidgetsOrPosition?: { x: number; y: number } | TemplateWidget[]
+  ) => {
+    // Calcular próxima posição Y
+    const nextY = Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
     
-    // Verificar se é um preset que deve ser expandido
-    if (isPresetType(type)) {
-      const newWidgets = expandPresetToWidgets(type, nextY);
+    // Check if it's a dynamic preset from database (format: "preset:uuid")
+    if (typeof type === 'string' && type.startsWith('preset:') && Array.isArray(presetWidgetsOrPosition)) {
+      const presetWidgets = presetWidgetsOrPosition as TemplateWidget[];
+      const newWidgets = expandPresetWidgets(presetWidgets, nextY);
       setWidgets(prev => [...prev, ...newWidgets]);
-      // Selecionar o primeiro widget adicionado
+      if (newWidgets.length > 0) {
+        setSelectedWidgetId(newWidgets[0].id);
+      }
+      setIsDirty(true);
+      return;
+    }
+    
+    // Handle position parameter
+    const position = !Array.isArray(presetWidgetsOrPosition) ? presetWidgetsOrPosition : undefined;
+    
+    // Verificar se é um preset hardcoded que deve ser expandido
+    if (isPresetType(type as string)) {
+      const newWidgets = expandPresetToWidgets(type as PresetType, position?.y ?? nextY);
+      setWidgets(prev => [...prev, ...newWidgets]);
       if (newWidgets.length > 0) {
         setSelectedWidgetId(newWidgets[0].id);
       }
     } else {
       // Widget individual normal
       const pos = position ?? { x: 0, y: nextY };
-      const newWidget = createWidget(type, pos);
+      const newWidget = createWidget(type as WidgetType, pos);
       setWidgets(prev => [...prev, newWidget]);
       setSelectedWidgetId(newWidget.id);
     }
