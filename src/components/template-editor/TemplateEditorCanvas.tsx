@@ -73,13 +73,27 @@ export function TemplateEditorCanvas({
     );
   }
 
+  // Calcula o tamanho de cada célula do grid
+  const colWidth = (1200 - 32 - 16 * 11) / 12; // (width - padding - gaps) / cols
+  const rowHeight = 40;
+  const gapSize = 16;
+
   return (
     <div 
       className={cn(
         "h-full overflow-auto rounded-lg",
-        "bg-muted/10 border border-border"
+        "border border-border"
       )}
       onClick={handleCanvasClick}
+      style={{
+        backgroundImage: `
+          linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
+          linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
+        `,
+        backgroundSize: `${colWidth + gapSize}px ${rowHeight + gapSize}px`,
+        backgroundPosition: '16px 16px',
+        backgroundColor: 'hsl(var(--muted) / 0.1)'
+      }}
     >
       <GridLayout
         className="layout"
