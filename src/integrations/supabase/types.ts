@@ -1013,6 +1013,39 @@ export type Database = {
         }
         Relationships: []
       }
+      widget_presets: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          updated_at: string | null
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          updated_at?: string | null
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          updated_at?: string | null
+          widgets?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
