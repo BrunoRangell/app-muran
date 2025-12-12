@@ -133,7 +133,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Exibe uma métrica individual com destaque',
     icon: 'CreditCard',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 1, maxH: 3 },
+    defaultLayout: { w: 6, h: 2, minW: 2, minH: 1 },
     defaultConfig: { metrics: ['impressions'], showComparison: true }
   },
   {
@@ -142,7 +142,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Visualiza tendências ao longo do tempo',
     icon: 'LineChart',
     category: 'individual',
-    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
+    defaultLayout: { w: 12, h: 4, minW: 4, minH: 2 },
     defaultConfig: { metrics: ['impressions', 'clicks'], showLegend: true, chartType: 'line' }
   },
   {
@@ -151,7 +151,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Compara valores entre categorias',
     icon: 'BarChart3',
     category: 'individual',
-    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
+    defaultLayout: { w: 12, h: 4, minW: 4, minH: 2 },
     defaultConfig: { metrics: ['conversions'], showLegend: true, chartType: 'bar' }
   },
   {
@@ -160,7 +160,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Mostra volume acumulado ao longo do tempo',
     icon: 'AreaChart',
     category: 'individual',
-    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
+    defaultLayout: { w: 12, h: 4, minW: 4, minH: 2 },
     defaultConfig: { metrics: ['spend'], showLegend: true, chartType: 'area' }
   },
   {
@@ -169,7 +169,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Mostra distribuição proporcional',
     icon: 'PieChart',
     category: 'individual',
-    defaultLayout: { w: 8, h: 4, minW: 6, minH: 3 },
+    defaultLayout: { w: 8, h: 4, minW: 4, minH: 2 },
     defaultConfig: { dataSource: 'demographics', showLegend: true, chartType: 'pie' }
   },
   {
@@ -178,7 +178,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Tabela customizável com métricas selecionadas',
     icon: 'Table2',
     category: 'individual',
-    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
+    defaultLayout: { w: 12, h: 4, minW: 4, minH: 2 },
     defaultConfig: { metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
   },
   {
@@ -187,7 +187,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Tabela detalhada com campanhas ativas',
     icon: 'Table',
     category: 'individual',
-    defaultLayout: { w: 24, h: 5, minW: 16, minH: 3 },
+    defaultLayout: { w: 24, h: 5, minW: 8, minH: 2 },
     defaultConfig: { showTitle: true, title: 'Campanhas', limit: 10 }
   },
   {
@@ -196,7 +196,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Melhores anúncios com preview visual',
     icon: 'Image',
     category: 'individual',
-    defaultLayout: { w: 24, h: 5, minW: 12, minH: 3 },
+    defaultLayout: { w: 24, h: 5, minW: 6, minH: 2 },
     defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
   }
 ];
@@ -257,9 +257,8 @@ export function expandPresetToWidgets(
             y: startY + Math.floor(index / 4) * 2,
             w: 6,
             h: 2,
-            minW: 4,
-            minH: 1,
-            maxH: 3
+            minW: 2,
+            minH: 1
           },
           config: {
             metrics: [metric],
@@ -288,8 +287,8 @@ export function expandPresetToWidgets(
             y: startY + Math.floor(index / 2) * 4,
             w: 12,
             h: 4,
-            minW: 8,
-            minH: 3
+            minW: 4,
+            minH: 2
           },
           config: {
             metrics: config.metrics,
@@ -308,7 +307,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'bar-chart',
-          layout: { x: 0, y: startY, w: 8, h: 4, minW: 6, minH: 3 },
+          layout: { x: 0, y: startY, w: 8, h: 4, minW: 4, minH: 2 },
           config: {
             title: 'Idade',
             dataSource: 'demographics',
@@ -319,7 +318,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'pie-chart',
-          layout: { x: 8, y: startY, w: 8, h: 4, minW: 6, minH: 3 },
+          layout: { x: 8, y: startY, w: 8, h: 4, minW: 4, minH: 2 },
           config: {
             title: 'Gênero',
             dataSource: 'demographics',
@@ -330,7 +329,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'simple-table',
-          layout: { x: 16, y: startY, w: 8, h: 4, minW: 6, minH: 3 },
+          layout: { x: 16, y: startY, w: 8, h: 4, minW: 4, minH: 2 },
           config: {
             title: 'Localização',
             dataSource: 'demographics',
