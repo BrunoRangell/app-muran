@@ -36,11 +36,11 @@ export type WidgetType =
 // Tipo combinado para uso na paleta e em alguns componentes
 export type WidgetOrPresetType = WidgetType | PresetType;
 
-// Layout do widget no grid
+// Layout do widget no grid (24 colunas)
 export interface WidgetLayout {
-  x: number;      // Posição X (coluna 0-11)
+  x: number;      // Posição X (coluna 0-23)
   y: number;      // Posição Y (linha)
-  w: number;      // Largura (1-12 colunas)
+  w: number;      // Largura (1-24 colunas)
   h: number;      // Altura (unidades de grid)
   minW?: number;  // Largura mínima
   minH?: number;  // Altura mínima
@@ -95,7 +95,7 @@ export interface WidgetMetadata {
   defaultConfig: WidgetConfig;
 }
 
-// Catálogo de widgets disponíveis
+// Catálogo de widgets disponíveis (grid 24 colunas)
 export const WIDGET_CATALOG: WidgetMetadata[] = [
   // Pré-configurados (expandem em múltiplos widgets)
   {
@@ -104,7 +104,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Adiciona 8 cards de métricas lado a lado (editáveis individualmente)',
     icon: 'LayoutGrid',
     category: 'preset',
-    defaultLayout: { w: 12, h: 2, minW: 6, minH: 2 },
+    defaultLayout: { w: 24, h: 2, minW: 12, minH: 2 },
     defaultConfig: { showTitle: true, title: 'Visão Geral' }
   },
   {
@@ -113,7 +113,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Adiciona 4 gráficos de linha/área (editáveis individualmente)',
     icon: 'TrendingUp',
     category: 'preset',
-    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
+    defaultLayout: { w: 24, h: 4, minW: 16, minH: 3 },
     defaultConfig: { showTitle: true, title: 'Tendências' }
   },
   {
@@ -122,7 +122,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Adiciona gráficos de idade, gênero e localização (editáveis individualmente)',
     icon: 'Users',
     category: 'preset',
-    defaultLayout: { w: 12, h: 3, minW: 8, minH: 2 },
+    defaultLayout: { w: 24, h: 3, minW: 16, minH: 2 },
     defaultConfig: { showTitle: true, title: 'Demografia' }
   },
   
@@ -133,7 +133,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Exibe uma métrica individual com destaque',
     icon: 'CreditCard',
     category: 'individual',
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxH: 2 },
+    defaultLayout: { w: 6, h: 2, minW: 4, minH: 1, maxH: 3 },
     defaultConfig: { metrics: ['impressions'], showComparison: true }
   },
   {
@@ -142,7 +142,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Visualiza tendências ao longo do tempo',
     icon: 'LineChart',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
     defaultConfig: { metrics: ['impressions', 'clicks'], showLegend: true, chartType: 'line' }
   },
   {
@@ -151,7 +151,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Compara valores entre categorias',
     icon: 'BarChart3',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
     defaultConfig: { metrics: ['conversions'], showLegend: true, chartType: 'bar' }
   },
   {
@@ -160,7 +160,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Mostra volume acumulado ao longo do tempo',
     icon: 'AreaChart',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
     defaultConfig: { metrics: ['spend'], showLegend: true, chartType: 'area' }
   },
   {
@@ -169,7 +169,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Mostra distribuição proporcional',
     icon: 'PieChart',
     category: 'individual',
-    defaultLayout: { w: 4, h: 2, minW: 3, minH: 2 },
+    defaultLayout: { w: 8, h: 4, minW: 6, minH: 3 },
     defaultConfig: { dataSource: 'demographics', showLegend: true, chartType: 'pie' }
   },
   {
@@ -178,7 +178,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Tabela customizável com métricas selecionadas',
     icon: 'Table2',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 },
     defaultConfig: { metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
   },
   {
@@ -187,7 +187,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Tabela detalhada com campanhas ativas',
     icon: 'Table',
     category: 'individual',
-    defaultLayout: { w: 12, h: 3, minW: 8, minH: 2 },
+    defaultLayout: { w: 24, h: 5, minW: 16, minH: 3 },
     defaultConfig: { showTitle: true, title: 'Campanhas', limit: 10 }
   },
   {
@@ -196,7 +196,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Melhores anúncios com preview visual',
     icon: 'Image',
     category: 'individual',
-    defaultLayout: { w: 12, h: 3, minW: 6, minH: 2 },
+    defaultLayout: { w: 24, h: 5, minW: 12, minH: 3 },
     defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
   }
 ];
@@ -247,19 +247,19 @@ export function expandPresetToWidgets(
   
   switch (presetType) {
     case 'overview-full': {
-      // 8 cards de métrica em 2 linhas de 4
+      // 8 cards de métrica em 2 linhas de 4 (cada card = 6 colunas de 24)
       ALL_METRICS.forEach((metric, index) => {
         widgets.push({
           id: crypto.randomUUID(),
           type: 'metric-card',
           layout: {
-            x: (index % 4) * 3,  // 4 colunas de largura 3
-            y: startY + Math.floor(index / 4),
-            w: 3,
-            h: 1,
-            minW: 2,
+            x: (index % 4) * 6,  // 4 cards por linha, cada um com 6 colunas
+            y: startY + Math.floor(index / 4) * 2,
+            w: 6,
+            h: 2,
+            minW: 4,
             minH: 1,
-            maxH: 2
+            maxH: 3
           },
           config: {
             metrics: [metric],
@@ -271,7 +271,7 @@ export function expandPresetToWidgets(
     }
     
     case 'trends-full': {
-      // 4 gráficos de tendência: impressões, cliques, conversões, investimento
+      // 4 gráficos de tendência: 2 por linha (cada um = 12 colunas de 24)
       const trendMetrics: { metrics: MetricKey[]; type: 'line-chart' | 'area-chart' }[] = [
         { metrics: ['impressions', 'reach'], type: 'line-chart' },
         { metrics: ['clicks'], type: 'line-chart' },
@@ -284,12 +284,12 @@ export function expandPresetToWidgets(
           id: crypto.randomUUID(),
           type: config.type,
           layout: {
-            x: (index % 2) * 6,  // 2 colunas de largura 6
-            y: startY + Math.floor(index / 2) * 2,
-            w: 6,
-            h: 2,
-            minW: 4,
-            minH: 2
+            x: (index % 2) * 12,  // 2 colunas de largura 12
+            y: startY + Math.floor(index / 2) * 4,
+            w: 12,
+            h: 4,
+            minW: 8,
+            minH: 3
           },
           config: {
             metrics: config.metrics,
@@ -303,12 +303,12 @@ export function expandPresetToWidgets(
     }
     
     case 'demographics-full': {
-      // 3 widgets: idade (bar), gênero (pie), localização (table)
+      // 3 widgets: idade (bar), gênero (pie), localização (table) - 8 colunas cada
       widgets.push(
         {
           id: crypto.randomUUID(),
           type: 'bar-chart',
-          layout: { x: 0, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          layout: { x: 0, y: startY, w: 8, h: 4, minW: 6, minH: 3 },
           config: {
             title: 'Idade',
             dataSource: 'demographics',
@@ -319,7 +319,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'pie-chart',
-          layout: { x: 4, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          layout: { x: 8, y: startY, w: 8, h: 4, minW: 6, minH: 3 },
           config: {
             title: 'Gênero',
             dataSource: 'demographics',
@@ -330,7 +330,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'simple-table',
-          layout: { x: 8, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          layout: { x: 16, y: startY, w: 8, h: 4, minW: 6, minH: 3 },
           config: {
             title: 'Localização',
             dataSource: 'demographics',
@@ -350,11 +350,11 @@ export function isPresetType(type: string): type is PresetType {
   return ['overview-full', 'trends-full', 'demographics-full'].includes(type);
 }
 
-// Configuração padrão do grid
+// Configuração padrão do grid (24 colunas com células quadradas ~40px)
 export const DEFAULT_GRID_CONFIG: GridConfig = {
-  cols: 12,
-  rowHeight: 100,
-  margin: [16, 16],
+  cols: 24,
+  rowHeight: 40,
+  margin: [8, 8],
   containerPadding: [16, 16]
 };
 
