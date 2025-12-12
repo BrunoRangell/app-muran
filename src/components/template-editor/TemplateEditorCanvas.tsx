@@ -76,17 +76,16 @@ export function TemplateEditorCanvas({
   // Grid configuration - 24 colunas com células quadradas de ~40px
   const cols = 24;
   const rowHeight = 40;
-  const margin = 8;
-  const containerPadding = 16;
+  const margin: [number, number] = [8, 8];
+  const containerPadding: [number, number] = [16, 16];
   const gridWidth = 1200;
   
-  // Fórmula exata do react-grid-layout: (width - padding*2 - margin*(cols-1)) / cols
-  const colWidth = (gridWidth - containerPadding * 2 - margin * (cols - 1)) / cols;
-  // = (1200 - 32 - 184) / 24 = 41px (praticamente quadrado com rowHeight=40)
+  // Fórmula exata do react-grid-layout: (containerWidth - paddingLeft - paddingRight - margin*(cols-1)) / cols
+  const colWidth = (gridWidth - containerPadding[0] - containerPadding[1] - margin[0] * (cols - 1)) / cols;
   
-  // Tamanho visual de cada célula (incluindo margem)
-  const cellWidth = colWidth + margin;
-  const cellHeight = rowHeight + margin;
+  // Para o grid visual, o tamanho de cada célula inclui a margem à direita/abaixo
+  const cellWidth = colWidth + margin[0];
+  const cellHeight = rowHeight + margin[1];
 
   return (
     <div 
@@ -101,7 +100,7 @@ export function TemplateEditorCanvas({
           linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)
         `,
         backgroundSize: `${cellWidth}px ${cellHeight}px`,
-        backgroundPosition: `${containerPadding}px ${containerPadding}px`,
+        backgroundPosition: `${containerPadding[0]}px ${containerPadding[1]}px`,
         backgroundColor: 'hsl(var(--muted) / 0.1)'
       }}
     >
@@ -111,8 +110,8 @@ export function TemplateEditorCanvas({
         cols={cols}
         rowHeight={rowHeight}
         width={gridWidth}
-        margin={[margin, margin]}
-        containerPadding={[containerPadding, containerPadding]}
+        margin={margin}
+        containerPadding={containerPadding}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".cursor-grab"
         isResizable={true}
