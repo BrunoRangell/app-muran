@@ -73,10 +73,20 @@ export function TemplateEditorCanvas({
     );
   }
 
-  // Calcula o tamanho de cada célula do grid
-  const colWidth = (1200 - 32 - 16 * 11) / 12; // (width - padding - gaps) / cols
+  // Grid configuration - 24 colunas com células quadradas de ~40px
+  const cols = 24;
   const rowHeight = 40;
-  const gapSize = 16;
+  const margin = 8;
+  const containerPadding = 16;
+  const gridWidth = 1200;
+  
+  // Fórmula exata do react-grid-layout: (width - padding*2 - margin*(cols-1)) / cols
+  const colWidth = (gridWidth - containerPadding * 2 - margin * (cols - 1)) / cols;
+  // = (1200 - 32 - 184) / 24 = 41px (praticamente quadrado com rowHeight=40)
+  
+  // Tamanho visual de cada célula (incluindo margem)
+  const cellWidth = colWidth + margin;
+  const cellHeight = rowHeight + margin;
 
   return (
     <div 
@@ -87,22 +97,22 @@ export function TemplateEditorCanvas({
       onClick={handleCanvasClick}
       style={{
         backgroundImage: `
-          linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
-          linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
+          linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
+          linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)
         `,
-        backgroundSize: `${colWidth + gapSize}px ${rowHeight + gapSize}px`,
-        backgroundPosition: '16px 16px',
+        backgroundSize: `${cellWidth}px ${cellHeight}px`,
+        backgroundPosition: `${containerPadding}px ${containerPadding}px`,
         backgroundColor: 'hsl(var(--muted) / 0.1)'
       }}
     >
       <GridLayout
         className="layout"
         layout={layout}
-        cols={12}
-        rowHeight={40}
-        width={1200}
-        margin={[16, 16]}
-        containerPadding={[16, 16]}
+        cols={cols}
+        rowHeight={rowHeight}
+        width={gridWidth}
+        margin={[margin, margin]}
+        containerPadding={[containerPadding, containerPadding]}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".cursor-grab"
         isResizable={true}
