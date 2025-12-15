@@ -8,6 +8,7 @@ import { TopCreativesSection } from "./TopCreativesSection";
 import { PlatformViewSelector } from "./PlatformViewSelector";
 import { CombinedOverview } from "./CombinedOverview";
 import { ComparativeTrendCharts } from "./ComparativeTrendCharts";
+import { WidgetGridRenderer } from "./WidgetGridRenderer";
 import { ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -89,9 +90,23 @@ export function ReportContent({
     }
   }, [insightsData, viewMode, platform]);
 
-  // Calcular seções ordenadas baseado no template
-  // Suporte para formato legado (sections) e novo formato (widgets)
+  // Detectar se o template usa o novo formato widget-based
+  const templateWidgets = useMemo(() => {
+    const sections = template?.sections as any;
+    
+    // Verificar se tem widgets no novo formato
+    if (sections?.widgets && Array.isArray(sections.widgets) && sections.widgets.length > 0) {
+      return sections.widgets;
+    }
+    
+    return null;
+  }, [template]);
+
+  // Calcular seções ordenadas para modo legado
   const sortedSections = useMemo(() => {
+    // Se tem widgets, não precisa calcular seções legadas
+    if (templateWidgets) return [];
+    
     const templateSections = template?.sections;
     
     // Se não tem template, usa padrão
@@ -99,67 +114,16 @@ export function ReportContent({
       return getDefaultSectionList();
     }
     
-    // Detectar se é formato widgets (novo) ou sections (legado)
-    const isWidgetFormat = Array.isArray((templateSections as any).widgets) || 
-                           (templateSections as any).version;
-    
-    if (!isWidgetFormat) {
-      // Formato legado - usar diretamente
-      return Object.entries(templateSections)
-        .filter(([key]) => ['overview', 'demographics', 'topCreatives', 'conversionFunnel', 'trendCharts', 'campaignTable'].includes(key))
-        .map(([key, config]) => ({
-          key: key as SectionKey,
-          config: config as SectionConfig
-        }))
-        .filter(s => s.config.enabled !== false)
-        .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
-    }
-    
-    // NOVO: Formato widgets - converter para seções baseadas nos widgets presentes
-    const widgets = (templateSections as any).widgets || [];
-    
-    if (widgets.length === 0) {
-      return getDefaultSectionList();
-    }
-    
-    const sections: { key: SectionKey; config: SectionConfig }[] = [];
-    let order = 1;
-    
-    // Detectar metric-cards -> ativa 'overview'
-    if (widgets.some((w: any) => w.type === 'metric-card')) {
-      sections.push({ key: 'overview', config: { enabled: true, order: order++ } });
-    }
-    
-    // Detectar charts com demographics -> ativa 'demographics'
-    if (widgets.some((w: any) => w.config?.dataSource === 'demographics' || w.type === 'pie-chart')) {
-      sections.push({ key: 'demographics', config: { enabled: true, order: order++ } });
-    }
-    
-    // Detectar top-creatives -> ativa 'topCreatives'
-    const creativesWidget = widgets.find((w: any) => w.type === 'top-creatives');
-    if (creativesWidget) {
-      sections.push({ 
-        key: 'topCreatives', 
-        config: { enabled: true, order: order++, limit: creativesWidget.config?.limit || 10 } 
-      });
-    }
-    
-    // Detectar line/area/bar charts (não demographics) -> ativa 'trendCharts'
-    if (widgets.some((w: any) => 
-      ['line-chart', 'area-chart', 'bar-chart'].includes(w.type) && 
-      w.config?.dataSource !== 'demographics'
-    )) {
-      sections.push({ key: 'trendCharts', config: { enabled: true, order: order++ } });
-    }
-    
-    // Detectar campaigns-table -> ativa 'campaignTable'
-    if (widgets.some((w: any) => w.type === 'campaigns-table' || w.type === 'table')) {
-      sections.push({ key: 'campaignTable', config: { enabled: true, order: order++ } });
-    }
-    
-    // Se não encontrou nenhuma seção, usa padrão
-    return sections.length > 0 ? sections : getDefaultSectionList();
-  }, [template]);
+    // Formato legado - usar diretamente
+    return Object.entries(templateSections)
+      .filter(([key]) => ['overview', 'demographics', 'topCreatives', 'conversionFunnel', 'trendCharts', 'campaignTable'].includes(key))
+      .map(([key, config]) => ({
+        key: key as SectionKey,
+        config: config as SectionConfig
+      }))
+      .filter(s => s.config.enabled !== false)
+      .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
+  }, [template, templateWidgets]);
 
   // Helper para obter lista de seções padrão
   function getDefaultSectionList(): { key: SectionKey; config: SectionConfig }[] {
@@ -172,7 +136,7 @@ export function ReportContent({
       .sort((a, b) => (a.config.order || 999) - (b.config.order || 999));
   }
 
-  // Função para renderizar seção
+  // Função para renderizar seção (modo legado)
   const renderSection = (key: SectionKey, config: SectionConfig) => {
     if (!activeData) return null;
 
@@ -248,9 +212,35 @@ export function ReportContent({
     }
   };
 
+  // Renderizar usando widgets (novo sistema)
+  const renderWidgetView = () => {
+    if (!activeData || !templateWidgets) return null;
+
+    return (
+      <div className="animate-fade-in">
+        <WidgetGridRenderer 
+          widgets={templateWidgets} 
+          data={activeData}
+        />
+      </div>
+    );
+  };
+
   // Renderizar conteúdo para "Visão Geral" (combinado)
   const renderCombinedView = () => {
     if (!insightsData) return null;
+
+    // Se tem template com widgets, usar widget renderer
+    if (templateWidgets) {
+      return (
+        <div className="animate-fade-in">
+          <WidgetGridRenderer 
+            widgets={templateWidgets} 
+            data={insightsData}
+          />
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-8 animate-fade-in">
@@ -290,6 +280,12 @@ export function ReportContent({
       );
     }
 
+    // Se tem template com widgets, usar widget renderer
+    if (templateWidgets) {
+      return renderWidgetView();
+    }
+
+    // Modo legado - renderizar seções
     return (
       <div className="space-y-8 animate-fade-in">
         {sortedSections.map(({ key, config }) => renderSection(key, config))}
