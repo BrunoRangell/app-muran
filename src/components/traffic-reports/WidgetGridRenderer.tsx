@@ -32,8 +32,8 @@ interface WidgetGridRendererProps {
 }
 
 export function WidgetGridRenderer({ widgets, data }: WidgetGridRendererProps) {
-  const { rowHeight, margin } = DEFAULT_GRID_CONFIG;
-  const [marginX, marginY] = margin || [8, 8];
+  const { cols, rowHeight, margin } = DEFAULT_GRID_CONFIG;
+  const [marginX, marginY] = margin || [12, 12];
 
   // Calcular altura total do grid baseada nos widgets
   const maxY = Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
@@ -41,7 +41,6 @@ export function WidgetGridRenderer({ widgets, data }: WidgetGridRendererProps) {
 
   // Calcular posição e tamanho de cada widget
   const getWidgetStyle = (widget: TemplateWidget): React.CSSProperties => {
-    const cols = 24; // Grid de 24 colunas
     const colWidth = 100 / cols;
     
     return {

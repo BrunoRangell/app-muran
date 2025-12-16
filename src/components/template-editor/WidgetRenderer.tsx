@@ -15,7 +15,7 @@ import {
   Copy,
   GripVertical
 } from 'lucide-react';
-import { TemplateWidget, WIDGET_CATALOG, MetricKey } from '@/types/template-editor';
+import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,7 +80,14 @@ export function WidgetRenderer({
   const metadata = WIDGET_CATALOG.find(m => m.type === widget.type);
   const Icon = metadata ? ICON_MAP[metadata.icon] : LayoutGrid;
   
-  const title = widget.config.title || metadata?.name || 'Widget';
+  // Gerar label amigável para o widget
+  const getWidgetLabel = () => {
+    if (widget.type === 'metric-card' && widget.config.metrics?.[0]) {
+      const metricKey = widget.config.metrics[0] as MetricKey;
+      return METRIC_LABELS[metricKey] || metricKey;
+    }
+    return widget.config.title || metadata?.name || 'Widget';
+  };
 
   // Renderiza o conteúdo real do widget usando os mesmos componentes
   const renderWidgetContent = () => {
@@ -90,13 +97,11 @@ export function WidgetRenderer({
         const metricData = mockOverviewData[metricKey];
         
         return (
-          <div className="p-2 h-full">
-            <MetricCardWidget
-              metric={metricKey}
-              data={metricData}
-              showComparison={widget.config.showComparison !== false}
-            />
-          </div>
+          <MetricCardWidget
+            metric={metricKey}
+            data={metricData}
+            showComparison={widget.config.showComparison !== false}
+          />
         );
       }
 
@@ -107,55 +112,47 @@ export function WidgetRenderer({
         const metrics = (widget.config.metrics || ['impressions']) as MetricKey[];
         
         return (
-          <div className="h-full">
-            <ChartWidget
-              chartType={chartType}
-              metrics={metrics}
-              timeSeries={mockTimeSeries.slice(-14)}
-              showLegend={widget.config.showLegend !== false}
-            />
-          </div>
+          <ChartWidget
+            chartType={chartType}
+            metrics={metrics}
+            timeSeries={mockTimeSeries.slice(-14)}
+            showLegend={widget.config.showLegend !== false}
+          />
         );
       }
 
       case 'pie-chart': {
         return (
-          <div className="h-full">
-            <PieChartWidget
-              dataSource={widget.config.dataSource as any || 'gender'}
-              demographics={mockDemographics}
-              showLegend={widget.config.showLegend !== false}
-            />
-          </div>
+          <PieChartWidget
+            dataSource={widget.config.dataSource as any || 'gender'}
+            demographics={mockDemographics}
+            showLegend={widget.config.showLegend !== false}
+          />
         );
       }
 
       case 'campaigns-table':
       case 'simple-table': {
         return (
-          <div className="h-full overflow-hidden">
-            <CampaignsTableWidget
-              campaigns={mockCampaigns}
-              limit={widget.config.limit || 5}
-            />
-          </div>
+          <CampaignsTableWidget
+            campaigns={mockCampaigns}
+            limit={widget.config.limit || 5}
+          />
         );
       }
 
       case 'top-creatives': {
         return (
-          <div className="h-full overflow-hidden">
-            <TopCreativesWidget
-              creatives={mockCreatives}
-              limit={widget.config.limit || 5}
-            />
-          </div>
+          <TopCreativesWidget
+            creatives={mockCreatives}
+            limit={widget.config.limit || 5}
+          />
         );
       }
 
       default:
         return (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="h-full flex items-center justify-center">
             <div className="text-center">
               <div className={cn(
                 "w-12 h-12 mx-auto rounded-xl flex items-center justify-center",
@@ -176,62 +173,69 @@ export function WidgetRenderer({
     <div
       onClick={onSelect}
       className={cn(
-        "h-full w-full rounded-lg border-2 transition-all duration-200",
-        "bg-card flex flex-col overflow-hidden",
-        isSelected 
-          ? "border-primary shadow-lg ring-2 ring-primary/20" 
-          : "border-border/50 hover:border-border",
+        "relative h-full w-full group",
         isEditing && "cursor-pointer"
       )}
     >
-      {/* Header com ações */}
+      {/* Conteúdo do widget - renderiza EXATAMENTE como no preview/relatório */}
       <div className={cn(
-        "flex items-center justify-between px-3 py-2 border-b border-border/50",
-        "bg-muted/30 flex-shrink-0"
+        "h-full w-full rounded-lg overflow-hidden transition-all duration-200",
+        "bg-card border",
+        isSelected 
+          ? "border-primary shadow-lg ring-2 ring-primary/20" 
+          : "border-border/50 hover:border-border"
       )}>
-        <div className="flex items-center gap-2 min-w-0">
-          <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab flex-shrink-0" />
-          <Icon className="w-4 h-4 text-primary flex-shrink-0" />
-          <span className="text-sm font-medium text-foreground truncate">
-            {title}
-          </span>
-        </div>
-        
-        {isEditing && (
-          <div className={cn(
-            "flex items-center gap-1 flex-shrink-0 transition-opacity",
-            !isSelected && "opacity-50 hover:opacity-100"
-          )}>
+        {renderWidgetContent()}
+      </div>
+
+      {/* Toolbar flutuante externa - não afeta altura do widget */}
+      {isEditing && (
+        <div className={cn(
+          "absolute -top-9 left-0 right-0 flex items-center justify-between px-1",
+          "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+          isSelected && "opacity-100"
+        )}>
+          {/* Label do widget + drag handle */}
+          <div className="flex items-center gap-1.5 bg-card/95 backdrop-blur-sm rounded-md px-2 py-1 border border-border/50 shadow-sm">
+            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/60 cursor-grab" />
+            <Icon className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+              {getWidgetLabel()}
+            </span>
+          </div>
+          
+          {/* Ações */}
+          <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur-sm rounded-md border border-border/50 shadow-sm">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-7 w-7 hover:bg-muted"
               onClick={(e) => {
                 e.stopPropagation();
                 onDuplicate();
               }}
             >
-              <Copy className="w-3 h-3" />
+              <Copy className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-destructive hover:text-destructive"
+              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onRemove();
               }}
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
-        )}
-      </div>
-      
-      {/* Conteúdo do widget com visualização real */}
-      <div className="flex-1 overflow-hidden min-h-0">
-        {renderWidgetContent()}
-      </div>
+        </div>
+      )}
+
+      {/* Indicador de seleção visual */}
+      {isSelected && isEditing && (
+        <div className="absolute inset-0 pointer-events-none rounded-lg border-2 border-primary" />
+      )}
     </div>
   );
 }
