@@ -57,7 +57,7 @@ export function TemplateEditor() {
           // Template antigo - carregar com widgets padrão baseados nas seções
           const legacyWidgets = convertLegacySections(sections);
           loadTemplate(
-            { widgets: legacyWidgets, gridConfig: { cols: 12, rowHeight: 100 }, version: 1 },
+            { widgets: legacyWidgets, gridConfig: { cols: 12, rowHeight: 80 }, version: 1 },
             template.name,
             template.is_global
           );

@@ -49,8 +49,8 @@ export function TemplatePreviewDialog({
   widgets, 
   templateName 
 }: TemplatePreviewDialogProps) {
-  const { rowHeight, margin } = DEFAULT_GRID_CONFIG;
-  const [marginX, marginY] = margin || [8, 8];
+  const { cols, rowHeight, margin } = DEFAULT_GRID_CONFIG;
+  const [marginX, marginY] = margin || [12, 12];
 
   // Calcular altura total do container baseada nos widgets
   const maxY = Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
@@ -58,7 +58,6 @@ export function TemplatePreviewDialog({
 
   // Calcular posição e tamanho de cada widget (espelha WidgetGridRenderer)
   const getWidgetStyle = (widget: TemplateWidget): React.CSSProperties => {
-    const cols = 24;
     const colWidth = 100 / cols;
     
     return {
