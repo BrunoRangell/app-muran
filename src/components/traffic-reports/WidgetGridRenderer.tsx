@@ -5,7 +5,12 @@ import {
   ChartWidget, 
   PieChartWidget, 
   CampaignsTableWidget, 
-  TopCreativesWidget 
+  TopCreativesWidget,
+  TextBlockWidget,
+  ImageBlockWidget,
+  DividerWidget,
+  SpacerWidget,
+  BoxWidget
 } from './widgets';
 
 interface InsightsData {
@@ -125,6 +130,61 @@ export function WidgetGridRenderer({ widgets, data }: WidgetGridRendererProps) {
             creatives={data.topAds}
             limit={widget.config.limit || 5}
             title={widget.config.title}
+          />
+        );
+      }
+
+      // === CONTENT WIDGETS ===
+      case 'text-block': {
+        return (
+          <TextBlockWidget
+            text={widget.config.text}
+            textAlign={widget.config.textAlign}
+            fontSize={widget.config.fontSize}
+            fontWeight={widget.config.fontWeight}
+            textColor={widget.config.textColor}
+          />
+        );
+      }
+
+      case 'image-block': {
+        return (
+          <ImageBlockWidget
+            imageUrl={widget.config.imageUrl}
+            imageAlt={widget.config.imageAlt}
+            objectFit={widget.config.objectFit}
+            borderRadius={widget.config.borderRadius}
+          />
+        );
+      }
+
+      case 'divider': {
+        return (
+          <DividerWidget
+            dividerStyle={widget.config.dividerStyle}
+            dividerColor={widget.config.dividerColor}
+            dividerThickness={widget.config.dividerThickness}
+          />
+        );
+      }
+
+      case 'spacer': {
+        // No relatório final, espaçador é invisível
+        return <SpacerWidget showGuide={false} />;
+      }
+
+      case 'box': {
+        return (
+          <BoxWidget
+            text={widget.config.text}
+            backgroundColor={widget.config.backgroundColor}
+            borderColor={widget.config.borderColor}
+            borderRadius={widget.config.borderRadius}
+            padding={widget.config.padding}
+            textAlign={widget.config.textAlign}
+            fontSize={widget.config.fontSize as any}
+            fontWeight={widget.config.fontWeight}
+            textColor={widget.config.textColor}
           />
         );
       }
