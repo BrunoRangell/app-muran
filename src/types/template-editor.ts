@@ -31,7 +31,13 @@ export type WidgetType =
   | 'pie-chart'            // Gráfico de pizza
   | 'simple-table'         // Tabela simples
   | 'campaigns-table'      // Tabela de campanhas
-  | 'top-creatives';       // Top criativos
+  | 'top-creatives'        // Top criativos
+  // Widgets de conteúdo
+  | 'text-block'           // Bloco de texto (título, parágrafo)
+  | 'image-block'          // Imagem com URL ou upload
+  | 'divider'              // Divisor horizontal
+  | 'spacer'               // Espaçador invisível
+  | 'box';                 // Caixa decorativa
 
 // Tipo combinado para uso na paleta e em alguns componentes
 export type WidgetOrPresetType = WidgetType | PresetType;
@@ -59,6 +65,22 @@ export interface WidgetConfig {
   showComparison?: boolean;      // Mostrar comparação com período anterior
   colors?: string[];             // Cores personalizadas
   showTitle?: boolean;           // Mostrar título do widget
+  // Configurações de widgets de conteúdo
+  text?: string;                 // Texto/conteúdo (text-block)
+  textAlign?: 'left' | 'center' | 'right';  // Alinhamento do texto
+  fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl';  // Tamanho da fonte
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';  // Peso da fonte
+  textColor?: string;            // Cor do texto
+  imageUrl?: string;             // URL da imagem (image-block)
+  imageAlt?: string;             // Alt text da imagem
+  objectFit?: 'cover' | 'contain' | 'fill';  // Ajuste da imagem
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';  // Raio da borda
+  dividerStyle?: 'solid' | 'dashed' | 'dotted' | 'gradient';  // Estilo do divisor
+  dividerColor?: string;         // Cor do divisor
+  dividerThickness?: number;     // Espessura do divisor (px)
+  backgroundColor?: string;      // Cor de fundo (box)
+  borderColor?: string;          // Cor da borda (box)
+  padding?: 'none' | 'sm' | 'md' | 'lg';  // Padding interno (box)
 }
 
 // Widget completo
@@ -90,7 +112,7 @@ export interface WidgetMetadata {
   name: string;
   description: string;
   icon: string;                  // Nome do ícone Lucide
-  category: 'preset' | 'individual';
+  category: 'preset' | 'individual' | 'content';
   defaultLayout: Omit<WidgetLayout, 'x' | 'y'>;
   defaultConfig: WidgetConfig;
 }
@@ -198,6 +220,72 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     category: 'individual',
     defaultLayout: { w: 12, h: 5, minW: 6, minH: 3 },
     defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
+  },
+  
+  // Widgets de Conteúdo
+  {
+    type: 'text-block',
+    name: 'Texto',
+    description: 'Título ou parágrafo de texto customizável',
+    icon: 'Type',
+    category: 'content',
+    defaultLayout: { w: 6, h: 1, minW: 2, minH: 1 },
+    defaultConfig: { 
+      text: 'Digite seu texto aqui', 
+      textAlign: 'left', 
+      fontSize: 'lg', 
+      fontWeight: 'semibold' 
+    }
+  },
+  {
+    type: 'image-block',
+    name: 'Imagem',
+    description: 'Adicione uma imagem (logo, banner, etc)',
+    icon: 'ImageIcon',
+    category: 'content',
+    defaultLayout: { w: 4, h: 3, minW: 2, minH: 2 },
+    defaultConfig: { 
+      imageUrl: '', 
+      imageAlt: 'Imagem', 
+      objectFit: 'contain',
+      borderRadius: 'md'
+    }
+  },
+  {
+    type: 'divider',
+    name: 'Divisor',
+    description: 'Linha horizontal para separar seções',
+    icon: 'Minus',
+    category: 'content',
+    defaultLayout: { w: 12, h: 1, minW: 4, minH: 1, maxH: 1 },
+    defaultConfig: { 
+      dividerStyle: 'solid', 
+      dividerColor: 'hsl(var(--border))', 
+      dividerThickness: 1 
+    }
+  },
+  {
+    type: 'spacer',
+    name: 'Espaçador',
+    description: 'Espaço vazio para ajustar layout',
+    icon: 'Space',
+    category: 'content',
+    defaultLayout: { w: 12, h: 1, minW: 1, minH: 1 },
+    defaultConfig: {}
+  },
+  {
+    type: 'box',
+    name: 'Caixa',
+    description: 'Container decorativo com fundo colorido',
+    icon: 'Square',
+    category: 'content',
+    defaultLayout: { w: 6, h: 2, minW: 2, minH: 1 },
+    defaultConfig: { 
+      backgroundColor: 'hsl(var(--primary) / 0.05)',
+      borderRadius: 'lg',
+      padding: 'md',
+      text: 'Conteúdo da caixa'
+    }
   }
 ];
 

@@ -13,7 +13,12 @@ import {
   Table2,
   Trash2,
   Copy,
-  GripVertical
+  GripVertical,
+  Type,
+  ImageIcon,
+  Minus,
+  Space,
+  Square
 } from 'lucide-react';
 import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
@@ -23,7 +28,12 @@ import {
   ChartWidget,
   PieChartWidget,
   CampaignsTableWidget,
-  TopCreativesWidget
+  TopCreativesWidget,
+  TextBlockWidget,
+  ImageBlockWidget,
+  DividerWidget,
+  SpacerWidget,
+  BoxWidget
 } from '@/components/traffic-reports/widgets';
 import { 
   mockOverview, 
@@ -54,7 +64,12 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart3,
   AreaChart,
   PieChart,
-  Table2
+  Table2,
+  Type,
+  ImageIcon,
+  Minus,
+  Space,
+  Square
 };
 
 // Converter mock overview para formato esperado pelos widgets
@@ -146,6 +161,61 @@ export function WidgetRenderer({
           <TopCreativesWidget
             creatives={mockCreatives}
             limit={widget.config.limit || 5}
+          />
+        );
+      }
+
+      // === CONTENT WIDGETS ===
+      case 'text-block': {
+        return (
+          <TextBlockWidget
+            text={widget.config.text}
+            textAlign={widget.config.textAlign}
+            fontSize={widget.config.fontSize}
+            fontWeight={widget.config.fontWeight}
+            textColor={widget.config.textColor}
+          />
+        );
+      }
+
+      case 'image-block': {
+        return (
+          <ImageBlockWidget
+            imageUrl={widget.config.imageUrl}
+            imageAlt={widget.config.imageAlt}
+            objectFit={widget.config.objectFit}
+            borderRadius={widget.config.borderRadius}
+          />
+        );
+      }
+
+      case 'divider': {
+        return (
+          <DividerWidget
+            dividerStyle={widget.config.dividerStyle}
+            dividerColor={widget.config.dividerColor}
+            dividerThickness={widget.config.dividerThickness}
+          />
+        );
+      }
+
+      case 'spacer': {
+        // No editor, mostra guia visual
+        return <SpacerWidget showGuide={isEditing} />;
+      }
+
+      case 'box': {
+        return (
+          <BoxWidget
+            text={widget.config.text}
+            backgroundColor={widget.config.backgroundColor}
+            borderColor={widget.config.borderColor}
+            borderRadius={widget.config.borderRadius}
+            padding={widget.config.padding}
+            textAlign={widget.config.textAlign}
+            fontSize={widget.config.fontSize as any}
+            fontWeight={widget.config.fontWeight}
+            textColor={widget.config.textColor}
           />
         );
       }
