@@ -87,11 +87,13 @@
 .react-grid-layout {
   position: relative;
   transition: height 200ms ease;
+  overflow: visible !important; /* Permite toolbar flutuante visível */
 }
 
 .react-grid-item {
   transition: all 200ms ease;
   transition-property: left, top;
+  overflow: visible !important; /* Permite toolbar flutuante visível */
 }
 
 .react-grid-item.cssTransforms {

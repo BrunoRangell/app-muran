@@ -113,7 +113,7 @@ export function TemplateEditorCanvas({
   const cols = 12;
   const rowHeight = 80; // Aumentado de 40 para 80
   const margin: [number, number] = [12, 12]; // Aumentado de 8 para 12
-  const containerPadding: [number, number] = [20, 20]; // Aumentado de 16 para 20
+  const containerPadding: [number, number] = [20, 48]; // [horizontal, vertical] - vertical maior para toolbar flutuante
   const baseWidth = 1200;
   const gridWidth = baseWidth * (zoom / 100);
   
@@ -213,7 +213,7 @@ export function TemplateEditorCanvas({
               preventCollision={false}
             >
               {widgets.map(widget => (
-                <div key={widget.id} className="widget-container pt-10">
+                <div key={widget.id} className="widget-container h-full overflow-visible">
                   <WidgetRenderer
                     widget={widget}
                     isSelected={selectedWidgetId === widget.id}
