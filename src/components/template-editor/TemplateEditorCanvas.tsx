@@ -206,7 +206,7 @@ export function TemplateEditorCanvas({
               margin={margin}
               containerPadding={containerPadding}
               onLayoutChange={handleLayoutChange}
-              draggableHandle=".cursor-grab"
+              
               isResizable={true}
               isDraggable={true}
               compactType="vertical"

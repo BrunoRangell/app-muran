@@ -263,6 +263,16 @@ export function TemplateEditor() {
               }
             }}
             onClose={() => selectWidget(null)}
+            onRemove={() => {
+              if (selectedWidgetId) {
+                removeWidget(selectedWidgetId);
+              }
+            }}
+            onDuplicate={() => {
+              if (selectedWidgetId) {
+                duplicateWidget(selectedWidgetId);
+              }
+            }}
           />
         </aside>
       </div>
