@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, X } from 'lucide-react';
+import { Settings, X, Copy, Trash2 } from 'lucide-react';
 import { TemplateWidget, WIDGET_CATALOG, METRIC_LABELS, MetricKey } from '@/types/template-editor';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ interface WidgetPropertiesProps {
   widget: TemplateWidget | null;
   onUpdateConfig: (config: Partial<TemplateWidget['config']>) => void;
   onClose: () => void;
+  onRemove?: () => void;
+  onDuplicate?: () => void;
 }
 
 const ALL_METRICS: MetricKey[] = [
@@ -22,7 +24,7 @@ const ALL_METRICS: MetricKey[] = [
   'conversions', 'spend', 'cpa', 'cpc'
 ];
 
-export function WidgetProperties({ widget, onUpdateConfig, onClose }: WidgetPropertiesProps) {
+export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, onDuplicate }: WidgetPropertiesProps) {
   if (!widget) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
@@ -431,6 +433,32 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose }: WidgetProp
             </p>
           </div>
         )}
+
+        {/* Ações do Widget */}
+        <Separator />
+        <div className="space-y-2">
+          <Label>Ações</Label>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={onDuplicate}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="flex-1"
+              onClick={onRemove}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
