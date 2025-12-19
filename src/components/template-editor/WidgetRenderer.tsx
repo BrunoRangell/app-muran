@@ -11,9 +11,6 @@ import {
   AreaChart,
   PieChart,
   Table2,
-  Trash2,
-  Copy,
-  GripVertical,
   Type,
   ImageIcon,
   Minus,
@@ -22,7 +19,6 @@ import {
 } from 'lucide-react';
 import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import {
   MetricCardWidget,
   ChartWidget,
@@ -243,7 +239,7 @@ export function WidgetRenderer({
     <div
       onClick={onSelect}
       className={cn(
-        "relative h-full w-full group",
+        "relative h-full w-full",
         isEditing && "cursor-pointer"
       )}
     >
@@ -257,55 +253,6 @@ export function WidgetRenderer({
       )}>
         {renderWidgetContent()}
       </div>
-
-      {/* Toolbar flutuante externa - não afeta altura do widget */}
-      {isEditing && (
-        <div className={cn(
-          "absolute -top-9 left-0 right-0 flex items-center justify-between px-1",
-          "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
-          isSelected && "opacity-100"
-        )}>
-          {/* Label do widget + drag handle */}
-          <div className="flex items-center gap-1.5 bg-card/95 backdrop-blur-sm rounded-md px-2 py-1 border border-border/50 shadow-sm">
-            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/60 cursor-grab" />
-            <Icon className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
-              {getWidgetLabel()}
-            </span>
-          </div>
-          
-          {/* Ações */}
-          <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur-sm rounded-md border border-border/50 shadow-sm">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 hover:bg-muted"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDuplicate();
-              }}
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Indicador de seleção visual */}
-      {isSelected && isEditing && (
-        <div className="absolute inset-0 pointer-events-none rounded-lg border-2 border-primary" />
-      )}
     </div>
   );
 }
