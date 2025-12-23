@@ -237,7 +237,7 @@ export function WidgetRenderer({
 
   return (
     <div
-      onClick={(e) => {
+      onMouseUp={(e) => {
         e.stopPropagation();
         onSelect();
       }}
@@ -247,20 +247,21 @@ export function WidgetRenderer({
       )}
     >
       {/* Conteúdo do widget - renderiza EXATAMENTE como no preview/relatório */}
-      <div className={cn(
-        "h-full w-full rounded-lg overflow-hidden transition-all duration-200",
-        "bg-card border-2",
-        isSelected 
-          ? "border-primary shadow-[0_0_0_3px_hsl(var(--primary)/0.3)] ring-2 ring-primary/30" 
-          : "border-border/50 hover:border-border"
-      )}>
+      <div 
+        className={cn(
+          "h-full w-full rounded-lg overflow-hidden transition-all duration-200",
+          "bg-card",
+          isSelected && isEditing
+            ? "border-2" 
+            : "border border-border/50 hover:border-border"
+        )}
+        style={isSelected && isEditing ? {
+          borderColor: '#ff6e00',
+          boxShadow: '0 0 0 3px rgba(255, 110, 0, 0.12)'
+        } : undefined}
+      >
         {renderWidgetContent()}
       </div>
-
-      {/* Indicador visual extra de seleção */}
-      {isSelected && isEditing && (
-        <div className="absolute -top-1 -left-1 -right-1 -bottom-1 border-2 border-primary rounded-xl pointer-events-none animate-pulse" style={{ animationDuration: '2s' }} />
-      )}
     </div>
   );
 }
