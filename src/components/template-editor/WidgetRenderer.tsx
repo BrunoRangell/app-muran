@@ -238,8 +238,12 @@ export function WidgetRenderer({
   return (
     <div
       onMouseDown={(e) => {
-        e.stopPropagation();
-        onSelect();
+        // Se não está selecionado, seleciona e bloqueia o drag
+        // Se já está selecionado, deixa o evento fluir para o grid iniciar o drag
+        if (!isSelected) {
+          e.stopPropagation();
+          onSelect();
+        }
       }}
       className={cn(
         "relative h-full w-full",
