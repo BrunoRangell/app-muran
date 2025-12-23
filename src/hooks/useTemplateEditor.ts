@@ -33,7 +33,7 @@ interface UseTemplateEditorReturn {
   
   // Utilitários
   getSelectedWidget: () => TemplateWidget | null;
-  getLayoutForGrid: () => Layout[];
+  getLayoutForGrid: (selectedId?: string | null) => Layout[];
   loadTemplate: (data: TemplateData, name: string, isGlobal: boolean) => void;
   getTemplateData: () => TemplateData;
   resetEditor: () => void;
@@ -161,9 +161,11 @@ export function useTemplateEditor(): UseTemplateEditorReturn {
   }, [widgets, selectedWidgetId]);
 
   // Converter para formato do react-grid-layout
-  const getLayoutForGrid = useCallback((): Layout[] => {
+  // isDraggable/isResizable por item: só o widget selecionado pode ser movido/redimensionado
+  const getLayoutForGrid = useCallback((selectedId: string | null = null): Layout[] => {
     return widgets.map(widget => {
       const metadata = WIDGET_CATALOG.find(m => m.type === widget.type);
+      const isThisSelected = widget.id === selectedId;
       return {
         i: widget.id,
         x: widget.layout.x,
@@ -173,7 +175,9 @@ export function useTemplateEditor(): UseTemplateEditorReturn {
         minW: widget.layout.minW ?? metadata?.defaultLayout.minW,
         minH: widget.layout.minH ?? metadata?.defaultLayout.minH,
         maxW: widget.layout.maxW ?? metadata?.defaultLayout.maxW,
-        maxH: widget.layout.maxH ?? metadata?.defaultLayout.maxH
+        maxH: widget.layout.maxH ?? metadata?.defaultLayout.maxH,
+        isDraggable: isThisSelected,
+        isResizable: isThisSelected,
       };
     });
   }, [widgets]);

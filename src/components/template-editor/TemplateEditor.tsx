@@ -240,7 +240,7 @@ export function TemplateEditor() {
         <main className="flex-1 p-4 overflow-hidden">
           <TemplateEditorCanvas
             widgets={widgets}
-            layout={getLayoutForGrid()}
+            layout={getLayoutForGrid(selectedWidgetId)}
             selectedWidgetId={selectedWidgetId}
             onLayoutChange={updateLayout}
             onSelectWidget={selectWidget}
