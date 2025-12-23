@@ -206,9 +206,8 @@ export function TemplateEditorCanvas({
               margin={margin}
               containerPadding={containerPadding}
               onLayoutChange={handleLayoutChange}
-              
-              isResizable={true}
-              isDraggable={true}
+              isDraggable={Boolean(selectedWidgetId)}
+              isResizable={Boolean(selectedWidgetId)}
               compactType="vertical"
               preventCollision={false}
             >

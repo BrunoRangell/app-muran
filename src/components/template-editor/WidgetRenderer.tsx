@@ -237,13 +237,13 @@ export function WidgetRenderer({
 
   return (
     <div
-      onMouseUp={(e) => {
+      onMouseDown={(e) => {
         e.stopPropagation();
         onSelect();
       }}
       className={cn(
         "relative h-full w-full",
-        isEditing && "cursor-pointer"
+        isEditing && (isSelected ? "cursor-grab active:cursor-grabbing" : "cursor-pointer")
       )}
     >
       {/* Conteúdo do widget - renderiza EXATAMENTE como no preview/relatório */}
