@@ -2,6 +2,7 @@ import React from 'react';
 import { Image as ImageIcon, TrendingUp, ExternalLink } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { MetricKey, METRIC_LABELS } from '@/types/template-editor';
 
 interface Creative {
   id: string;
@@ -12,21 +13,49 @@ interface Creative {
   conversions: number;
   spend: number;
   ctr: number;
+  cpa?: number;
+  cpc?: number;
   platform?: string;
 }
 
 interface TopCreativesWidgetProps {
   creatives: Creative[];
+  metrics?: MetricKey[];
   limit?: number;
   title?: string;
 }
 
+// Formatar valor baseado no tipo de métrica
+const formatValue = (key: MetricKey, value: number | undefined): string => {
+  if (value === undefined || value === null) return '-';
+  
+  switch (key) {
+    case 'impressions':
+    case 'clicks':
+    case 'conversions':
+      return value.toLocaleString('pt-BR');
+    case 'spend':
+      return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    case 'ctr':
+      return `${value.toFixed(1)}%`;
+    case 'cpa':
+    case 'cpc':
+      return `R$ ${value.toFixed(2)}`;
+    default:
+      return value.toString();
+  }
+};
+
 export function TopCreativesWidget({ 
   creatives, 
+  metrics = ['clicks', 'ctr'],
   limit = 5,
   title 
 }: TopCreativesWidgetProps) {
   const displayCreatives = creatives?.slice(0, limit) || [];
+  
+  // Usar no máximo 2 métricas para exibição compacta
+  const displayMetrics = metrics.slice(0, 2);
 
   if (displayCreatives.length === 0) {
     return (
@@ -78,13 +107,22 @@ export function TopCreativesWidget({
                   {creative.name}
                 </p>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {creative.clicks.toLocaleString('pt-BR')} cliques
-                  </span>
-                  <div className="flex items-center gap-0.5 text-green-600">
-                    <TrendingUp className="w-3 h-3" />
-                    <span>{creative.ctr.toFixed(1)}%</span>
-                  </div>
+                  {displayMetrics.map((metric, idx) => {
+                    const value = creative[metric as keyof Creative] as number;
+                    const isPercentage = metric === 'ctr';
+                    
+                    return (
+                      <span 
+                        key={metric}
+                        className={cn(
+                          idx === 0 ? "text-muted-foreground" : "flex items-center gap-0.5 text-green-600"
+                        )}
+                      >
+                        {idx === 1 && isPercentage && <TrendingUp className="w-3 h-3" />}
+                        {formatValue(metric, value)}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             </div>

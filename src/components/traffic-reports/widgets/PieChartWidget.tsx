@@ -8,6 +8,7 @@ import {
   Tooltip
 } from 'recharts';
 import { Card } from '@/components/ui/card';
+import { MetricKey, DimensionKey, METRIC_LABELS } from '@/types/template-editor';
 
 const COLORS = ['#ff6e00', '#6366f1', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899'];
 
@@ -18,42 +19,52 @@ interface DemographicsData {
 }
 
 interface PieChartWidgetProps {
-  dataSource?: 'age' | 'gender' | 'location' | 'demographics';
+  dimension?: DimensionKey;
+  metric?: MetricKey;
   demographics?: DemographicsData;
   showLegend?: boolean;
   title?: string;
+  // Legacy prop support
+  dataSource?: 'age' | 'gender' | 'location' | 'demographics';
 }
 
 export function PieChartWidget({ 
-  dataSource = 'gender', 
+  dimension,
+  metric = 'impressions',
   demographics, 
   showLegend = true,
-  title 
+  title,
+  dataSource
 }: PieChartWidgetProps) {
-  // Preparar dados baseados na fonte
+  // Support legacy dataSource prop or new dimension prop
+  const effectiveDimension = dimension || dataSource || 'gender';
+  
+  // Preparar dados baseados na dimensão e métrica
   const getData = () => {
     if (!demographics) return [];
     
-    switch (dataSource) {
+    const metricKey = metric as keyof Omit<DemographicsData['age'][0], 'range'>;
+    
+    switch (effectiveDimension) {
       case 'gender':
         return (demographics.gender || []).map(item => ({
           name: item.gender,
-          value: item.impressions
+          value: item[metricKey as keyof typeof item] as number || item.impressions
         }));
       case 'age':
         return (demographics.age || []).map(item => ({
           name: item.range,
-          value: item.impressions
+          value: item[metricKey as keyof typeof item] as number || item.impressions
         }));
       case 'location':
         return (demographics.location || []).slice(0, 5).map(item => ({
           name: `${item.city}/${item.state}`,
-          value: item.impressions
+          value: item[metricKey as keyof typeof item] as number || item.impressions
         }));
       default:
         return (demographics.gender || []).map(item => ({
           name: item.gender,
-          value: item.impressions
+          value: item[metricKey as keyof typeof item] as number || item.impressions
         }));
     }
   };
@@ -67,6 +78,14 @@ export function PieChartWidget({
       </Card>
     );
   }
+
+  // Formatar valor baseado na métrica
+  const formatValue = (value: number) => {
+    if (metric === 'spend') {
+      return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    }
+    return value.toLocaleString('pt-BR');
+  };
 
   return (
     <Card className="glass-card h-full w-full overflow-hidden">
@@ -96,7 +115,7 @@ export function PieChartWidget({
               ))}
             </Pie>
             <Tooltip 
-              formatter={(value: number) => value.toLocaleString('pt-BR')}
+              formatter={(value: number) => formatValue(value)}
               contentStyle={{ 
                 backgroundColor: 'hsl(var(--card))', 
                 border: '1px solid hsl(var(--border))',
