@@ -15,6 +15,9 @@ export type ChartType = 'line' | 'bar' | 'area' | 'pie';
 // Fonte de dados
 export type DataSource = 'timeSeries' | 'demographics' | 'campaigns' | 'creatives';
 
+// Dimensões para gráficos/tabelas
+export type DimensionKey = 'age' | 'gender' | 'location' | 'campaigns' | 'creatives';
+
 // Tipos de presets (expandem em múltiplos widgets ao adicionar)
 export type PresetType =
   | 'overview-full'        // Visão geral completa (8 métricas)
@@ -60,6 +63,7 @@ export interface WidgetConfig {
   metrics?: MetricKey[];         // Métricas selecionadas
   chartType?: ChartType;         // Tipo de gráfico (para widgets de gráfico)
   dataSource?: DataSource;       // Fonte de dados
+  dimension?: DimensionKey;      // Dimensão para agrupamento (pie, table)
   limit?: number;                // Limite de itens (para tabelas/listas)
   showLegend?: boolean;          // Mostrar legenda
   showComparison?: boolean;      // Mostrar comparação com período anterior
@@ -192,7 +196,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     icon: 'PieChart',
     category: 'individual',
     defaultLayout: { w: 4, h: 4, minW: 3, minH: 3 },
-    defaultConfig: { dataSource: 'demographics', showLegend: true, chartType: 'pie' }
+    defaultConfig: { dimension: 'gender', metrics: ['impressions'], showLegend: true, chartType: 'pie' }
   },
   {
     type: 'simple-table',
@@ -201,7 +205,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     icon: 'Table2',
     category: 'individual',
     defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
-    defaultConfig: { metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
+    defaultConfig: { dimension: 'campaigns', metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
   },
   {
     type: 'campaigns-table',
@@ -219,7 +223,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     icon: 'Image',
     category: 'individual',
     defaultLayout: { w: 12, h: 5, minW: 6, minH: 3 },
-    defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
+    defaultConfig: { showTitle: true, title: 'Top Criativos', metrics: ['clicks', 'ctr'], limit: 5 }
   },
   
   // Widgets de Conteúdo

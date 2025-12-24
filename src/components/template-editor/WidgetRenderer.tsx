@@ -17,13 +17,14 @@ import {
   Space,
   Square
 } from 'lucide-react';
-import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS } from '@/types/template-editor';
+import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS, DimensionKey } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
 import {
   MetricCardWidget,
   ChartWidget,
   PieChartWidget,
   CampaignsTableWidget,
+  SimpleTableWidget,
   TopCreativesWidget,
   TextBlockWidget,
   ImageBlockWidget,
@@ -80,6 +81,48 @@ const mockOverviewData = {
   cpc: { current: mockOverview.cpc, previous: mockOverview.cpc * 1.04, change: -4.2 }
 };
 
+// Converter dados demográficos para formato de tabela
+const getDimensionData = (dimension: DimensionKey) => {
+  switch (dimension) {
+    case 'campaigns':
+      return mockCampaigns.map(c => ({ id: c.id, name: c.name, ...c }));
+    case 'creatives':
+      return mockCreatives.map(c => ({ id: c.id, name: c.name, ...c }));
+    case 'age':
+      return mockDemographics.age.map((item, idx) => ({ 
+        id: `age-${idx}`, 
+        name: item.range, 
+        impressions: item.impressions,
+        clicks: item.clicks,
+        conversions: item.conversions,
+        spend: item.spend,
+        ctr: (item.clicks / item.impressions * 100)
+      }));
+    case 'gender':
+      return mockDemographics.gender.map((item, idx) => ({ 
+        id: `gender-${idx}`, 
+        name: item.gender, 
+        impressions: item.impressions,
+        clicks: item.clicks,
+        conversions: item.conversions,
+        spend: item.spend,
+        ctr: (item.clicks / item.impressions * 100)
+      }));
+    case 'location':
+      return mockDemographics.location.map((item, idx) => ({ 
+        id: `loc-${idx}`, 
+        name: `${item.city}/${item.state}`, 
+        impressions: item.impressions,
+        clicks: item.clicks,
+        conversions: item.conversions,
+        spend: item.spend,
+        ctr: (item.clicks / item.impressions * 100)
+      }));
+    default:
+      return mockCampaigns.map(c => ({ id: c.id, name: c.name, ...c }));
+  }
+};
+
 export function WidgetRenderer({ 
   widget, 
   isSelected, 
@@ -91,13 +134,10 @@ export function WidgetRenderer({
   const metadata = WIDGET_CATALOG.find(m => m.type === widget.type);
   const Icon = metadata ? ICON_MAP[metadata.icon] : LayoutGrid;
   
-  // Gerar label amigável para o widget
-  const getWidgetLabel = () => {
-    if (widget.type === 'metric-card' && widget.config.metrics?.[0]) {
-      const metricKey = widget.config.metrics[0] as MetricKey;
-      return METRIC_LABELS[metricKey] || metricKey;
-    }
-    return widget.config.title || metadata?.name || 'Widget';
+  // Determinar título a passar (respeitando showTitle)
+  const getTitle = () => {
+    if (widget.config.showTitle === false) return undefined;
+    return widget.config.title || metadata?.name;
   };
 
   // Renderiza o conteúdo real do widget usando os mesmos componentes
@@ -128,6 +168,7 @@ export function WidgetRenderer({
             metrics={metrics}
             timeSeries={mockTimeSeries.slice(-14)}
             showLegend={widget.config.showLegend !== false}
+            title={getTitle()}
           />
         );
       }
@@ -135,19 +176,36 @@ export function WidgetRenderer({
       case 'pie-chart': {
         return (
           <PieChartWidget
-            dataSource={widget.config.dataSource as any || 'gender'}
+            dimension={widget.config.dimension as DimensionKey || 'gender'}
+            metric={widget.config.metrics?.[0] as MetricKey || 'impressions'}
             demographics={mockDemographics}
             showLegend={widget.config.showLegend !== false}
+            title={getTitle()}
           />
         );
       }
 
-      case 'campaigns-table':
-      case 'simple-table': {
+      case 'campaigns-table': {
         return (
           <CampaignsTableWidget
             campaigns={mockCampaigns}
             limit={widget.config.limit || 5}
+            title={getTitle()}
+          />
+        );
+      }
+
+      case 'simple-table': {
+        const dimension = widget.config.dimension as DimensionKey || 'campaigns';
+        const data = getDimensionData(dimension);
+        
+        return (
+          <SimpleTableWidget
+            data={data}
+            dimension={dimension}
+            metrics={widget.config.metrics as MetricKey[] || ['impressions', 'clicks', 'ctr']}
+            limit={widget.config.limit || 10}
+            title={getTitle()}
           />
         );
       }
@@ -156,7 +214,9 @@ export function WidgetRenderer({
         return (
           <TopCreativesWidget
             creatives={mockCreatives}
+            metrics={widget.config.metrics as MetricKey[] || ['clicks', 'ctr']}
             limit={widget.config.limit || 5}
+            title={getTitle()}
           />
         );
       }
@@ -196,7 +256,6 @@ export function WidgetRenderer({
       }
 
       case 'spacer': {
-        // No editor, mostra guia visual
         return <SpacerWidget showGuide={isEditing} />;
       }
 
@@ -238,8 +297,6 @@ export function WidgetRenderer({
   return (
     <div
       onMouseDown={(e) => {
-        // Se não está selecionado, seleciona e bloqueia o drag
-        // Se já está selecionado, deixa o evento fluir para o grid iniciar o drag
         if (!isSelected) {
           e.stopPropagation();
           onSelect();
@@ -250,7 +307,6 @@ export function WidgetRenderer({
         isEditing && (isSelected ? "cursor-grab active:cursor-grabbing" : "cursor-pointer")
       )}
     >
-      {/* Conteúdo do widget - renderiza EXATAMENTE como no preview/relatório */}
       <div 
         className={cn(
           "h-full w-full rounded-lg overflow-hidden transition-all duration-200",

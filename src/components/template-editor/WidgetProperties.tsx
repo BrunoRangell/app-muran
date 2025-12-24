@@ -1,6 +1,6 @@
 import React from 'react';
 import { Settings, X, Copy, Trash2 } from 'lucide-react';
-import { TemplateWidget, WIDGET_CATALOG, METRIC_LABELS, MetricKey } from '@/types/template-editor';
+import { TemplateWidget, WIDGET_CATALOG, METRIC_LABELS, MetricKey, DimensionKey } from '@/types/template-editor';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -24,6 +24,27 @@ const ALL_METRICS: MetricKey[] = [
   'conversions', 'spend', 'cpa', 'cpc'
 ];
 
+// Métricas disponíveis para gráfico de pizza (valores absolutos)
+const PIE_METRICS: MetricKey[] = ['impressions', 'clicks', 'conversions', 'spend'];
+
+// Dimensões disponíveis
+const DIMENSION_LABELS: Record<DimensionKey, string> = {
+  age: 'Idade',
+  gender: 'Gênero',
+  location: 'Localização',
+  campaigns: 'Campanhas',
+  creatives: 'Criativos'
+};
+
+// Dimensões para gráfico de pizza (apenas demográficas)
+const PIE_DIMENSIONS: DimensionKey[] = ['age', 'gender', 'location'];
+
+// Dimensões para tabela simples
+const TABLE_DIMENSIONS: DimensionKey[] = ['campaigns', 'creatives', 'age', 'gender', 'location'];
+
+// Métricas para top criativos
+const CREATIVE_METRICS: MetricKey[] = ['impressions', 'clicks', 'ctr', 'conversions', 'spend', 'cpa', 'cpc'];
+
 export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, onDuplicate }: WidgetPropertiesProps) {
   if (!widget) {
     return (
@@ -39,7 +60,9 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
   const metadata = WIDGET_CATALOG.find(m => m.type === widget.type);
   const isPreset = metadata?.category === 'preset';
   const isContentWidget = metadata?.category === 'content';
-  const supportsMetrics = !isPreset && !isContentWidget && widget.type !== 'pie-chart';
+  
+  // Widgets que usam seleção múltipla de métricas
+  const supportsMultipleMetrics = ['line-chart', 'bar-chart', 'area-chart', 'simple-table', 'top-creatives'].includes(widget.type);
 
   const handleMetricToggle = (metric: MetricKey, checked: boolean) => {
     const currentMetrics = widget.config.metrics || [];
@@ -350,12 +373,154 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
           </>
         )}
 
-        {/* Métricas (apenas para widgets individuais de dados) */}
-        {supportsMetrics && (
+        {/* === CONFIGURAÇÕES ESPECÍFICAS POR TIPO === */}
+
+        {/* Card de Métrica - Seleção ÚNICA */}
+        {widget.type === 'metric-card' && (
+          <div className="space-y-3">
+            <Label>Métrica</Label>
+            <Select 
+              value={widget.config.metrics?.[0] || 'impressions'}
+              onValueChange={(value) => onUpdateConfig({ metrics: [value as MetricKey] })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_METRICS.map(metric => (
+                  <SelectItem key={metric} value={metric}>
+                    {METRIC_LABELS[metric]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Gráfico de Pizza - Dimensão e Métrica */}
+        {widget.type === 'pie-chart' && (
+          <>
+            <div className="space-y-3">
+              <Label>Dimensão (agrupamento)</Label>
+              <Select 
+                value={widget.config.dimension || 'gender'}
+                onValueChange={(value) => onUpdateConfig({ dimension: value as DimensionKey })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PIE_DIMENSIONS.map(dim => (
+                    <SelectItem key={dim} value={dim}>
+                      {DIMENSION_LABELS[dim]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métrica (valor)</Label>
+              <Select 
+                value={widget.config.metrics?.[0] || 'impressions'}
+                onValueChange={(value) => onUpdateConfig({ metrics: [value as MetricKey] })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PIE_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        {/* Tabela Simples - Dimensão e Métricas */}
+        {widget.type === 'simple-table' && (
+          <>
+            <div className="space-y-3">
+              <Label>Dimensão (linhas)</Label>
+              <Select 
+                value={widget.config.dimension || 'campaigns'}
+                onValueChange={(value) => onUpdateConfig({ dimension: value as DimensionKey })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TABLE_DIMENSIONS.map(dim => (
+                    <SelectItem key={dim} value={dim}>
+                      {DIMENSION_LABELS[dim]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métricas (colunas)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_METRICS.map(metric => (
+                  <label
+                    key={metric}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-md border cursor-pointer",
+                      "hover:bg-accent/50 transition-colors",
+                      widget.config.metrics?.includes(metric) 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border"
+                    )}
+                  >
+                    <Checkbox
+                      checked={widget.config.metrics?.includes(metric) || false}
+                      onCheckedChange={(checked) => handleMetricToggle(metric, !!checked)}
+                    />
+                    <span className="text-sm">{METRIC_LABELS[metric]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Gráficos de Linha/Barra/Área - Seleção múltipla de métricas */}
+        {['line-chart', 'bar-chart', 'area-chart'].includes(widget.type) && (
           <div className="space-y-3">
             <Label>Métricas</Label>
             <div className="grid grid-cols-2 gap-2">
               {ALL_METRICS.map(metric => (
+                <label
+                  key={metric}
+                  className={cn(
+                    "flex items-center gap-2 p-2 rounded-md border cursor-pointer",
+                    "hover:bg-accent/50 transition-colors",
+                    widget.config.metrics?.includes(metric) 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border"
+                  )}
+                >
+                  <Checkbox
+                    checked={widget.config.metrics?.includes(metric) || false}
+                    onCheckedChange={(checked) => handleMetricToggle(metric, !!checked)}
+                  />
+                  <span className="text-sm">{METRIC_LABELS[metric]}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Criativos - Seleção de métricas */}
+        {widget.type === 'top-creatives' && (
+          <div className="space-y-3">
+            <Label>Métricas exibidas</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {CREATIVE_METRICS.map(metric => (
                 <label
                   key={metric}
                   className={cn(
