@@ -152,6 +152,7 @@ export function WidgetRenderer({
             metric={metricKey}
             data={metricData}
             showComparison={widget.config.showComparison !== false}
+            title={getTitle()}
           />
         );
       }
@@ -230,6 +231,7 @@ export function WidgetRenderer({
             fontSize={widget.config.fontSize}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
+            verticalPadding={widget.config.verticalPadding}
           />
         );
       }
