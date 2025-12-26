@@ -159,26 +159,6 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label>Espaçamento Vertical</Label>
-              <Select 
-                value={widget.config.verticalPadding || 'sm'}
-                onValueChange={(value) => onUpdateConfig({ verticalPadding: value as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  <SelectItem value="xs">Mínimo</SelectItem>
-                  <SelectItem value="sm">Pequeno</SelectItem>
-                  <SelectItem value="md">Médio</SelectItem>
-                  <SelectItem value="lg">Grande</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Controla o espaço interno vertical do texto</p>
-            </div>
           </>
         )}
 

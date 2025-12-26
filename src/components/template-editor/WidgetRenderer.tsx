@@ -231,7 +231,6 @@ export function WidgetRenderer({
             fontSize={widget.config.fontSize}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
-            verticalPadding={widget.config.verticalPadding}
           />
         );
       }

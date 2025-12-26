@@ -85,7 +85,6 @@ export interface WidgetConfig {
   backgroundColor?: string;      // Cor de fundo (box)
   borderColor?: string;          // Cor da borda (box)
   padding?: 'none' | 'sm' | 'md' | 'lg';  // Padding interno (box)
-  verticalPadding?: 'none' | 'xs' | 'sm' | 'md' | 'lg';  // Padding vertical (text-block)
 }
 
 // Widget completo
@@ -239,8 +238,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
       text: 'Digite seu texto aqui', 
       textAlign: 'left', 
       fontSize: 'lg', 
-      fontWeight: 'semibold',
-      verticalPadding: 'sm'
+      fontWeight: 'semibold'
     }
   },
   {
