@@ -109,17 +109,18 @@ export function TemplateEditorCanvas({
     );
   }
 
-  // Grid configuration - 12 colunas
+  // Grid configuration - 12 colunas com células maiores para melhor UX
   const cols = 12;
-  const rowHeight = 40; // Reduzido para permitir widgets mais baixos
-  const margin: [number, number] = [12, 12];
-  const containerPadding: [number, number] = [20, 20]; // Padding uniforme
+  const rowHeight = 80; // Aumentado de 40 para 80
+  const margin: [number, number] = [12, 12]; // Aumentado de 8 para 12
+  const containerPadding: [number, number] = [20, 48]; // [horizontal, vertical] - vertical maior para toolbar flutuante
   const baseWidth = 1200;
+  const gridWidth = baseWidth * (zoom / 100);
   
-  // Fórmula correta do react-grid-layout: (containerWidth - 2*containerPadding - margin*(cols-1)) / cols
-  const colWidth = (baseWidth - containerPadding[0] * 2 - margin[0] * (cols - 1)) / cols;
+  // Fórmula exata do react-grid-layout
+  const colWidth = (baseWidth - containerPadding[0] - containerPadding[1] - margin[0] * (cols - 1)) / cols;
   
-  // Tamanho das células do grid visual (inclui margin)
+  // Para o grid visual
   const cellWidth = colWidth + margin[0];
   const cellHeight = rowHeight + margin[1];
 

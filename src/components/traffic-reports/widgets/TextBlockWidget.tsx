@@ -39,10 +39,10 @@ export function TextBlockWidget({
   textColor
 }: TextBlockWidgetProps) {
   return (
-    <div className="h-full w-full flex items-center px-4 py-1 glass-card rounded-lg">
+    <div className="h-full w-full flex items-center p-4 glass-card rounded-lg">
       <p 
         className={cn(
-          "w-full leading-tight",
+          "w-full leading-relaxed",
           fontSizeClasses[fontSize],
           fontWeightClasses[fontWeight],
           textAlignClasses[textAlign],

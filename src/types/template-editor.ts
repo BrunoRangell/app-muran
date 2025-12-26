@@ -238,7 +238,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
       text: 'Digite seu texto aqui', 
       textAlign: 'left', 
       fontSize: 'lg', 
-      fontWeight: 'semibold'
+      fontWeight: 'semibold' 
     }
   },
   {

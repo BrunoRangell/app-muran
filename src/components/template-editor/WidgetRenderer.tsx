@@ -152,7 +152,6 @@ export function WidgetRenderer({
             metric={metricKey}
             data={metricData}
             showComparison={widget.config.showComparison !== false}
-            title={getTitle()}
           />
         );
       }

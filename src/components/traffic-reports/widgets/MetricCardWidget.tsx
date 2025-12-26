@@ -47,8 +47,7 @@ export function MetricCardWidget({
 }: MetricCardWidgetProps) {
   const format = METRIC_FORMAT[metric];
   const icon = METRIC_ICONS[metric];
-  // Só exibe label se title foi passado (undefined = não exibir título)
-  const label = title;
+  const label = title || METRIC_LABELS[metric];
 
   const formatValue = (val: number) => {
     switch (format) {
@@ -90,7 +89,7 @@ export function MetricCardWidget({
         </div>
         
         <div>
-          {label && <p className="text-sm text-muted-foreground font-medium mb-1">{label}</p>}
+          <p className="text-sm text-muted-foreground font-medium mb-1">{label}</p>
           <p className="text-xl font-bold tracking-tight">
             {formatValue(data.current)}
           </p>
