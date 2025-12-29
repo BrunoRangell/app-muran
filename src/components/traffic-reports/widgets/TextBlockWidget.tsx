@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 interface TextBlockWidgetProps {
   text?: string;
   textAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'center' | 'bottom';
   fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl';
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';
   textColor?: string;
@@ -31,15 +32,25 @@ const textAlignClasses = {
   right: 'text-right'
 };
 
+const verticalAlignClasses = {
+  top: 'items-start',
+  center: 'items-center',
+  bottom: 'items-end'
+};
+
 export function TextBlockWidget({
   text = 'Digite seu texto aqui',
   textAlign = 'left',
+  verticalAlign = 'center',
   fontSize = 'lg',
   fontWeight = 'semibold',
   textColor
 }: TextBlockWidgetProps) {
   return (
-    <div className="h-full w-full flex items-center py-2 px-4 glass-card rounded-lg">
+    <div className={cn(
+      "h-full w-full flex py-2 px-4 glass-card rounded-lg",
+      verticalAlignClasses[verticalAlign]
+    )}>
       <p 
         className={cn(
           "w-full leading-relaxed",

@@ -91,7 +91,11 @@ export const useReportTemplates = (clientId?: string) => {
     templates,
     isLoading,
     createTemplate: createTemplate.mutate,
+    createTemplateAsync: createTemplate.mutateAsync,
     updateTemplate: updateTemplate.mutate,
-    deleteTemplate: deleteTemplate.mutate
+    updateTemplateAsync: updateTemplate.mutateAsync,
+    deleteTemplate: deleteTemplate.mutate,
+    isCreating: createTemplate.isPending,
+    isUpdating: updateTemplate.isPending
   };
 };
