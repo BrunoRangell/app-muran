@@ -21,7 +21,8 @@ export function TemplateEditor() {
   const { templateId } = useParams();
   const isEditing = !!templateId;
   
-  const { templates, createTemplate, updateTemplate, isLoading } = useReportTemplates();
+  const { templates, createTemplateAsync, updateTemplateAsync, isLoading, isCreating, isUpdating } = useReportTemplates();
+  const isSaving = isCreating || isUpdating;
   
   const {
     widgets,
@@ -133,7 +134,7 @@ export function TemplateEditor() {
       const templateData = getTemplateData();
       
       if (isEditing && templateId) {
-        updateTemplate({
+        await updateTemplateAsync({
           id: templateId,
           name: templateName,
           is_global: isGlobal,
@@ -141,7 +142,7 @@ export function TemplateEditor() {
         });
         toast.success('Template atualizado com sucesso!');
       } else {
-        createTemplate({
+        await createTemplateAsync({
           name: templateName,
           is_global: isGlobal,
           client_id: null,
@@ -152,8 +153,8 @@ export function TemplateEditor() {
       
       navigate('/relatorios-trafego/templates');
     } catch (error) {
-      toast.error('Erro ao salvar template');
-      console.error(error);
+      toast.error('Erro ao salvar template. Tente novamente.');
+      console.error('Erro ao salvar:', error);
     }
   };
 
@@ -220,10 +221,10 @@ export function TemplateEditor() {
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={widgets.length === 0 || !templateName.trim()}
+              disabled={widgets.length === 0 || !templateName.trim() || isSaving}
             >
               <Save className="w-4 h-4 mr-2" />
-              Salvar
+              {isSaving ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>
         </div>

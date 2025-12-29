@@ -71,7 +71,8 @@ export interface WidgetConfig {
   showTitle?: boolean;           // Mostrar título do widget
   // Configurações de widgets de conteúdo
   text?: string;                 // Texto/conteúdo (text-block)
-  textAlign?: 'left' | 'center' | 'right';  // Alinhamento do texto
+  textAlign?: 'left' | 'center' | 'right';  // Alinhamento horizontal do texto
+  verticalAlign?: 'top' | 'center' | 'bottom';  // Alinhamento vertical do texto
   fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl';  // Tamanho da fonte
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';  // Peso da fonte
   textColor?: string;            // Cor do texto

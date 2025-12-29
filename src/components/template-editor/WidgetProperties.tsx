@@ -143,21 +143,40 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Alinhamento</Label>
-              <Select 
-                value={widget.config.textAlign || 'left'}
-                onValueChange={(value) => onUpdateConfig({ textAlign: value as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Esquerda</SelectItem>
-                  <SelectItem value="center">Centro</SelectItem>
-                  <SelectItem value="right">Direita</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Alinhamento H.</Label>
+                <Select 
+                  value={widget.config.textAlign || 'left'}
+                  onValueChange={(value) => onUpdateConfig({ textAlign: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="left">Esquerda</SelectItem>
+                    <SelectItem value="center">Centro</SelectItem>
+                    <SelectItem value="right">Direita</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Alinhamento V.</Label>
+                <Select 
+                  value={widget.config.verticalAlign || 'center'}
+                  onValueChange={(value) => onUpdateConfig({ verticalAlign: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="top">Topo</SelectItem>
+                    <SelectItem value="center">Centro</SelectItem>
+                    <SelectItem value="bottom">Baixo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </>
         )}
