@@ -2,14 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Save, Eye, RotateCcw } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { WidgetPalette } from './WidgetPalette';
 import { WidgetProperties } from './WidgetProperties';
 import { TemplateEditorCanvas } from './TemplateEditorCanvas';
 import { TemplatePreviewDialog } from './TemplatePreviewDialog';
+import { SaveTemplateDialog } from './SaveTemplateDialog';
 import { useTemplateEditor } from '@/hooks/useTemplateEditor';
 import { useReportTemplates } from '@/hooks/useReportTemplates';
 import { TemplateData } from '@/types/template-editor';
@@ -17,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 export function TemplateEditor() {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { templateId } = useParams();
   const isEditing = !!templateId;
@@ -124,8 +123,8 @@ export function TemplateEditor() {
     return widgets;
   };
 
-  const handleSave = async () => {
-    if (!templateName.trim()) {
+  const handleSave = async (name: string, global: boolean) => {
+    if (!name.trim()) {
       toast.error('Digite um nome para o template');
       return;
     }
@@ -133,18 +132,22 @@ export function TemplateEditor() {
     try {
       const templateData = getTemplateData();
       
+      // Atualizar estado local
+      setTemplateName(name);
+      setIsGlobal(global);
+      
       if (isEditing && templateId) {
         await updateTemplateAsync({
           id: templateId,
-          name: templateName,
-          is_global: isGlobal,
+          name: name,
+          is_global: global,
           sections: templateData as any
         });
         toast.success('Template atualizado com sucesso!');
       } else {
         const newTemplate = await createTemplateAsync({
-          name: templateName,
-          is_global: isGlobal,
+          name: name,
+          is_global: global,
           client_id: null,
           sections: templateData as any
         });
@@ -154,6 +157,7 @@ export function TemplateEditor() {
           navigate(`/relatorios-trafego/templates/editar/${newTemplate.id}`, { replace: true });
         }
       }
+      setSaveDialogOpen(false);
     } catch (error) {
       toast.error('Erro ao salvar template. Tente novamente.');
       console.error('Erro ao salvar:', error);
@@ -182,22 +186,14 @@ export function TemplateEditor() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-3">
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                className="w-64 font-medium"
-                placeholder="Nome do template"
-              />
-              <div className="flex items-center gap-2 text-sm">
-                <Switch
-                  id="is-global"
-                  checked={isGlobal}
-                  onCheckedChange={setIsGlobal}
-                />
-                <Label htmlFor="is-global" className="text-muted-foreground cursor-pointer">
-                  Template global
-                </Label>
-              </div>
+              <h1 className="font-medium text-lg">
+                {templateName || 'Novo Template'}
+              </h1>
+              {isGlobal && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                  Global
+                </span>
+              )}
             </div>
           </div>
           
@@ -222,11 +218,11 @@ export function TemplateEditor() {
             </Button>
             <Button
               size="sm"
-              onClick={handleSave}
-              disabled={widgets.length === 0 || !templateName.trim() || isSaving}
+              onClick={() => setSaveDialogOpen(true)}
+              disabled={widgets.length === 0 || isSaving}
             >
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? 'Salvando...' : 'Salvar'}
+              Salvar
             </Button>
           </div>
         </div>
@@ -286,6 +282,16 @@ export function TemplateEditor() {
         onOpenChange={setPreviewOpen}
         widgets={widgets}
         templateName={templateName}
+      />
+      
+      {/* Modal de Salvar */}
+      <SaveTemplateDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        initialName={templateName}
+        initialIsGlobal={isGlobal}
+        isSaving={isSaving}
+        onSave={handleSave}
       />
     </div>
   );
