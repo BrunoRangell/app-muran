@@ -147,6 +147,7 @@ export function TemplatePreviewDialog({
           <TextBlockWidget
             text={widget.config.text}
             textAlign={widget.config.textAlign}
+            verticalAlign={widget.config.verticalAlign}
             fontSize={widget.config.fontSize}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
