@@ -142,16 +142,18 @@ export function TemplateEditor() {
         });
         toast.success('Template atualizado com sucesso!');
       } else {
-        await createTemplateAsync({
+        const newTemplate = await createTemplateAsync({
           name: templateName,
           is_global: isGlobal,
           client_id: null,
           sections: templateData as any
         });
         toast.success('Template criado com sucesso!');
+        // Atualizar URL para modo edição com o novo ID
+        if (newTemplate?.id) {
+          navigate(`/relatorios-trafego/templates/editar/${newTemplate.id}`, { replace: true });
+        }
       }
-      
-      navigate('/relatorios-trafego/templates');
     } catch (error) {
       toast.error('Erro ao salvar template. Tente novamente.');
       console.error('Erro ao salvar:', error);
