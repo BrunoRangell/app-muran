@@ -6,7 +6,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { GoogleAdsTokenTest } from "./GoogleAdsTokenTest";
 import { GoogleAdsTokenManager } from "./GoogleAdsTokenManager";
-import { MetaTokenStatus } from "./MetaTokenStatus";
 import { useToast } from "@/hooks/use-toast";
 
 export const ApiConfigurationPanel = () => {
@@ -152,7 +151,13 @@ export const ApiConfigurationPanel = () => {
         </TabsContent>
         
         <TabsContent value="meta-ads" className="space-y-6">
-          <MetaTokenStatus />
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-medium mb-2">Token Meta Ads</h3>
+            <p className="text-sm text-gray-600">
+              O token Meta é renovado automaticamente a cada hora. 
+              Caso expire, insira um novo token diretamente na tabela <code className="bg-gray-100 px-1 rounded">api_tokens</code>.
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
