@@ -44,3 +44,6 @@ verify_jwt = false
 [functions.orchestrate-client-offboarding]
 verify_jwt = false
 
+[functions.convert-meta-token]
+verify_jwt = false
+
