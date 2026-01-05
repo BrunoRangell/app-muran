@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Check, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { GoogleAdsTokenTest } from "./GoogleAdsTokenTest";
 import { GoogleAdsTokenManager } from "./GoogleAdsTokenManager";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export const ApiConfigurationPanel = () => {
@@ -154,11 +152,11 @@ export const ApiConfigurationPanel = () => {
         
         <TabsContent value="meta-ads" className="space-y-6">
           <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-medium">Configurações do Meta Ads</h3>
-            <p className="text-gray-500 mt-2">
-              Configure seus tokens de acesso para a API do Meta Ads.
+            <h3 className="text-lg font-medium mb-2">Token Meta Ads</h3>
+            <p className="text-sm text-gray-600">
+              O token Meta é renovado automaticamente a cada hora. 
+              Caso expire, insira um novo token diretamente na tabela <code className="bg-gray-100 px-1 rounded">api_tokens</code>.
             </p>
-            {/* Implementação do Meta Ads será adicionada no futuro */}
           </div>
         </TabsContent>
       </Tabs>

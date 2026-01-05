@@ -14,7 +14,12 @@ import {
   GripVertical,
   Sparkles,
   Settings,
-  Loader2
+  Loader2,
+  Type,
+  ImageIcon,
+  Minus,
+  Space,
+  Square
 } from 'lucide-react';
 import { WIDGET_CATALOG, WidgetType, WidgetMetadata, TemplateWidget } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
@@ -45,7 +50,12 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart3,
   AreaChart,
   PieChart,
-  Table2
+  Table2,
+  Type,
+  ImageIcon,
+  Minus,
+  Space,
+  Square
 };
 
 function WidgetPaletteItem({ 
@@ -126,6 +136,7 @@ export function WidgetPalette({ onAddWidget }: WidgetPaletteProps) {
   const [managerOpen, setManagerOpen] = useState(false);
   
   const individualWidgets = WIDGET_CATALOG.filter(w => w.category === 'individual');
+  const contentWidgets = WIDGET_CATALOG.filter(w => w.category === 'content');
 
   const handleAddPreset = (preset: WidgetPreset) => {
     // Pass the preset ID and its widgets to the parent
@@ -201,10 +212,27 @@ export function WidgetPalette({ onAddWidget }: WidgetPaletteProps) {
         {/* Individuais */}
         <div>
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-            Widgets Individuais
+            Widgets de Dados
           </h4>
           <div className="space-y-2">
             {individualWidgets.map(widget => (
+              <WidgetPaletteItem
+                key={widget.type}
+                widget={widget}
+                onAdd={() => onAddWidget(widget.type as WidgetType)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Conteúdo */}
+        <div>
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Type className="w-3 h-3" />
+            Conteúdo
+          </h4>
+          <div className="space-y-2">
+            {contentWidgets.map(widget => (
               <WidgetPaletteItem
                 key={widget.type}
                 widget={widget}

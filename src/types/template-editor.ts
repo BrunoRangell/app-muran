@@ -15,6 +15,9 @@ export type ChartType = 'line' | 'bar' | 'area' | 'pie';
 // Fonte de dados
 export type DataSource = 'timeSeries' | 'demographics' | 'campaigns' | 'creatives';
 
+// Dimensões para gráficos/tabelas
+export type DimensionKey = 'age' | 'gender' | 'location' | 'campaigns' | 'creatives';
+
 // Tipos de presets (expandem em múltiplos widgets ao adicionar)
 export type PresetType =
   | 'overview-full'        // Visão geral completa (8 métricas)
@@ -31,16 +34,22 @@ export type WidgetType =
   | 'pie-chart'            // Gráfico de pizza
   | 'simple-table'         // Tabela simples
   | 'campaigns-table'      // Tabela de campanhas
-  | 'top-creatives';       // Top criativos
+  | 'top-creatives'        // Top criativos
+  // Widgets de conteúdo
+  | 'text-block'           // Bloco de texto (título, parágrafo)
+  | 'image-block'          // Imagem com URL ou upload
+  | 'divider'              // Divisor horizontal
+  | 'spacer'               // Espaçador invisível
+  | 'box';                 // Caixa decorativa
 
 // Tipo combinado para uso na paleta e em alguns componentes
 export type WidgetOrPresetType = WidgetType | PresetType;
 
-// Layout do widget no grid
+// Layout do widget no grid (24 colunas)
 export interface WidgetLayout {
-  x: number;      // Posição X (coluna 0-11)
+  x: number;      // Posição X (coluna 0-23)
   y: number;      // Posição Y (linha)
-  w: number;      // Largura (1-12 colunas)
+  w: number;      // Largura (1-24 colunas)
   h: number;      // Altura (unidades de grid)
   minW?: number;  // Largura mínima
   minH?: number;  // Altura mínima
@@ -54,11 +63,29 @@ export interface WidgetConfig {
   metrics?: MetricKey[];         // Métricas selecionadas
   chartType?: ChartType;         // Tipo de gráfico (para widgets de gráfico)
   dataSource?: DataSource;       // Fonte de dados
+  dimension?: DimensionKey;      // Dimensão para agrupamento (pie, table)
   limit?: number;                // Limite de itens (para tabelas/listas)
   showLegend?: boolean;          // Mostrar legenda
   showComparison?: boolean;      // Mostrar comparação com período anterior
   colors?: string[];             // Cores personalizadas
   showTitle?: boolean;           // Mostrar título do widget
+  // Configurações de widgets de conteúdo
+  text?: string;                 // Texto/conteúdo (text-block)
+  textAlign?: 'left' | 'center' | 'right';  // Alinhamento horizontal do texto
+  verticalAlign?: 'top' | 'center' | 'bottom';  // Alinhamento vertical do texto
+  fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl';  // Tamanho da fonte
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';  // Peso da fonte
+  textColor?: string;            // Cor do texto
+  imageUrl?: string;             // URL da imagem (image-block)
+  imageAlt?: string;             // Alt text da imagem
+  objectFit?: 'cover' | 'contain' | 'fill';  // Ajuste da imagem
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';  // Raio da borda
+  dividerStyle?: 'solid' | 'dashed' | 'dotted' | 'gradient';  // Estilo do divisor
+  dividerColor?: string;         // Cor do divisor
+  dividerThickness?: number;     // Espessura do divisor (px)
+  backgroundColor?: string;      // Cor de fundo (box)
+  borderColor?: string;          // Cor da borda (box)
+  padding?: 'none' | 'sm' | 'md' | 'lg';  // Padding interno (box)
 }
 
 // Widget completo
@@ -90,12 +117,12 @@ export interface WidgetMetadata {
   name: string;
   description: string;
   icon: string;                  // Nome do ícone Lucide
-  category: 'preset' | 'individual';
+  category: 'preset' | 'individual' | 'content';
   defaultLayout: Omit<WidgetLayout, 'x' | 'y'>;
   defaultConfig: WidgetConfig;
 }
 
-// Catálogo de widgets disponíveis
+// Catálogo de widgets disponíveis (grid 12 colunas)
 export const WIDGET_CATALOG: WidgetMetadata[] = [
   // Pré-configurados (expandem em múltiplos widgets)
   {
@@ -133,7 +160,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Exibe uma métrica individual com destaque',
     icon: 'CreditCard',
     category: 'individual',
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxH: 2 },
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2 },
     defaultConfig: { metrics: ['impressions'], showComparison: true }
   },
   {
@@ -142,7 +169,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Visualiza tendências ao longo do tempo',
     icon: 'LineChart',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
     defaultConfig: { metrics: ['impressions', 'clicks'], showLegend: true, chartType: 'line' }
   },
   {
@@ -151,7 +178,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Compara valores entre categorias',
     icon: 'BarChart3',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
     defaultConfig: { metrics: ['conversions'], showLegend: true, chartType: 'bar' }
   },
   {
@@ -160,7 +187,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Mostra volume acumulado ao longo do tempo',
     icon: 'AreaChart',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
     defaultConfig: { metrics: ['spend'], showLegend: true, chartType: 'area' }
   },
   {
@@ -169,8 +196,8 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Mostra distribuição proporcional',
     icon: 'PieChart',
     category: 'individual',
-    defaultLayout: { w: 4, h: 2, minW: 3, minH: 2 },
-    defaultConfig: { dataSource: 'demographics', showLegend: true, chartType: 'pie' }
+    defaultLayout: { w: 4, h: 4, minW: 3, minH: 3 },
+    defaultConfig: { dimension: 'gender', metrics: ['impressions'], showLegend: true, chartType: 'pie' }
   },
   {
     type: 'simple-table',
@@ -178,8 +205,8 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Tabela customizável com métricas selecionadas',
     icon: 'Table2',
     category: 'individual',
-    defaultLayout: { w: 6, h: 2, minW: 4, minH: 2 },
-    defaultConfig: { metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
+    defaultConfig: { dimension: 'campaigns', metrics: ['impressions', 'clicks', 'ctr'], limit: 10 }
   },
   {
     type: 'campaigns-table',
@@ -187,7 +214,7 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Tabela detalhada com campanhas ativas',
     icon: 'Table',
     category: 'individual',
-    defaultLayout: { w: 12, h: 3, minW: 8, minH: 2 },
+    defaultLayout: { w: 12, h: 5, minW: 6, minH: 3 },
     defaultConfig: { showTitle: true, title: 'Campanhas', limit: 10 }
   },
   {
@@ -196,8 +223,74 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     description: 'Melhores anúncios com preview visual',
     icon: 'Image',
     category: 'individual',
-    defaultLayout: { w: 12, h: 3, minW: 6, minH: 2 },
-    defaultConfig: { showTitle: true, title: 'Top Criativos', limit: 5 }
+    defaultLayout: { w: 12, h: 5, minW: 6, minH: 3 },
+    defaultConfig: { showTitle: true, title: 'Top Criativos', metrics: ['clicks', 'ctr'], limit: 5 }
+  },
+  
+  // Widgets de Conteúdo
+  {
+    type: 'text-block',
+    name: 'Texto',
+    description: 'Título ou parágrafo de texto customizável',
+    icon: 'Type',
+    category: 'content',
+    defaultLayout: { w: 6, h: 1, minW: 2, minH: 1 },
+    defaultConfig: { 
+      text: 'Digite seu texto aqui', 
+      textAlign: 'left', 
+      fontSize: 'lg', 
+      fontWeight: 'semibold' 
+    }
+  },
+  {
+    type: 'image-block',
+    name: 'Imagem',
+    description: 'Adicione uma imagem (logo, banner, etc)',
+    icon: 'ImageIcon',
+    category: 'content',
+    defaultLayout: { w: 4, h: 3, minW: 2, minH: 2 },
+    defaultConfig: { 
+      imageUrl: '', 
+      imageAlt: 'Imagem', 
+      objectFit: 'contain',
+      borderRadius: 'md'
+    }
+  },
+  {
+    type: 'divider',
+    name: 'Divisor',
+    description: 'Linha horizontal para separar seções',
+    icon: 'Minus',
+    category: 'content',
+    defaultLayout: { w: 12, h: 1, minW: 4, minH: 1, maxH: 1 },
+    defaultConfig: { 
+      dividerStyle: 'solid', 
+      dividerColor: 'hsl(var(--border))', 
+      dividerThickness: 1 
+    }
+  },
+  {
+    type: 'spacer',
+    name: 'Espaçador',
+    description: 'Espaço vazio para ajustar layout',
+    icon: 'Space',
+    category: 'content',
+    defaultLayout: { w: 12, h: 1, minW: 1, minH: 1 },
+    defaultConfig: {}
+  },
+  {
+    type: 'box',
+    name: 'Caixa',
+    description: 'Container decorativo com fundo colorido',
+    icon: 'Square',
+    category: 'content',
+    defaultLayout: { w: 6, h: 2, minW: 2, minH: 1 },
+    defaultConfig: { 
+      backgroundColor: 'hsl(var(--primary) / 0.05)',
+      borderRadius: 'lg',
+      padding: 'md',
+      text: 'Conteúdo da caixa'
+    }
   }
 ];
 
@@ -238,7 +331,7 @@ export function createWidget(
   };
 }
 
-// Helper para expandir um preset em múltiplos widgets individuais
+// Helper para expandir um preset em múltiplos widgets individuais (grid 12 colunas)
 export function expandPresetToWidgets(
   presetType: PresetType, 
   startY: number
@@ -247,19 +340,18 @@ export function expandPresetToWidgets(
   
   switch (presetType) {
     case 'overview-full': {
-      // 8 cards de métrica em 2 linhas de 4
+      // 8 cards de métrica em 2 linhas de 4 (cada card = 3 colunas de 12)
       ALL_METRICS.forEach((metric, index) => {
         widgets.push({
           id: crypto.randomUUID(),
           type: 'metric-card',
           layout: {
-            x: (index % 4) * 3,  // 4 colunas de largura 3
-            y: startY + Math.floor(index / 4),
+            x: (index % 4) * 3,  // 4 cards por linha, cada um com 3 colunas
+            y: startY + Math.floor(index / 4) * 2,
             w: 3,
-            h: 1,
+            h: 2,
             minW: 2,
-            minH: 1,
-            maxH: 2
+            minH: 2
           },
           config: {
             metrics: [metric],
@@ -271,7 +363,7 @@ export function expandPresetToWidgets(
     }
     
     case 'trends-full': {
-      // 4 gráficos de tendência: impressões, cliques, conversões, investimento
+      // 4 gráficos de tendência: 2 por linha (cada um = 6 colunas de 12)
       const trendMetrics: { metrics: MetricKey[]; type: 'line-chart' | 'area-chart' }[] = [
         { metrics: ['impressions', 'reach'], type: 'line-chart' },
         { metrics: ['clicks'], type: 'line-chart' },
@@ -285,11 +377,11 @@ export function expandPresetToWidgets(
           type: config.type,
           layout: {
             x: (index % 2) * 6,  // 2 colunas de largura 6
-            y: startY + Math.floor(index / 2) * 2,
+            y: startY + Math.floor(index / 2) * 4,
             w: 6,
-            h: 2,
+            h: 4,
             minW: 4,
-            minH: 2
+            minH: 3
           },
           config: {
             metrics: config.metrics,
@@ -303,12 +395,12 @@ export function expandPresetToWidgets(
     }
     
     case 'demographics-full': {
-      // 3 widgets: idade (bar), gênero (pie), localização (table)
+      // 3 widgets: idade (bar), gênero (pie), localização (table) - 4 colunas cada
       widgets.push(
         {
           id: crypto.randomUUID(),
           type: 'bar-chart',
-          layout: { x: 0, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          layout: { x: 0, y: startY, w: 4, h: 4, minW: 3, minH: 3 },
           config: {
             title: 'Idade',
             dataSource: 'demographics',
@@ -319,7 +411,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'pie-chart',
-          layout: { x: 4, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          layout: { x: 4, y: startY, w: 4, h: 4, minW: 3, minH: 3 },
           config: {
             title: 'Gênero',
             dataSource: 'demographics',
@@ -330,7 +422,7 @@ export function expandPresetToWidgets(
         {
           id: crypto.randomUUID(),
           type: 'simple-table',
-          layout: { x: 8, y: startY, w: 4, h: 2, minW: 3, minH: 2 },
+          layout: { x: 8, y: startY, w: 4, h: 4, minW: 3, minH: 3 },
           config: {
             title: 'Localização',
             dataSource: 'demographics',
@@ -350,12 +442,12 @@ export function isPresetType(type: string): type is PresetType {
   return ['overview-full', 'trends-full', 'demographics-full'].includes(type);
 }
 
-// Configuração padrão do grid
+// Configuração padrão do grid (12 colunas com células maiores ~80px)
 export const DEFAULT_GRID_CONFIG: GridConfig = {
   cols: 12,
-  rowHeight: 100,
-  margin: [16, 16],
-  containerPadding: [16, 16]
+  rowHeight: 80,
+  margin: [12, 12],
+  containerPadding: [20, 20]
 };
 
 // Template padrão vazio

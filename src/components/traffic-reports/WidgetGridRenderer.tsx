@@ -1,68 +1,51 @@
 import React from 'react';
-import { X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { TemplateWidget, DEFAULT_GRID_CONFIG, MetricKey } from '@/types/template-editor';
-import {
-  MetricCardWidget,
-  ChartWidget,
-  PieChartWidget,
-  CampaignsTableWidget,
+import { TemplateWidget, MetricKey, DEFAULT_GRID_CONFIG } from '@/types/template-editor';
+import { 
+  MetricCardWidget, 
+  ChartWidget, 
+  PieChartWidget, 
+  CampaignsTableWidget, 
   TopCreativesWidget,
   TextBlockWidget,
   ImageBlockWidget,
   DividerWidget,
   SpacerWidget,
   BoxWidget
-} from '@/components/traffic-reports/widgets';
-import { 
-  mockOverview, 
-  mockTimeSeries, 
-  mockDemographics, 
-  mockCampaigns, 
-  mockCreatives 
-} from '@/data/mockPreviewData';
+} from './widgets';
 
-interface TemplatePreviewDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  widgets: TemplateWidget[];
-  templateName: string;
+interface InsightsData {
+  overview?: {
+    impressions: { current: number; previous: number; change: number };
+    reach: { current: number; previous: number; change: number };
+    clicks: { current: number; previous: number; change: number };
+    ctr: { current: number; previous: number; change: number };
+    conversions: { current: number; previous: number; change: number };
+    spend: { current: number; previous: number; change: number };
+    cpa: { current: number; previous: number; change: number };
+    cpc: { current: number; previous: number; change: number };
+  };
+  timeSeries?: any[];
+  demographics?: any;
+  campaigns?: any[];
+  topAds?: any[];
+  platform?: 'meta' | 'google' | 'both';
 }
 
-// Converter mock overview para formato esperado pelos widgets
-const mockOverviewData = {
-  impressions: { current: mockOverview.impressions, previous: mockOverview.impressions * 0.85, change: 12.5 },
-  reach: { current: mockOverview.reach, previous: mockOverview.reach * 0.9, change: 8.3 },
-  clicks: { current: mockOverview.clicks, previous: mockOverview.clicks * 0.88, change: 15.2 },
-  ctr: { current: mockOverview.ctr, previous: mockOverview.ctr * 0.97, change: 3.1 },
-  conversions: { current: mockOverview.conversions, previous: mockOverview.conversions * 0.82, change: 22.4 },
-  spend: { current: mockOverview.spend, previous: mockOverview.spend * 0.94, change: 5.8 },
-  cpa: { current: mockOverview.cpa, previous: mockOverview.cpa * 1.08, change: -8.7 },
-  cpc: { current: mockOverview.cpc, previous: mockOverview.cpc * 1.04, change: -4.2 }
-};
+interface WidgetGridRendererProps {
+  widgets: TemplateWidget[];
+  data: InsightsData;
+}
 
-export function TemplatePreviewDialog({ 
-  open, 
-  onOpenChange, 
-  widgets, 
-  templateName 
-}: TemplatePreviewDialogProps) {
+export function WidgetGridRenderer({ widgets, data }: WidgetGridRendererProps) {
   const { cols, rowHeight } = DEFAULT_GRID_CONFIG;
   const marginX = 12;
   const marginY = 12;
 
-  // Calcular altura total do container baseada nos widgets
+  // Calcular altura total do grid baseada nos widgets
   const maxY = Math.max(0, ...widgets.map(w => w.layout.y + w.layout.h));
   const containerHeight = maxY * (rowHeight + marginY) + marginY * 2;
 
-  // Calcular posição e tamanho de cada widget (espelha WidgetGridRenderer)
+  // Calcular posição e tamanho de cada widget
   const getWidgetStyle = (widget: TemplateWidget): React.CSSProperties => {
     const colWidth = 100 / cols;
     
@@ -75,12 +58,14 @@ export function TemplatePreviewDialog({
     };
   };
 
-  // Renderizar widget usando os MESMOS componentes do relatório real
+  // Renderizar widget baseado no tipo
   const renderWidgetContent = (widget: TemplateWidget) => {
     switch (widget.type) {
       case 'metric-card': {
         const metricKey = widget.config.metrics?.[0] as MetricKey || 'impressions';
-        const metricData = mockOverviewData[metricKey];
+        const metricData = data.overview?.[metricKey];
+        
+        if (!metricData) return <EmptyState message="Métrica não disponível" />;
         
         return (
           <MetricCardWidget
@@ -98,11 +83,13 @@ export function TemplatePreviewDialog({
         const chartType = widget.type.replace('-chart', '') as 'line' | 'bar' | 'area';
         const metrics = (widget.config.metrics || ['impressions']) as MetricKey[];
         
+        if (!data.timeSeries?.length) return <EmptyState message="Sem dados de série temporal" />;
+        
         return (
           <ChartWidget
             chartType={chartType}
             metrics={metrics}
-            timeSeries={mockTimeSeries}
+            timeSeries={data.timeSeries}
             showLegend={widget.config.showLegend !== false}
             title={widget.config.title}
           />
@@ -110,10 +97,12 @@ export function TemplatePreviewDialog({
       }
 
       case 'pie-chart': {
+        if (!data.demographics) return <EmptyState message="Sem dados demográficos" />;
+        
         return (
           <PieChartWidget
             dataSource={widget.config.dataSource as any || 'gender'}
-            demographics={mockDemographics}
+            demographics={data.demographics}
             showLegend={widget.config.showLegend !== false}
             title={widget.config.title}
           />
@@ -122,9 +111,11 @@ export function TemplatePreviewDialog({
 
       case 'campaigns-table':
       case 'simple-table': {
+        if (!data.campaigns?.length) return <EmptyState message="Sem dados de campanhas" />;
+        
         return (
           <CampaignsTableWidget
-            campaigns={mockCampaigns}
+            campaigns={data.campaigns}
             limit={widget.config.limit || 10}
             title={widget.config.title}
           />
@@ -132,9 +123,11 @@ export function TemplatePreviewDialog({
       }
 
       case 'top-creatives': {
+        if (!data.topAds?.length) return <EmptyState message="Sem dados de criativos" />;
+        
         return (
           <TopCreativesWidget
-            creatives={mockCreatives}
+            creatives={data.topAds}
             limit={widget.config.limit || 5}
             title={widget.config.title}
           />
@@ -147,7 +140,6 @@ export function TemplatePreviewDialog({
           <TextBlockWidget
             text={widget.config.text}
             textAlign={widget.config.textAlign}
-            verticalAlign={widget.config.verticalAlign}
             fontSize={widget.config.fontSize}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
@@ -177,6 +169,7 @@ export function TemplatePreviewDialog({
       }
 
       case 'spacer': {
+        // No relatório final, espaçador é invisível
         return <SpacerWidget showGuide={false} />;
       }
 
@@ -197,58 +190,41 @@ export function TemplatePreviewDialog({
       }
 
       default:
-        return (
-          <div className="h-full w-full flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/20">
-            <p className="text-sm text-muted-foreground">Widget não reconhecido</p>
-          </div>
-        );
+        return <EmptyState message="Widget não reconhecido" />;
     }
   };
 
+  if (widgets.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        Nenhum widget configurado no template
+      </div>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">
-              Preview: {templateName || 'Novo Template'}
-            </DialogTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        </DialogHeader>
-        
-        <ScrollArea className="flex-1">
-          <div className="p-6">
-            {widgets.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                Adicione widgets ao template para visualizar o preview
-              </div>
-            ) : (
-              <div 
-                className="relative w-full"
-                style={{ minHeight: containerHeight }}
-              >
-                {widgets.map((widget) => (
-                  <div 
-                    key={widget.id}
-                    className="overflow-hidden"
-                    style={getWidgetStyle(widget)}
-                  >
-                    {renderWidgetContent(widget)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+    <div 
+      className="relative w-full"
+      style={{ minHeight: containerHeight }}
+    >
+      {widgets.map((widget) => (
+        <div 
+          key={widget.id}
+          className="overflow-hidden"
+          style={getWidgetStyle(widget)}
+        >
+          {renderWidgetContent(widget)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Componente para estados vazios
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="h-full w-full flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/20">
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
   );
 }
