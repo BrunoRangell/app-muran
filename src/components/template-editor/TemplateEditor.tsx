@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Save, Eye, RotateCcw } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { WidgetPalette } from './WidgetPalette';
@@ -11,6 +11,7 @@ import { SaveTemplateDialog } from './SaveTemplateDialog';
 import { useTemplateEditor } from '@/hooks/useTemplateEditor';
 import { useReportTemplates } from '@/hooks/useReportTemplates';
 import { TemplateData } from '@/types/template-editor';
+import { premiumTemplates } from '@/data/premiumTemplates';
 import { cn } from '@/lib/utils';
 
 export function TemplateEditor() {
@@ -18,6 +19,8 @@ export function TemplateEditor() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { templateId } = useParams();
+  const [searchParams] = useSearchParams();
+  const presetId = searchParams.get('preset');
   const isEditing = !!templateId;
   
   const { templates, createTemplateAsync, updateTemplateAsync, isLoading, isCreating, isUpdating } = useReportTemplates();
@@ -43,6 +46,31 @@ export function TemplateEditor() {
     getTemplateData,
     resetEditor
   } = useTemplateEditor();
+
+  // Carregar template premium se preset estiver na URL
+  useEffect(() => {
+    if (presetId && !isEditing) {
+      const premiumTemplate = premiumTemplates.find(t => t.id === presetId);
+      if (premiumTemplate) {
+        // Gerar novos IDs para os widgets para evitar conflitos
+        const widgetsWithNewIds = premiumTemplate.widgets.map(w => ({
+          ...w,
+          id: crypto.randomUUID()
+        }));
+        
+        loadTemplate(
+          { 
+            widgets: widgetsWithNewIds, 
+            gridConfig: premiumTemplate.gridConfig, 
+            version: 1 
+          },
+          premiumTemplate.name,
+          true
+        );
+        toast.success(`Template "${premiumTemplate.name}" carregado! Personalize e salve.`);
+      }
+    }
+  }, [presetId, isEditing, loadTemplate]);
 
   // Carregar template existente
   useEffect(() => {
