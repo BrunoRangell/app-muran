@@ -21,11 +21,15 @@ interface WidgetPropertiesProps {
 
 const ALL_METRICS: MetricKey[] = [
   'impressions', 'reach', 'clicks', 'ctr', 
-  'conversions', 'spend', 'cpa', 'cpc'
+  'conversions', 'spend', 'cpa', 'cpc',
+  'cpm', 'frequency', 'videoViews', 'messages'
 ];
 
 // Métricas disponíveis para gráfico de pizza (valores absolutos)
-const PIE_METRICS: MetricKey[] = ['impressions', 'clicks', 'conversions', 'spend'];
+const PIE_METRICS: MetricKey[] = ['impressions', 'clicks', 'conversions', 'spend', 'videoViews', 'messages'];
+
+// Métricas para funil de conversão (ordem lógica do funil)
+const FUNNEL_METRICS: MetricKey[] = ['impressions', 'reach', 'clicks', 'conversions', 'messages'];
 
 // Dimensões disponíveis
 const DIMENSION_LABELS: Record<DimensionKey, string> = {
@@ -561,8 +565,169 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
           </div>
         )}
 
+        {/* === NOVOS WIDGETS === */}
+
+        {/* Funil de Conversão */}
+        {widget.type === 'funnel-chart' && (
+          <>
+            <div className="space-y-3">
+              <Label>Etapas do Funil</Label>
+              <p className="text-xs text-muted-foreground">Selecione as métricas na ordem do funil (de cima para baixo)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {FUNNEL_METRICS.map(metric => (
+                  <label
+                    key={metric}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-md border cursor-pointer",
+                      "hover:bg-accent/50 transition-colors",
+                      (widget.config.funnelMetrics as MetricKey[] || []).includes(metric) 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border"
+                    )}
+                  >
+                    <Checkbox
+                      checked={(widget.config.funnelMetrics as MetricKey[] || []).includes(metric)}
+                      onCheckedChange={(checked) => {
+                        const current = (widget.config.funnelMetrics as MetricKey[]) || [];
+                        const newMetrics = checked
+                          ? [...current, metric]
+                          : current.filter(m => m !== metric);
+                        onUpdateConfig({ funnelMetrics: newMetrics });
+                      }}
+                    />
+                    <span className="text-sm">{METRIC_LABELS[metric]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-rates">Exibir taxas de conversão</Label>
+              <Switch
+                id="show-rates"
+                checked={widget.config.showRates !== false}
+                onCheckedChange={(checked) => onUpdateConfig({ showRates: checked })}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Gráfico Combinado */}
+        {widget.type === 'combo-chart' && (
+          <>
+            <div className="space-y-3">
+              <Label>Métrica das Barras</Label>
+              <Select 
+                value={(widget.config.barMetric as string) || 'conversions'}
+                onValueChange={(value) => onUpdateConfig({ barMetric: value as MetricKey })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métrica da Linha</Label>
+              <Select 
+                value={(widget.config.lineMetric as string) || 'cpa'}
+                onValueChange={(value) => onUpdateConfig({ lineMetric: value as MetricKey })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        {/* Tabela de Anúncios */}
+        {widget.type === 'ads-table' && (
+          <>
+            <div className="space-y-3">
+              <Label>Métricas exibidas</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_METRICS.map(metric => (
+                  <label
+                    key={metric}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-md border cursor-pointer",
+                      "hover:bg-accent/50 transition-colors",
+                      widget.config.metrics?.includes(metric) 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border"
+                    )}
+                  >
+                    <Checkbox
+                      checked={widget.config.metrics?.includes(metric) || false}
+                      onCheckedChange={(checked) => handleMetricToggle(metric, !!checked)}
+                    />
+                    <span className="text-sm">{METRIC_LABELS[metric]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-thumbnails">Exibir miniaturas</Label>
+              <Switch
+                id="show-thumbnails"
+                checked={widget.config.showThumbnails !== false}
+                onCheckedChange={(checked) => onUpdateConfig({ showThumbnails: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-proportion-bars">Barras de proporção</Label>
+              <Switch
+                id="show-proportion-bars"
+                checked={widget.config.showProportionBars === true}
+                onCheckedChange={(checked) => onUpdateConfig({ showProportionBars: checked })}
+              />
+            </div>
+
+            {widget.config.showProportionBars && (
+              <div className="space-y-3">
+                <Label>Métrica da barra</Label>
+                <Select 
+                  value={(widget.config.proportionMetric as string) || 'impressions'}
+                  onValueChange={(value) => onUpdateConfig({ proportionMetric: value as MetricKey })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_METRICS.map(metric => (
+                      <SelectItem key={metric} value={metric}>
+                        {METRIC_LABELS[metric]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </>
+        )}
+
         {/* Mostrar legenda (para gráficos) */}
-        {['line-chart', 'bar-chart', 'area-chart', 'pie-chart'].includes(widget.type) && (
+        {['line-chart', 'bar-chart', 'area-chart', 'pie-chart', 'combo-chart'].includes(widget.type) && (
           <>
             <Separator />
             <div className="flex items-center justify-between">
@@ -592,7 +757,7 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
         )}
 
         {/* Limite de itens (para tabelas e listas) */}
-        {['simple-table', 'top-creatives', 'campaigns-table'].includes(widget.type) && (
+        {['simple-table', 'top-creatives', 'campaigns-table', 'ads-table'].includes(widget.type) && (
           <>
             <Separator />
             <div className="space-y-2">
