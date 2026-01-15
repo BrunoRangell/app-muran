@@ -1,7 +1,7 @@
 import { MetricKey } from '@/types/template-editor';
 
 // Dados fictícios de visão geral
-export const mockOverview = {
+export const mockOverview: Record<MetricKey, number> = {
   impressions: 158432,
   reach: 89234,
   clicks: 5243,
@@ -9,7 +9,11 @@ export const mockOverview = {
   conversions: 342,
   spend: 4523.67,
   cpa: 13.23,
-  cpc: 0.86
+  cpc: 0.86,
+  cpm: 28.54,
+  frequency: 1.78,
+  videoViews: 24567,
+  messages: 187
 };
 
 // Dados de série temporal (30 dias)
@@ -20,17 +24,22 @@ export const mockTimeSeries = Array.from({ length: 30 }, (_, i) => {
   const baseClicks = baseImpressions * (0.025 + Math.random() * 0.02);
   const baseConversions = baseClicks * (0.05 + Math.random() * 0.03);
   const baseSpend = 100 + Math.random() * 80;
+  const baseReach = baseImpressions * 0.6;
   
   return {
     date: date.toISOString().split('T')[0],
     impressions: Math.round(baseImpressions),
-    reach: Math.round(baseImpressions * 0.6),
+    reach: Math.round(baseReach),
     clicks: Math.round(baseClicks),
     conversions: Math.round(baseConversions),
     spend: parseFloat(baseSpend.toFixed(2)),
     ctr: parseFloat(((baseClicks / baseImpressions) * 100).toFixed(2)),
     cpc: parseFloat((baseSpend / baseClicks).toFixed(2)),
-    cpa: parseFloat((baseSpend / baseConversions).toFixed(2))
+    cpa: parseFloat((baseSpend / baseConversions).toFixed(2)),
+    cpm: parseFloat((baseSpend / baseImpressions * 1000).toFixed(2)),
+    frequency: parseFloat((baseImpressions / baseReach).toFixed(2)),
+    videoViews: Math.round(baseImpressions * 0.15),
+    messages: Math.round(baseClicks * 0.03)
   };
 });
 
@@ -192,6 +201,8 @@ export const formatMetricValue = (key: MetricKey, value: number): string => {
     case 'reach':
     case 'clicks':
     case 'conversions':
+    case 'videoViews':
+    case 'messages':
       return value.toLocaleString('pt-BR');
     case 'spend':
       return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -199,7 +210,10 @@ export const formatMetricValue = (key: MetricKey, value: number): string => {
       return `${value.toFixed(2)}%`;
     case 'cpa':
     case 'cpc':
+    case 'cpm':
       return `R$ ${value.toFixed(2)}`;
+    case 'frequency':
+      return value.toFixed(2);
     default:
       return value.toString();
   }
@@ -214,5 +228,9 @@ export const METRIC_COLORS: Record<MetricKey, string> = {
   conversions: '#8b5cf6',
   spend: '#ef4444',
   cpa: '#ec4899',
-  cpc: '#14b8a6'
+  cpc: '#14b8a6',
+  cpm: '#0ea5e9',
+  frequency: '#a855f7',
+  videoViews: '#f97316',
+  messages: '#84cc16'
 };

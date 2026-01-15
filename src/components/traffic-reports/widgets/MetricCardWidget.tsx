@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { ArrowUp, ArrowDown, Eye, MousePointer, Target, TrendingUp, DollarSign, Calculator, Zap } from "lucide-react";
+import { ArrowUp, ArrowDown, Eye, MousePointer, Target, TrendingUp, DollarSign, Calculator, Zap, Video, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricKey, METRIC_LABELS } from "@/types/template-editor";
 import React from "react";
@@ -13,11 +13,15 @@ const METRIC_ICONS: Record<MetricKey, React.ReactNode> = {
   conversions: <Target className="h-5 w-5 text-muran-primary" />,
   spend: <DollarSign className="h-5 w-5 text-muran-primary" />,
   cpa: <Calculator className="h-5 w-5 text-muran-primary" />,
-  cpc: <Calculator className="h-5 w-5 text-muran-primary" />
+  cpc: <Calculator className="h-5 w-5 text-muran-primary" />,
+  cpm: <Calculator className="h-5 w-5 text-muran-primary" />,
+  frequency: <TrendingUp className="h-5 w-5 text-muran-primary" />,
+  videoViews: <Video className="h-5 w-5 text-muran-primary" />,
+  messages: <MessageCircle className="h-5 w-5 text-muran-primary" />
 };
 
 // Formato para cada métrica
-const METRIC_FORMAT: Record<MetricKey, 'number' | 'currency' | 'percentage'> = {
+const METRIC_FORMAT: Record<MetricKey, 'number' | 'currency' | 'percentage' | 'decimal'> = {
   impressions: 'number',
   reach: 'number',
   clicks: 'number',
@@ -25,7 +29,11 @@ const METRIC_FORMAT: Record<MetricKey, 'number' | 'currency' | 'percentage'> = {
   conversions: 'number',
   spend: 'currency',
   cpa: 'currency',
-  cpc: 'currency'
+  cpc: 'currency',
+  cpm: 'currency',
+  frequency: 'decimal',
+  videoViews: 'number',
+  messages: 'number'
 };
 
 interface MetricCardWidgetProps {
@@ -36,6 +44,7 @@ interface MetricCardWidgetProps {
     change: number;
   };
   showComparison?: boolean;
+  showAbsoluteChange?: boolean;
   title?: string;
 }
 
@@ -43,6 +52,7 @@ export function MetricCardWidget({
   metric, 
   data, 
   showComparison = true,
+  showAbsoluteChange = false,
   title 
 }: MetricCardWidgetProps) {
   const format = METRIC_FORMAT[metric];
@@ -55,13 +65,30 @@ export function MetricCardWidget({
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
       case 'percentage':
         return `${val.toFixed(2)}%`;
+      case 'decimal':
+        return val.toFixed(2);
       default:
         return new Intl.NumberFormat('pt-BR').format(val);
     }
   };
 
+  const formatAbsoluteChange = (val: number) => {
+    const absVal = Math.abs(data.current - data.previous);
+    switch (format) {
+      case 'currency':
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(absVal);
+      case 'percentage':
+        return `${absVal.toFixed(2)}%`;
+      case 'decimal':
+        return absVal.toFixed(2);
+      default:
+        return new Intl.NumberFormat('pt-BR').format(absVal);
+    }
+  };
+
   const isPositive = data.change > 0;
   const isNegative = data.change < 0;
+  const absoluteChange = data.current - data.previous;
 
   return (
     <Card className="glass-card group relative overflow-hidden p-4 transition-all duration-300 hover:shadow-lg hover:shadow-muran-primary/10 h-full">
@@ -77,13 +104,23 @@ export function MetricCardWidget({
             {icon}
           </div>
           {showComparison && data.change !== 0 && (
-            <div className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold",
-              isPositive && "bg-green-500/10 text-green-600 dark:text-green-400",
-              isNegative && "bg-red-500/10 text-red-600 dark:text-red-400"
-            )}>
-              {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-              {Math.abs(data.change).toFixed(1)}%
+            <div className="flex flex-col items-end gap-0.5">
+              <div className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold",
+                isPositive && "bg-green-500/10 text-green-600 dark:text-green-400",
+                isNegative && "bg-red-500/10 text-red-600 dark:text-red-400"
+              )}>
+                {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                {Math.abs(data.change).toFixed(1)}%
+              </div>
+              {showAbsoluteChange && (
+                <span className={cn(
+                  "text-[10px] font-medium",
+                  isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                )}>
+                  {absoluteChange > 0 ? '+' : ''}{formatAbsoluteChange(absoluteChange)}
+                </span>
+              )}
             </div>
           )}
         </div>
