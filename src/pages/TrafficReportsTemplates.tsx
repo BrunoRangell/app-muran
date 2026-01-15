@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useReportTemplates, ReportTemplate } from "@/hooks/useReportTemplates";
+import { premiumTemplates, PremiumTemplate } from "@/data/premiumTemplates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Pencil, Trash2, Globe, User, LayoutTemplate, Eye } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Globe, User, LayoutTemplate, Sparkles, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 const SECTION_LABELS: Record<string, string> = {
@@ -137,8 +138,31 @@ const TrafficReportsTemplates = () => {
     return Object.values(secs).filter(s => s.enabled).length;
   };
 
+  const handleUsePremiumTemplate = (premiumTemplate: PremiumTemplate) => {
+    // Navegar para o editor com o template premium pré-carregado
+    navigate(`/relatorios-trafego/templates/novo?preset=${premiumTemplate.id}`);
+  };
+
+  const getCategoryLabel = (category: PremiumTemplate['category']) => {
+    switch (category) {
+      case 'performance': return 'Conversões';
+      case 'awareness': return 'Alcance';
+      case 'ecommerce': return 'E-commerce';
+      default: return category;
+    }
+  };
+
+  const getCategoryColor = (category: PremiumTemplate['category']) => {
+    switch (category) {
+      case 'performance': return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
+      case 'awareness': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
+      case 'ecommerce': return 'bg-green-500/10 text-green-600 border-green-500/20';
+      default: return '';
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -161,6 +185,70 @@ const TrafficReportsTemplates = () => {
           Novo Template
         </Button>
       </div>
+
+      {/* Premium Templates Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-[#ff6e00]" />
+          <h2 className="text-lg font-semibold">Templates Prontos</h2>
+          <Badge variant="secondary" className="bg-[#ff6e00]/10 text-[#ff6e00] border-[#ff6e00]/20">
+            Novo
+          </Badge>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Comece com templates profissionais e personalize conforme sua necessidade
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {premiumTemplates.map(template => (
+            <Card 
+              key={template.id} 
+              className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-[#ff6e00]/30 overflow-hidden"
+            >
+              <div className="h-2 bg-gradient-to-r from-[#ff6e00] to-[#ff6e00]/60" />
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <span className="text-2xl">{template.icon}</span>
+                      {template.name}
+                    </CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {template.description}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center gap-2 mb-4">
+                  <Badge 
+                    variant="outline" 
+                    className={getCategoryColor(template.category)}
+                  >
+                    {getCategoryLabel(template.category)}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {template.widgets.length} widgets
+                  </Badge>
+                </div>
+                <Button 
+                  className="w-full gap-2 bg-[#ff6e00] hover:bg-[#ff6e00]/90"
+                  onClick={() => handleUsePremiumTemplate(template)}
+                >
+                  <Copy className="h-4 w-4" />
+                  Usar Template
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Seus Templates Section */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Seus Templates</h2>
 
       {/* Templates Grid */}
       {isLoading ? (
@@ -258,6 +346,7 @@ const TrafficReportsTemplates = () => {
           ))}
         </div>
       )}
+      </div>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
