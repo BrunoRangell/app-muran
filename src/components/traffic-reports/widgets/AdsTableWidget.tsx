@@ -11,33 +11,46 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Image as ImageIcon } from 'lucide-react';
+import { MetricKey, METRIC_LABELS } from '@/types/template-editor';
 
 interface Ad {
   id: string;
   name: string;
-  platform: 'meta' | 'google';
+  platform: string;
   thumbnail?: string | null;
   status?: string;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-  conversions: number;
-  cpa: number;
-  cpc: number;
-  spend: number;
+  metrics: Partial<Record<MetricKey, number>>;
 }
 
 interface AdsTableWidgetProps {
   ads: Ad[];
+  metrics?: MetricKey[];
   limit?: number;
   title?: string;
   showThumbnails?: boolean;
   showProportionBars?: boolean;
-  proportionMetric?: 'impressions' | 'clicks' | 'conversions' | 'spend';
+  proportionMetric?: MetricKey;
 }
+
+const formatMetricValue = (metric: MetricKey, value: number): string => {
+  switch (metric) {
+    case 'spend':
+    case 'cpa':
+    case 'cpc':
+    case 'cpm':
+      return `R$ ${value.toFixed(2)}`;
+    case 'ctr':
+      return `${value.toFixed(2)}%`;
+    case 'frequency':
+      return value.toFixed(1);
+    default:
+      return value.toLocaleString('pt-BR');
+  }
+};
 
 export function AdsTableWidget({ 
   ads, 
+  metrics = ['impressions', 'clicks', 'ctr', 'conversions', 'spend', 'cpa'],
   limit = 10,
   title,
   showThumbnails = true,
@@ -45,7 +58,7 @@ export function AdsTableWidget({
   proportionMetric = 'impressions'
 }: AdsTableWidgetProps) {
   const displayAds = ads?.slice(0, limit) || [];
-  const maxValue = Math.max(...displayAds.map(ad => ad[proportionMetric] || 0));
+  const maxValue = Math.max(...displayAds.map(ad => ad.metrics[proportionMetric] || 0));
 
   if (displayAds.length === 0) {
     return (
@@ -73,12 +86,11 @@ export function AdsTableWidget({
               {showThumbnails && <TableHead className="text-xs w-16">Preview</TableHead>}
               <TableHead className="text-xs">Anúncio</TableHead>
               <TableHead className="text-xs text-center">Plataforma</TableHead>
-              <TableHead className="text-xs text-right">Impressões</TableHead>
-              <TableHead className="text-xs text-right">Cliques</TableHead>
-              <TableHead className="text-xs text-right">CTR</TableHead>
-              <TableHead className="text-xs text-right">Conversões</TableHead>
-              <TableHead className="text-xs text-right">Investimento</TableHead>
-              <TableHead className="text-xs text-right">CPA</TableHead>
+              {metrics.map(metric => (
+                <TableHead key={metric} className="text-xs text-right">
+                  {METRIC_LABELS[metric]}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -105,7 +117,7 @@ export function AdsTableWidget({
                     <div className="mt-1.5 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-muran-primary rounded-full transition-all duration-300"
-                        style={{ width: `${getProportionWidth(ad[proportionMetric] || 0)}%` }}
+                        style={{ width: `${getProportionWidth(ad.metrics[proportionMetric] || 0)}%` }}
                       />
                     </div>
                   )}
@@ -123,24 +135,11 @@ export function AdsTableWidget({
                     {ad.platform === 'meta' ? 'Meta' : 'Google'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-xs text-right">
-                  {ad.impressions.toLocaleString('pt-BR')}
-                </TableCell>
-                <TableCell className="text-xs text-right">
-                  {ad.clicks.toLocaleString('pt-BR')}
-                </TableCell>
-                <TableCell className="text-xs text-right">
-                  {ad.ctr.toFixed(2)}%
-                </TableCell>
-                <TableCell className="text-xs text-right">
-                  {ad.conversions.toLocaleString('pt-BR')}
-                </TableCell>
-                <TableCell className="text-xs text-right">
-                  R$ {ad.spend.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-xs text-right">
-                  R$ {ad.cpa.toFixed(2)}
-                </TableCell>
+                {metrics.map(metric => (
+                  <TableCell key={metric} className="text-xs text-right">
+                    {formatMetricValue(metric, ad.metrics[metric] || 0)}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>
