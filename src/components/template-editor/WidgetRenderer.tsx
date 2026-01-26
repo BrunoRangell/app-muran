@@ -15,7 +15,10 @@ import {
   ImageIcon,
   Minus,
   Space,
-  Square
+  Square,
+  Filter,
+  GitCompare,
+  LayoutList
 } from 'lucide-react';
 import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS, DimensionKey } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
@@ -30,7 +33,10 @@ import {
   ImageBlockWidget,
   DividerWidget,
   SpacerWidget,
-  BoxWidget
+  BoxWidget,
+  FunnelWidget,
+  ComboChartWidget,
+  AdsTableWidget
 } from '@/components/traffic-reports/widgets';
 import { 
   mockOverview, 
@@ -66,11 +72,14 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   ImageIcon,
   Minus,
   Space,
-  Square
+  Square,
+  Filter,
+  GitCompare,
+  LayoutList
 };
 
 // Converter mock overview para formato esperado pelos widgets
-const mockOverviewData = {
+const mockOverviewData: Record<MetricKey, { current: number; previous: number; change: number }> = {
   impressions: { current: mockOverview.impressions, previous: mockOverview.impressions * 0.85, change: 12.5 },
   reach: { current: mockOverview.reach, previous: mockOverview.reach * 0.9, change: 8.3 },
   clicks: { current: mockOverview.clicks, previous: mockOverview.clicks * 0.88, change: 15.2 },
@@ -78,7 +87,11 @@ const mockOverviewData = {
   conversions: { current: mockOverview.conversions, previous: mockOverview.conversions * 0.82, change: 22.4 },
   spend: { current: mockOverview.spend, previous: mockOverview.spend * 0.94, change: 5.8 },
   cpa: { current: mockOverview.cpa, previous: mockOverview.cpa * 1.08, change: -8.7 },
-  cpc: { current: mockOverview.cpc, previous: mockOverview.cpc * 1.04, change: -4.2 }
+  cpc: { current: mockOverview.cpc, previous: mockOverview.cpc * 1.04, change: -4.2 },
+  cpm: { current: mockOverview.cpm, previous: mockOverview.cpm * 1.02, change: -2.1 },
+  frequency: { current: mockOverview.frequency, previous: mockOverview.frequency * 0.95, change: 5.3 },
+  videoViews: { current: mockOverview.videoViews, previous: mockOverview.videoViews * 0.88, change: 13.6 },
+  messages: { current: mockOverview.messages, previous: mockOverview.messages * 0.91, change: 9.8 }
 };
 
 // Converter dados demográficos para formato de tabela
@@ -272,6 +285,72 @@ export function WidgetRenderer({
             fontSize={widget.config.fontSize as any}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
+          />
+        );
+      }
+
+      // === NEW VISUAL WIDGETS ===
+      case 'funnel-chart': {
+        const funnelMetrics = (widget.config.funnelMetrics || ['impressions', 'clicks', 'conversions']) as MetricKey[];
+        const steps = funnelMetrics.map(metric => ({
+          metric,
+          value: mockOverviewData[metric]?.current || 0
+        }));
+        
+        return (
+          <FunnelWidget
+            steps={steps}
+            showRates={widget.config.showRates !== false}
+            title={getTitle()}
+            colors={widget.config.colors}
+          />
+        );
+      }
+
+      case 'combo-chart': {
+        return (
+          <ComboChartWidget
+            barMetric={(widget.config.barMetric || 'conversions') as MetricKey}
+            lineMetric={(widget.config.lineMetric || 'cpa') as MetricKey}
+            timeSeries={mockTimeSeries.slice(-14)}
+            showLegend={widget.config.showLegend !== false}
+            title={getTitle()}
+          />
+        );
+      }
+
+      case 'ads-table': {
+        const mockAds = mockCreatives.map(c => ({
+          id: c.id,
+          name: c.name,
+          thumbnail: c.thumbnail,
+          status: 'ACTIVE' as const,
+          platform: c.platform,
+          metrics: {
+            impressions: c.impressions,
+            clicks: c.clicks,
+            ctr: c.ctr,
+            conversions: c.conversions,
+            cpa: c.spend / (c.conversions || 1),
+            spend: c.spend,
+            cpc: c.spend / (c.clicks || 1),
+            reach: Math.floor(c.impressions * 0.7),
+            cpm: (c.spend / c.impressions) * 1000,
+            frequency: 1.4,
+            videoViews: Math.floor(c.impressions * 0.3),
+            messages: Math.floor(c.conversions * 0.2)
+          }
+        }));
+        
+        return (
+          <AdsTableWidget
+            ads={mockAds}
+            metrics={(widget.config.metrics as MetricKey[]) || ['impressions', 'clicks', 'ctr', 'conversions', 'cpa']}
+            limit={widget.config.limit || 10}
+            showThumbnails={widget.config.showThumbnails !== false}
+            showProportionBars={widget.config.showProportionBars}
+            proportionMetric={widget.config.proportionMetric as MetricKey}
+            title={getTitle()}
           />
         );
       }

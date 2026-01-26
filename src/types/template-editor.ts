@@ -7,8 +7,11 @@ export type MetricKey =
   | 'conversions' 
   | 'spend' 
   | 'cpa' 
-  | 'cpc';
-
+  | 'cpc'
+  | 'cpm'           // Custo por mil impressões
+  | 'frequency'     // Frequência (Meta)
+  | 'videoViews'    // Visualizações de vídeo
+  | 'messages';     // Mensagens iniciadas
 // Tipos de gráficos
 export type ChartType = 'line' | 'bar' | 'area' | 'pie';
 
@@ -32,8 +35,11 @@ export type WidgetType =
   | 'bar-chart'            // Gráfico de barras
   | 'area-chart'           // Gráfico de área
   | 'pie-chart'            // Gráfico de pizza
+  | 'combo-chart'          // Gráfico combinado (barras + linha)
+  | 'funnel-chart'         // Funil de conversão
   | 'simple-table'         // Tabela simples
   | 'campaigns-table'      // Tabela de campanhas
+  | 'ads-table'            // Tabela de anúncios com thumbnails
   | 'top-creatives'        // Top criativos
   // Widgets de conteúdo
   | 'text-block'           // Bloco de texto (título, parágrafo)
@@ -67,8 +73,19 @@ export interface WidgetConfig {
   limit?: number;                // Limite de itens (para tabelas/listas)
   showLegend?: boolean;          // Mostrar legenda
   showComparison?: boolean;      // Mostrar comparação com período anterior
+  showAbsoluteChange?: boolean;  // Mostrar variação absoluta (cards)
   colors?: string[];             // Cores personalizadas
   showTitle?: boolean;           // Mostrar título do widget
+  // Configurações de gráfico combinado
+  barMetric?: MetricKey;         // Métrica para barras (combo-chart)
+  lineMetric?: MetricKey;        // Métrica para linha (combo-chart)
+  // Configurações de funil
+  funnelMetrics?: MetricKey[];   // Métricas do funil (impressions -> clicks -> conversions)
+  showRates?: boolean;           // Mostrar taxas de conversão entre etapas
+  // Configurações de tabela com proporção
+  showProportionBars?: boolean;  // Mostrar barras de proporção em tabelas
+  proportionMetric?: MetricKey;  // Métrica usada para calcular proporção
+  showThumbnails?: boolean;      // Mostrar thumbnails em tabelas de anúncios
   // Configurações de widgets de conteúdo
   text?: string;                 // Texto/conteúdo (text-block)
   textAlign?: 'left' | 'center' | 'right';  // Alinhamento horizontal do texto
@@ -218,6 +235,33 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
     defaultConfig: { showTitle: true, title: 'Campanhas', limit: 10 }
   },
   {
+    type: 'ads-table',
+    name: 'Tabela de Anúncios',
+    description: 'Anúncios com preview visual e barras de proporção',
+    icon: 'LayoutList',
+    category: 'individual',
+    defaultLayout: { w: 12, h: 5, minW: 8, minH: 4 },
+    defaultConfig: { showTitle: true, title: 'Anúncios', limit: 10, showThumbnails: true, showProportionBars: true }
+  },
+  {
+    type: 'combo-chart',
+    name: 'Gráfico Combinado',
+    description: 'Barras e linha com dois eixos Y',
+    icon: 'GitCompare',
+    category: 'individual',
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
+    defaultConfig: { barMetric: 'conversions', lineMetric: 'cpa', showLegend: true }
+  },
+  {
+    type: 'funnel-chart',
+    name: 'Funil de Conversão',
+    description: 'Visualiza o fluxo Impressões → Cliques → Conversões',
+    icon: 'Filter',
+    category: 'individual',
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 },
+    defaultConfig: { funnelMetrics: ['impressions', 'clicks', 'conversions'], showRates: true }
+  },
+  {
     type: 'top-creatives',
     name: 'Top Criativos',
     description: 'Melhores anúncios com preview visual',
@@ -303,11 +347,18 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
   conversions: 'Conversões',
   spend: 'Investimento',
   cpa: 'CPA',
-  cpc: 'CPC'
+  cpc: 'CPC',
+  cpm: 'CPM',
+  frequency: 'Frequência',
+  videoViews: 'Views de Vídeo',
+  messages: 'Mensagens'
 };
 
 // Todas as métricas disponíveis em ordem
-export const ALL_METRICS: MetricKey[] = ['impressions', 'reach', 'clicks', 'ctr', 'conversions', 'spend', 'cpa', 'cpc'];
+export const ALL_METRICS: MetricKey[] = [
+  'impressions', 'reach', 'clicks', 'ctr', 'conversions', 
+  'spend', 'cpa', 'cpc', 'cpm', 'frequency', 'videoViews', 'messages'
+];
 
 // Helper para criar um novo widget
 export function createWidget(

@@ -10,7 +10,10 @@ import {
   ImageBlockWidget,
   DividerWidget,
   SpacerWidget,
-  BoxWidget
+  BoxWidget,
+  FunnelWidget,
+  ComboChartWidget,
+  AdsTableWidget
 } from './widgets';
 
 interface InsightsData {
@@ -23,6 +26,10 @@ interface InsightsData {
     spend: { current: number; previous: number; change: number };
     cpa: { current: number; previous: number; change: number };
     cpc: { current: number; previous: number; change: number };
+    cpm: { current: number; previous: number; change: number };
+    frequency: { current: number; previous: number; change: number };
+    videoViews: { current: number; previous: number; change: number };
+    messages: { current: number; previous: number; change: number };
   };
   timeSeries?: any[];
   demographics?: any;
@@ -185,6 +192,54 @@ export function WidgetGridRenderer({ widgets, data }: WidgetGridRendererProps) {
             fontSize={widget.config.fontSize as any}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
+          />
+        );
+      }
+
+      // === NEW VISUAL WIDGETS ===
+      case 'funnel-chart': {
+        const funnelMetrics = (widget.config.funnelMetrics || ['impressions', 'clicks', 'conversions']) as MetricKey[];
+        const steps = funnelMetrics.map(metric => ({
+          metric,
+          value: data.overview?.[metric]?.current || 0
+        }));
+        
+        return (
+          <FunnelWidget
+            steps={steps}
+            showRates={widget.config.showRates !== false}
+            title={widget.config.title}
+            colors={widget.config.colors}
+          />
+        );
+      }
+
+      case 'combo-chart': {
+        if (!data.timeSeries?.length) return <EmptyState message="Sem dados de série temporal" />;
+        
+        return (
+          <ComboChartWidget
+            barMetric={(widget.config.barMetric || 'conversions') as MetricKey}
+            lineMetric={(widget.config.lineMetric || 'cpa') as MetricKey}
+            timeSeries={data.timeSeries}
+            showLegend={widget.config.showLegend !== false}
+            title={widget.config.title}
+          />
+        );
+      }
+
+      case 'ads-table': {
+        if (!data.topAds?.length) return <EmptyState message="Sem dados de anúncios" />;
+        
+        return (
+          <AdsTableWidget
+            ads={data.topAds}
+            metrics={(widget.config.metrics as MetricKey[]) || ['impressions', 'clicks', 'ctr', 'conversions', 'cpa']}
+            limit={widget.config.limit || 10}
+            showThumbnails={widget.config.showThumbnails !== false}
+            showProportionBars={widget.config.showProportionBars}
+            proportionMetric={widget.config.proportionMetric as MetricKey}
+            title={widget.config.title}
           />
         );
       }

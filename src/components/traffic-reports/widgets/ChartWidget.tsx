@@ -25,7 +25,11 @@ const METRIC_COLORS: Record<MetricKey, string> = {
   conversions: '#8b5cf6',
   spend: '#ef4444',
   cpa: '#ec4899',
-  cpc: '#14b8a6'
+  cpc: '#14b8a6',
+  cpm: '#0ea5e9',
+  frequency: '#a855f7',
+  videoViews: '#f97316',
+  messages: '#84cc16'
 };
 
 interface TimeSeriesItem {
@@ -38,6 +42,10 @@ interface TimeSeriesItem {
   spend?: number;
   cpa?: number;
   cpc?: number;
+  cpm?: number;
+  frequency?: number;
+  videoViews?: number;
+  messages?: number;
 }
 
 interface ChartWidgetProps {

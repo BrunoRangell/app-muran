@@ -16,7 +16,11 @@ const MOCK_CHANGES: Record<MetricKey, { value: number; positive: boolean }> = {
   conversions: { value: 22.4, positive: true },
   spend: { value: 5.8, positive: false },
   cpa: { value: 8.7, positive: true },
-  cpc: { value: 4.2, positive: true }
+  cpc: { value: 4.2, positive: true },
+  cpm: { value: 6.3, positive: true },
+  frequency: { value: 2.1, positive: false },
+  videoViews: { value: 18.7, positive: true },
+  messages: { value: 14.2, positive: true }
 };
 
 // Ícones para cada métrica
@@ -28,7 +32,11 @@ const METRIC_ICONS: Record<MetricKey, React.ReactNode> = {
   conversions: <Target className="h-4 w-4 text-muran-primary" />,
   spend: <DollarSign className="h-4 w-4 text-muran-primary" />,
   cpa: <Calculator className="h-4 w-4 text-muran-primary" />,
-  cpc: <Calculator className="h-4 w-4 text-muran-primary" />
+  cpc: <Calculator className="h-4 w-4 text-muran-primary" />,
+  cpm: <Calculator className="h-4 w-4 text-muran-primary" />,
+  frequency: <Zap className="h-4 w-4 text-muran-primary" />,
+  videoViews: <Eye className="h-4 w-4 text-muran-primary" />,
+  messages: <MousePointer className="h-4 w-4 text-muran-primary" />
 };
 
 export function OverviewPreview() {
