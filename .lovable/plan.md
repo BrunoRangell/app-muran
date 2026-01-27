@@ -1,111 +1,78 @@
 
-# Diagnóstico: Erro "FunctionsFetchError" apenas na versão publicada via GitHub
+# Plano: Corrigir Bloqueio CSP que Impede Revisoes Manuais no Dominio Proprio
 
-## Análise do Problema
+## Problema Identificado
 
-### O que foi verificado:
-1. **Edge Functions funcionando**: Testei diretamente a `unified-meta-review` e ela retornou status 200 com sucesso
-2. **CORS configurado corretamente**: Ambas as funções têm `Access-Control-Allow-Origin: '*'`
-3. **verify_jwt = false**: Ambas as funções não exigem JWT, permitindo chamadas abertas
-4. **Código do cliente correto**: O `useBatchOperations.ts` usa `supabase.functions.invoke()` corretamente
+O arquivo `src/components/auth/SecurityHeaders.tsx` define uma **Content-Security-Policy (CSP)** que esta bloqueando as requisicoes para as Edge Functions do Supabase no ambiente de producao (app.muranmarketing.com.br).
 
-### Diferença chave:
-- **Revisões automáticas (cron)**: Funcionam porque usam `net.http_post` diretamente do banco de dados PostgreSQL, não passando pelo navegador
-- **Revisões manuais (UI)**: Falham porque usam `supabase.functions.invoke()` do cliente JavaScript no navegador
+O erro `TypeError: Failed to fetch` dentro do `FunctionsFetchError` indica que a requisicao HTTP esta sendo **bloqueada antes de sair do navegador**, tipico de politicas de seguranca CSP.
 
-## Causa Provável: Dessincronização GitHub
+### Por que funciona no Preview do Lovable?
+- O ambiente de preview pode ter politicas de seguranca mais permissivas ou ignorar meta tags CSP
 
-O erro `FunctionsFetchError: Failed to send a request to the Edge Function` é um erro do lado do cliente Supabase que ocorre quando:
-1. A requisição HTTP não consegue ser enviada do navegador
-2. Há timeout na conexão
-3. Há bloqueio de rede (CORS, firewall, extensão)
+### Por que as revisoes automaticas funcionam?
+- Cron jobs executam via `net.http_post` no PostgreSQL, server-side, sem passar pelo navegador
 
-Como funciona no Lovable preview mas não na versão GitHub, as causas prováveis são:
+### Por que o dominio customizado bloqueia?
+- No Netlify/Cloudflare, a CSP via meta tag e respeitada rigidamente pelo navegador
 
-### 1. Build desatualizado no GitHub
-O código no repositório GitHub pode estar desatualizado em relação ao Lovable. Isso pode causar incompatibilidades.
+---
 
-**Verificação sugerida**: 
-- Acessar o repositório GitHub e verificar a data do último commit
-- Comparar com as alterações recentes no Lovable
+## Solucao
 
-### 2. Cache do navegador/Service Worker
-O navegador pode estar usando uma versão cacheada antiga do JavaScript.
+### Arquivo: `src/components/auth/SecurityHeaders.tsx`
 
-**Solução**:
-- Limpar cache do navegador completamente
-- Fazer hard refresh (Ctrl+Shift+R)
-- Testar em modo anônimo/incógnito
+**Problema atual (linha 13):**
+```typescript
+{ httpEquiv: "Content-Security-Policy", content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co;" }
+```
 
-### 3. Extensões de navegador
-Ad blockers ou extensões de privacidade podem estar bloqueando requisições para `supabase.co`.
-
-**Teste**:
-- Desabilitar extensões temporariamente
-- Testar em outro navegador
-
-## Recomendação de Correção
-
-### Passo 1: Republicar o projeto
-Garantir que a versão mais recente seja publicada:
-- Clicar em "Publish" no Lovable para forçar um novo deploy
-
-### Passo 2: Verificar sincronização GitHub
-Se usa GitHub:
-- Verificar se há commits pendentes
-- Forçar push se necessário
-
-### Passo 3: Adicionar tratamento de erro mais detalhado
-Modificar o código para capturar mais detalhes sobre o erro, facilitando diagnóstico futuro.
-
-**Arquivo**: `src/components/improved-reviews/hooks/useBatchOperations.ts`
+**Correcao:**
+Expandir a diretiva `connect-src` para incluir explicitamente:
+1. WebSockets do Supabase Realtime (`wss://`)
+2. Subdominio de funcoes (ja coberto, mas vamos deixar explicito)
+3. Fonte do Google Fonts
 
 ```typescript
-// No bloco catch (linha 177-183)
-} catch (error: any) {
-  console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
-  
-  // Log detalhado para diagnóstico
-  console.error('Detalhes do erro:', {
-    name: error?.name,
-    message: error?.message,
-    context: error?.context,
-    status: error?.status,
-    code: error?.code
-  });
-  
-  // Verificar tipo específico de erro
-  const isNetworkError = error?.message?.includes('Failed to send') || 
-                         error?.name === 'FunctionsFetchError';
-  
-  toast({
-    title: isNetworkError ? "Erro de conexão" : "Erro na revisão",
-    description: isNetworkError 
-      ? "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente."
-      : `Não foi possível revisar este cliente. Tente novamente.`,
-    variant: "destructive"
-  });
+{ 
+  httpEquiv: "Content-Security-Policy", 
+  content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;" 
 }
 ```
 
-### Passo 4: Testar no ambiente de produção
-Após republicar:
-1. Limpar cache do navegador
-2. Testar em modo anônimo
-3. Verificar console do navegador (F12) para erros detalhados
+### Alteracoes principais na CSP:
 
-## Próximos Passos Imediatos
+| Diretiva | Antes | Depois |
+|----------|-------|--------|
+| `script-src` | `'self' 'unsafe-inline' 'unsafe-eval'` | `+ https://cdn.gpteng.co` |
+| `style-src` | `'self' 'unsafe-inline'` | `+ https://fonts.googleapis.com` |
+| `font-src` | (nao existia) | `'self' https://fonts.gstatic.com` |
+| `img-src` | `'self' data: https:` | `+ blob:` |
+| `connect-src` | `'self' https://socrnutfpqtcjmetskta.supabase.co` | `+ https://*.supabase.co wss://*.supabase.co` |
 
-1. **Verificar data do último deploy no GitHub** - confirmar se o código está atualizado
-2. **Republicar projeto** - forçar novo deploy para garantir versão correta
-3. **Testar em navegador limpo** - modo anônimo sem extensões
-4. **Coletar logs detalhados** - verificar console do navegador na versão publicada
+---
 
-## Notas Técnicas
+## Alternativa mais segura: Remover CSP via meta tag
 
-O erro `FunctionsFetchError` é gerado pelo SDK do Supabase quando:
-- `fetch()` falha completamente
-- Há timeout
-- A resposta não é válida
+Como alternativa, podemos **remover completamente a CSP via meta tag** e configurar diretamente no Netlify/Cloudflare via headers HTTP (mais robusto e recomendado para producao).
 
-Diferente de erros de autenticação ou lógica, este erro indica que a requisição **não chegou** à Edge Function.
+Se preferir, posso:
+1. Remover a CSP do `SecurityHeaders.tsx`
+2. Criar um arquivo `public/_headers` para Netlify ou configuracao equivalente
+
+---
+
+## Resumo
+
+| Arquivo | Tipo | Descricao |
+|---------|------|-----------|
+| `src/components/auth/SecurityHeaders.tsx` | Correcao | Expandir `connect-src` para permitir chamadas a Edge Functions |
+
+---
+
+## Resultado Esperado
+
+Apos a correcao:
+- Revisoes manuais funcionarao no app.muranmarketing.com.br
+- Chamadas para `supabase.functions.invoke()` nao serao bloqueadas
+- Consistencia entre ambiente de preview e producao
