@@ -10,7 +10,7 @@ export const SecurityHeaders = () => {
       { httpEquiv: "X-Frame-Options", content: "DENY" },
       { httpEquiv: "X-XSS-Protection", content: "1; mode=block" },
       { httpEquiv: "Strict-Transport-Security", content: "max-age=31536000; includeSubDomains" },
-      { httpEquiv: "Content-Security-Policy", content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;" }
+      { httpEquiv: "Content-Security-Policy", content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co;" }
     ];
 
     metaTags.forEach(tag => {
