@@ -193,7 +193,7 @@ async function fetchMetaApiInsights(
     limit: '500'
   });
 
-  const campaignUrl = `https://graph.facebook.com/v24.0/${formattedAccountId}/insights?${campaignParams}`;
+  const campaignUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${campaignParams}`;
 
   console.log(`🌐 [META-API] Fetching campaign insights for ${formattedAccountId}: ${since} to ${until}`);
 
@@ -228,7 +228,7 @@ async function fetchMetaApiInsights(
       breakdowns: 'age',
       limit: '100'
     });
-    const ageUrl = `https://graph.facebook.com/v24.0/${formattedAccountId}/insights?${ageParams}`;
+    const ageUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${ageParams}`;
     const ageResponse = await fetch(ageUrl);
     if (ageResponse.ok) {
       const ageData = await ageResponse.json();
@@ -248,7 +248,7 @@ async function fetchMetaApiInsights(
       breakdowns: 'gender',
       limit: '100'
     });
-    const genderUrl = `https://graph.facebook.com/v24.0/${formattedAccountId}/insights?${genderParams}`;
+    const genderUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${genderParams}`;
     const genderResponse = await fetch(genderUrl);
     if (genderResponse.ok) {
       const genderData = await genderResponse.json();
@@ -268,7 +268,7 @@ async function fetchMetaApiInsights(
       breakdowns: 'region',
       limit: '100'
     });
-    const regionUrl = `https://graph.facebook.com/v24.0/${formattedAccountId}/insights?${regionParams}`;
+    const regionUrl = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${regionParams}`;
     const regionResponse = await fetch(regionUrl);
     if (regionResponse.ok) {
       const regionData = await regionResponse.json();

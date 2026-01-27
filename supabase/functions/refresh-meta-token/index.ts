@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     // ========== RENOVAÇÃO DO TOKEN ==========
     console.log(`🔄 Renovando token (faltam ${daysRemaining} dias)...`);
 
-    const renewalUrl = `https://graph.facebook.com/v24.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${APP_ID}&client_secret=${appSecret}&fb_exchange_token=${currentToken}`;
+    const renewalUrl = `https://graph.facebook.com/v23.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${APP_ID}&client_secret=${appSecret}&fb_exchange_token=${currentToken}`;
     
     const response = await fetch(renewalUrl);
     

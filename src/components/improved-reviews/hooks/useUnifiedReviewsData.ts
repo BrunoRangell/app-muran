@@ -116,40 +116,25 @@ export function useUnifiedReviewsData() {
           
           // Calcular budget
           const now = new Date();
-          let remainingDays: number;
+          const currentDay = now.getDate();
+          const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          
+          let budgetStartDay = 1;
+          let budgetEndDay = daysInMonth;
           
           if (customBudgetStartDate && customBudgetEndDate) {
-            // Orçamento personalizado: calcular diferença real entre datas
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const startDate = new Date(customBudgetStartDate);
             const endDate = new Date(customBudgetEndDate);
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
             
-            // Normalizar para meia-noite para evitar problemas de timezone
-            startDate.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0);
-            
-            // Se hoje é antes do início, usar período completo
-            if (today < startDate) {
-              const diffTime = endDate.getTime() - startDate.getTime();
-              remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            } 
-            // Se hoje é depois do fim, não há dias restantes
-            else if (today > endDate) {
-              remainingDays = 0;
-            } 
-            // Calcular dias de hoje até o fim
-            else {
-              const diffTime = endDate.getTime() - today.getTime();
-              remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+              budgetStartDay = startDate.getDate();
+              budgetEndDay = endDate.getDate();
             }
-          } else {
-            // Orçamento mensal padrão
-            const currentDay = now.getDate();
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            remainingDays = daysInMonth - currentDay + 1;
           }
           
-          remainingDays = Math.max(remainingDays, 1);
+          const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
           const totalSpent = review?.total_spent || 0;
           const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
           const idealDailyBudget = remainingBudget / remainingDays;
