@@ -107,7 +107,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     
     // Buscar todas as campanhas com paginação
     let allCampaigns: any[] = [];
-    let nextUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=1000&access_token=${accessToken}`;
+    let nextUrl = `https://graph.facebook.com/v24.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=1000&access_token=${accessToken}`;
     let pageCount = 0;
     
     while (nextUrl && pageCount < 10) {
@@ -169,7 +169,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       const batch = activeCampaigns.slice(i, i + batchSize);
       const batchPromises = batch.map(async (campaign: any) => {
         try {
-          const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+          const campaignInsightsUrl = `https://graph.facebook.com/v24.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
           
           console.log(`🔍 DEBUG Meta: ==========================================`);
           console.log(`🔍 DEBUG Meta: Buscando insights para campanha ${campaign.id}`);
