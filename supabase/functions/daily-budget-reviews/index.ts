@@ -105,7 +105,7 @@ serve(async (req) => {
       try {
         // Construir URL da API Meta para campanhas
         const campaignsFields = "id,name,status";
-        const campaignsApiUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/campaigns?fields=${campaignsFields}&access_token=${accessToken}&limit=500`;
+        const campaignsApiUrl = `https://graph.facebook.com/v24.0/act_${metaAccountId}/campaigns?fields=${campaignsFields}&access_token=${accessToken}&limit=500`;
         
         console.log("Chamando API Meta para buscar campanhas...");
         
@@ -150,7 +150,7 @@ serve(async (req) => {
         
         // Buscar insights para o período especificado
         console.log("Buscando insights para o período especificado...");
-        const insightsUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/insights?fields=spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&access_token=${accessToken}`;
+        const insightsUrl = `https://graph.facebook.com/v24.0/act_${metaAccountId}/insights?fields=spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&access_token=${accessToken}`;
         
         const insightsResponse = await fetch(insightsUrl);
         const insightsData = await insightsResponse.json();
@@ -181,7 +181,7 @@ serve(async (req) => {
           
           // Agora, buscar insights separadamente - implementar paginação
           let allInsights = [];
-          let insightsByCampaignUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
+          let insightsByCampaignUrl = `https://graph.facebook.com/v24.0/act_${metaAccountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
           
           console.log("Buscando insights com paginação...");
           

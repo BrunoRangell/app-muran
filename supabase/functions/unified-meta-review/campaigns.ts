@@ -21,7 +21,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const today = getTodayInBrazil();
     console.log(`🔍 [CAMPAIGNS] Buscando campanhas Meta para conta ${accountId} na data ${today}`);
     
-    const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
+    const campaignsUrl = `https://graph.facebook.com/v24.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
     
     const campaignsResponse = await fetch(campaignsUrl);
     const campaignsData = await campaignsResponse.json();
@@ -46,7 +46,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
     
-    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v24.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
     
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
@@ -71,7 +71,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const campaignsDetails = [];
     for (const campaign of activeCampaigns) {
       try {
-        const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+        const campaignInsightsUrl = `https://graph.facebook.com/v24.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
         const campaignResponse = await fetch(campaignInsightsUrl);
         const campaignInsights = await campaignResponse.json();
         
