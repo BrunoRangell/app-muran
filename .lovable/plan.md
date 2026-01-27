@@ -1,146 +1,111 @@
 
-# Plano: Corrigir Calculo de Dias Restantes para Orcamentos Personalizados Multi-Mes
+# Diagnóstico: Erro "FunctionsFetchError" apenas na versão publicada via GitHub
 
-## Problema Identificado
+## Análise do Problema
 
-O calculo de dias restantes para orcamentos personalizados esta incorreto quando o periodo cruza meses diferentes. O codigo atual usa apenas o dia do mes (`endDate.getDate()`) ao inves de calcular a diferenca real entre as datas.
+### O que foi verificado:
+1. **Edge Functions funcionando**: Testei diretamente a `unified-meta-review` e ela retornou status 200 com sucesso
+2. **CORS configurado corretamente**: Ambas as funções têm `Access-Control-Allow-Origin: '*'`
+3. **verify_jwt = false**: Ambas as funções não exigem JWT, permitindo chamadas abertas
+4. **Código do cliente correto**: O `useBatchOperations.ts` usa `supabase.functions.invoke()` corretamente
 
-**Exemplo do bug:**
-- Orcamento personalizado: 25/01/2026 a 28/02/2026
-- Hoje: 26/01/2026
-- Calculo errado: `28 - 26 + 1 = 3 dias`
-- Calculo correto: `34 dias` (de 26/01 ate 28/02)
+### Diferença chave:
+- **Revisões automáticas (cron)**: Funcionam porque usam `net.http_post` diretamente do banco de dados PostgreSQL, não passando pelo navegador
+- **Revisões manuais (UI)**: Falham porque usam `supabase.functions.invoke()` do cliente JavaScript no navegador
 
-## Arquivos Afetados
+## Causa Provável: Dessincronização GitHub
 
-### 1. src/workers/metaReviews.worker.ts (PRINCIPAL)
-Funcao `calculateBudget` nas linhas 23-69
+O erro `FunctionsFetchError: Failed to send a request to the Edge Function` é um erro do lado do cliente Supabase que ocorre quando:
+1. A requisição HTTP não consegue ser enviada do navegador
+2. Há timeout na conexão
+3. Há bloqueio de rede (CORS, firewall, extensão)
 
-**Codigo com bug:**
-```typescript
-if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
-  budgetStartDay = startDate.getDate();
-  budgetEndDay = endDate.getDate(); // BUG: ignora mes diferente
-}
-const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
-```
+Como funciona no Lovable preview mas não na versão GitHub, as causas prováveis são:
 
-**Correcao:**
-Substituir toda a logica de calculo de dias restantes para usar diferenca real entre datas:
+### 1. Build desatualizado no GitHub
+O código no repositório GitHub pode estar desatualizado em relação ao Lovable. Isso pode causar incompatibilidades.
 
-```typescript
-const calculateBudget = (input: {...}) => {
-  const now = new Date();
-  let remainingDays: number;
-  
-  if (input.customBudgetStartDate && input.customBudgetEndDate) {
-    // Orcamento personalizado: calcular diferenca real entre datas
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startDate = new Date(input.customBudgetStartDate);
-    const endDate = new Date(input.customBudgetEndDate);
-    
-    // Se hoje eh antes do inicio, usar periodo completo
-    if (today < startDate) {
-      const diffTime = endDate.getTime() - startDate.getTime();
-      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    } 
-    // Se hoje eh depois do fim, nao ha dias restantes
-    else if (today > endDate) {
-      remainingDays = 0;
-    } 
-    // Calcular dias de hoje ate o fim
-    else {
-      const diffTime = endDate.getTime() - today.getTime();
-      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    }
-  } else {
-    // Orcamento mensal padrao
-    const currentDay = now.getDate();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    remainingDays = daysInMonth - currentDay + 1;
-  }
-  
-  remainingDays = Math.max(remainingDays, 1);
-  // ... resto do calculo
-};
-```
+**Verificação sugerida**: 
+- Acessar o repositório GitHub e verificar a data do último commit
+- Comparar com as alterações recentes no Lovable
 
-### 2. src/components/improved-reviews/hooks/useUnifiedReviewsData.ts (FALLBACK)
-Linhas 117-140 - Mesmo bug, mesma correcao
+### 2. Cache do navegador/Service Worker
+O navegador pode estar usando uma versão cacheada antiga do JavaScript.
 
-**Codigo com bug (linhas 125-137):**
-```typescript
-if (customBudgetStartDate && customBudgetEndDate) {
-  const startDate = new Date(customBudgetStartDate);
-  const endDate = new Date(customBudgetEndDate);
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  
-  if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
-    budgetStartDay = startDate.getDate();
-    budgetEndDay = endDate.getDate(); // BUG
-  }
-}
-const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
-```
+**Solução**:
+- Limpar cache do navegador completamente
+- Fazer hard refresh (Ctrl+Shift+R)
+- Testar em modo anônimo/incógnito
 
-**Correcao:**
-Aplicar a mesma logica corrigida, calculando diferenca real entre datas.
+### 3. Extensões de navegador
+Ad blockers ou extensões de privacidade podem estar bloqueando requisições para `supabase.co`.
 
----
+**Teste**:
+- Desabilitar extensões temporariamente
+- Testar em outro navegador
 
-## Referencia: Codigo Correto Ja Existente
+## Recomendação de Correção
 
-O arquivo `src/utils/budgetCalculations.ts` ja possui a implementacao correta usando `date-fns`:
+### Passo 1: Republicar o projeto
+Garantir que a versão mais recente seja publicada:
+- Clicar em "Publish" no Lovable para forçar um novo deploy
+
+### Passo 2: Verificar sincronização GitHub
+Se usa GitHub:
+- Verificar se há commits pendentes
+- Forçar push se necessário
+
+### Passo 3: Adicionar tratamento de erro mais detalhado
+Modificar o código para capturar mais detalhes sobre o erro, facilitando diagnóstico futuro.
+
+**Arquivo**: `src/components/improved-reviews/hooks/useBatchOperations.ts`
 
 ```typescript
-export function calculateRemainingDays(
-  customBudgetEndDate?: string,
-  customBudgetStartDate?: string
-): number {
-  const today = startOfDay(new Date());
+// No bloco catch (linha 177-183)
+} catch (error: any) {
+  console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
   
-  if (customBudgetEndDate && customBudgetStartDate) {
-    const endDate = startOfDay(parseISO(customBudgetEndDate));
-    const startDate = startOfDay(parseISO(customBudgetStartDate));
-    
-    if (isBefore(today, startDate)) {
-      return differenceInDays(endDate, startDate) + 1;
-    }
-    if (isAfter(today, endDate)) {
-      return 0;
-    }
-    return differenceInDays(endDate, today) + 1;
-  }
+  // Log detalhado para diagnóstico
+  console.error('Detalhes do erro:', {
+    name: error?.name,
+    message: error?.message,
+    context: error?.context,
+    status: error?.status,
+    code: error?.code
+  });
   
-  // Logica mensal padrao...
+  // Verificar tipo específico de erro
+  const isNetworkError = error?.message?.includes('Failed to send') || 
+                         error?.name === 'FunctionsFetchError';
+  
+  toast({
+    title: isNetworkError ? "Erro de conexão" : "Erro na revisão",
+    description: isNetworkError 
+      ? "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente."
+      : `Não foi possível revisar este cliente. Tente novamente.`,
+    variant: "destructive"
+  });
 }
 ```
 
-O Google Ads tambem calcula corretamente em `useGoogleAdsBudgetCalculation.ts`:
-```typescript
-const timeDiff = endDate.getTime() - today.getTime();
-return Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
-```
+### Passo 4: Testar no ambiente de produção
+Após republicar:
+1. Limpar cache do navegador
+2. Testar em modo anônimo
+3. Verificar console do navegador (F12) para erros detalhados
 
----
+## Próximos Passos Imediatos
 
-## Resumo das Alteracoes
+1. **Verificar data do último deploy no GitHub** - confirmar se o código está atualizado
+2. **Republicar projeto** - forçar novo deploy para garantir versão correta
+3. **Testar em navegador limpo** - modo anônimo sem extensões
+4. **Coletar logs detalhados** - verificar console do navegador na versão publicada
 
-| Arquivo | Tipo | Descricao |
-|---------|------|-----------|
-| `src/workers/metaReviews.worker.ts` | Correcao | Alterar `calculateBudget` para usar diferenca real entre datas |
-| `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts` | Correcao | Alterar calculo de `remainingDays` no fallback da main thread |
+## Notas Técnicas
 
----
+O erro `FunctionsFetchError` é gerado pelo SDK do Supabase quando:
+- `fetch()` falha completamente
+- Há timeout
+- A resposta não é válida
 
-## Resultado Esperado
-
-Apos a correcao:
-- Orcamento 25/01/2026 a 28/02/2026, hoje 26/01/2026:
-  - Antes: 3 dias (errado)
-  - Depois: 34 dias (correto)
-
-- O calculo de orcamento diario ideal sera preciso
-- Os alertas de ajuste serao exibidos corretamente
-- Consistencia com o calculo do Google Ads que ja funciona
+Diferente de erros de autenticação ou lógica, este erro indica que a requisição **não chegou** à Edge Function.

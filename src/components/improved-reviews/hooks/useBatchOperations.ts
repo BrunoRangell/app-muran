@@ -174,11 +174,27 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
         onIndividualComplete();
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
+      
+      // Log detalhado para diagnóstico
+      console.error('Detalhes do erro:', {
+        name: error?.name,
+        message: error?.message,
+        context: error?.context,
+        status: error?.status,
+        code: error?.code
+      });
+      
+      // Verificar tipo específico de erro
+      const isNetworkError = error?.message?.includes('Failed to send') || 
+                             error?.name === 'FunctionsFetchError';
+      
       toast({
-        title: "Erro na revisão",
-        description: `Não foi possível revisar este cliente. Tente novamente.`,
+        title: isNetworkError ? "Erro de conexão" : "Erro na revisão",
+        description: isNetworkError 
+          ? "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente."
+          : `Não foi possível revisar este cliente. Tente novamente.`,
         variant: "destructive"
       });
     } finally {
