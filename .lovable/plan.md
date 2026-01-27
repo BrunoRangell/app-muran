@@ -1,73 +1,127 @@
 
-# Plano: Resolver Erro de CORS Persistente no Dominio Customizado
+# Plano: Corrigir Calculo de Dias Restantes para Orcamentos Personalizados Multi-Mes
 
-## Diagnostico Completo
+## Problema Identificado
 
-Apos analise profunda, confirmei os seguintes pontos:
+O calculo de dias restantes para orcamentos personalizados esta incorreto quando o periodo cruza meses diferentes. O codigo atual usa apenas o dia do mes (`endDate.getDate()`) ao inves de calcular a diferenca real entre as datas.
 
-### 1. Correcao CSP Aplicada Corretamente
-O arquivo `src/components/auth/SecurityHeaders.tsx` (linha 13) ja contem a CSP expandida:
+**Exemplo do bug:**
+- Orcamento personalizado: 25/01/2026 a 28/02/2026
+- Hoje: 26/01/2026
+- Calculo errado: `28 - 26 + 1 = 3 dias`
+- Calculo correto: `34 dias` (de 26/01 ate 28/02)
+
+## Arquivos Afetados
+
+### 1. src/workers/metaReviews.worker.ts (PRINCIPAL)
+Funcao `calculateBudget` nas linhas 23-69
+
+**Codigo com bug:**
+```typescript
+if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+  budgetStartDay = startDate.getDate();
+  budgetEndDay = endDate.getDate(); // BUG: ignora mes diferente
+}
+const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
 ```
-connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;
+
+**Correcao:**
+Substituir toda a logica de calculo de dias restantes para usar diferenca real entre datas:
+
+```typescript
+const calculateBudget = (input: {...}) => {
+  const now = new Date();
+  let remainingDays: number;
+  
+  if (input.customBudgetStartDate && input.customBudgetEndDate) {
+    // Orcamento personalizado: calcular diferenca real entre datas
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startDate = new Date(input.customBudgetStartDate);
+    const endDate = new Date(input.customBudgetEndDate);
+    
+    // Se hoje eh antes do inicio, usar periodo completo
+    if (today < startDate) {
+      const diffTime = endDate.getTime() - startDate.getTime();
+      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    } 
+    // Se hoje eh depois do fim, nao ha dias restantes
+    else if (today > endDate) {
+      remainingDays = 0;
+    } 
+    // Calcular dias de hoje ate o fim
+    else {
+      const diffTime = endDate.getTime() - today.getTime();
+      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
+  } else {
+    // Orcamento mensal padrao
+    const currentDay = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    remainingDays = daysInMonth - currentDay + 1;
+  }
+  
+  remainingDays = Math.max(remainingDays, 1);
+  // ... resto do calculo
+};
 ```
 
-### 2. Edge Function Funcionando
-Teste direto da Edge Function `unified-meta-review` via curl confirmou que ela:
-- Responde corretamente com headers CORS
-- Retorna erro 500 para UUID invalido (comportamento esperado)
-- Esta operacional no servidor
+### 2. src/components/improved-reviews/hooks/useUnifiedReviewsData.ts (FALLBACK)
+Linhas 117-140 - Mesmo bug, mesma correcao
 
-### 3. Causa Raiz Identificada
-O erro de CORS persiste porque:
-- **O projeto NAO foi republicado** apos a correcao da CSP, OU
-- **Cache do Netlify/Cloudflare** esta servindo a versao antiga do HTML/JS
-- O navegador ainda carrega o bundle antigo com a CSP restritiva
+**Codigo com bug (linhas 125-137):**
+```typescript
+if (customBudgetStartDate && customBudgetEndDate) {
+  const startDate = new Date(customBudgetStartDate);
+  const endDate = new Date(customBudgetEndDate);
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+    budgetStartDay = startDate.getDate();
+    budgetEndDay = endDate.getDate(); // BUG
+  }
+}
+const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
+```
 
-### 4. Arquivo Pendente - API v23.0
-Encontrei mais uma Edge Function usando versao antiga da API Meta:
-- `supabase/functions/create-meta-audiences/index.ts` usa `v23.0` (linha 4)
+**Correcao:**
+Aplicar a mesma logica corrigida, calculando diferenca real entre datas.
 
 ---
 
-## Solucao em 3 Partes
+## Referencia: Codigo Correto Ja Existente
 
-### Parte 1: Atualizar API Meta Restante
+O arquivo `src/utils/budgetCalculations.ts` ja possui a implementacao correta usando `date-fns`:
 
-**Arquivo:** `supabase/functions/create-meta-audiences/index.ts`
-
-| Linha | Antes | Depois |
-|-------|-------|--------|
-| 4 | `const GRAPH_API_VERSION = "v23.0";` | `const GRAPH_API_VERSION = "v24.0";` |
-
-### Parte 2: Criar Arquivo de Headers HTTP para Netlify
-
-Para garantir que os headers CORS e CSP sejam aplicados corretamente no nivel do servidor (mais robusto que meta tags), criar o arquivo:
-
-**Arquivo:** `public/_headers`
-
-```text
-/*
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;
+```typescript
+export function calculateRemainingDays(
+  customBudgetEndDate?: string,
+  customBudgetStartDate?: string
+): number {
+  const today = startOfDay(new Date());
+  
+  if (customBudgetEndDate && customBudgetStartDate) {
+    const endDate = startOfDay(parseISO(customBudgetEndDate));
+    const startDate = startOfDay(parseISO(customBudgetStartDate));
+    
+    if (isBefore(today, startDate)) {
+      return differenceInDays(endDate, startDate) + 1;
+    }
+    if (isAfter(today, endDate)) {
+      return 0;
+    }
+    return differenceInDays(endDate, today) + 1;
+  }
+  
+  // Logica mensal padrao...
+}
 ```
 
-Este arquivo sera lido automaticamente pelo Netlify durante o deploy e aplicara os headers em todas as respostas HTTP.
-
-### Parte 3: Instrucoes de Deploy e Cache
-
-Apos aprovar o plano e as mudancas serem aplicadas:
-
-1. **Publicar o projeto** no Lovable (botao Publish)
-2. **Limpar cache do Netlify**:
-   - Acessar Netlify Dashboard > Deploys
-   - Clicar em "Trigger deploy" > "Clear cache and deploy site"
-3. **Limpar cache do Cloudflare** (se aplicavel):
-   - Acessar Cloudflare Dashboard > Caching > Configuration
-   - Clicar em "Purge Everything"
-4. **Testar em janela anonima** para evitar cache do navegador
+O Google Ads tambem calcula corretamente em `useGoogleAdsBudgetCalculation.ts`:
+```typescript
+const timeDiff = endDate.getTime() - today.getTime();
+return Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+```
 
 ---
 
@@ -75,35 +129,18 @@ Apos aprovar o plano e as mudancas serem aplicadas:
 
 | Arquivo | Tipo | Descricao |
 |---------|------|-----------|
-| `supabase/functions/create-meta-audiences/index.ts` | Correcao | Atualizar Meta API de v23.0 para v24.0 |
-| `public/_headers` | Novo | Headers HTTP para Netlify com CSP e seguranca |
+| `src/workers/metaReviews.worker.ts` | Correcao | Alterar `calculateBudget` para usar diferenca real entre datas |
+| `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts` | Correcao | Alterar calculo de `remainingDays` no fallback da main thread |
 
 ---
 
 ## Resultado Esperado
 
-- Revisoes individuais funcionarao no dominio customizado (app.muranmarketing.com.br)
-- Headers de seguranca aplicados no nivel do servidor (mais robusto)
-- Todas as Edge Functions usando Meta API v24.0 (conformidade com email da Meta)
-- Fim dos erros de CORS para chamadas ao Supabase Functions
+Apos a correcao:
+- Orcamento 25/01/2026 a 28/02/2026, hoje 26/01/2026:
+  - Antes: 3 dias (errado)
+  - Depois: 34 dias (correto)
 
----
-
-## Detalhes Tecnicos
-
-### Por que headers HTTP sao melhores que meta tags para CSP?
-
-1. **Prioridade**: Headers HTTP tem precedencia sobre meta tags
-2. **Timing**: Headers sao aplicados ANTES do HTML ser parseado
-3. **Cobertura**: Afetam todos os recursos, incluindo service workers
-4. **Cloudflare**: Alguns proxies podem remover/ignorar meta tags
-
-### Diagrama do Fluxo de Requisicao
-
-```text
-[Browser] --> [Cloudflare CDN] --> [Netlify] --> [Supabase Edge Functions]
-    |              |                   |
-    |              |                   +-- _headers aplica CSP
-    |              +-- Cache pode servir versao antiga
-    +-- Valida CSP ANTES de fazer fetch
-```
+- O calculo de orcamento diario ideal sera preciso
+- Os alertas de ajuste serao exibidos corretamente
+- Consistencia com o calculo do Google Ads que ja funciona
