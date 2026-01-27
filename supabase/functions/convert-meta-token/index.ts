@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     }
 
     const appId = tokenInfo.app_id;
-    const exchangeUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${metaAppSecret}&fb_exchange_token=${currentToken}`;
+    const exchangeUrl = `https://graph.facebook.com/v24.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${metaAppSecret}&fb_exchange_token=${currentToken}`;
     
     const exchangeResponse = await fetch(exchangeUrl);
     const exchangeData = await exchangeResponse.json();

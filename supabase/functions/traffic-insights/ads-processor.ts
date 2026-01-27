@@ -21,7 +21,7 @@ export async function fetchMetaTopAds(
     effective_status: '["ACTIVE","PAUSED"]'
   });
 
-  const url = `https://graph.facebook.com/v22.0/${accountId}/ads?${params}`;
+  const url = `https://graph.facebook.com/v24.0/${accountId}/ads?${params}`;
 
   try {
     const response = await fetch(url);
