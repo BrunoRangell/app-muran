@@ -1,78 +1,109 @@
 
-# Plano: Corrigir Bloqueio CSP que Impede Revisoes Manuais no Dominio Proprio
+# Plano: Resolver Erro de CORS Persistente no Dominio Customizado
 
-## Problema Identificado
+## Diagnostico Completo
 
-O arquivo `src/components/auth/SecurityHeaders.tsx` define uma **Content-Security-Policy (CSP)** que esta bloqueando as requisicoes para as Edge Functions do Supabase no ambiente de producao (app.muranmarketing.com.br).
+Apos analise profunda, confirmei os seguintes pontos:
 
-O erro `TypeError: Failed to fetch` dentro do `FunctionsFetchError` indica que a requisicao HTTP esta sendo **bloqueada antes de sair do navegador**, tipico de politicas de seguranca CSP.
-
-### Por que funciona no Preview do Lovable?
-- O ambiente de preview pode ter politicas de seguranca mais permissivas ou ignorar meta tags CSP
-
-### Por que as revisoes automaticas funcionam?
-- Cron jobs executam via `net.http_post` no PostgreSQL, server-side, sem passar pelo navegador
-
-### Por que o dominio customizado bloqueia?
-- No Netlify/Cloudflare, a CSP via meta tag e respeitada rigidamente pelo navegador
-
----
-
-## Solucao
-
-### Arquivo: `src/components/auth/SecurityHeaders.tsx`
-
-**Problema atual (linha 13):**
-```typescript
-{ httpEquiv: "Content-Security-Policy", content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co;" }
+### 1. Correcao CSP Aplicada Corretamente
+O arquivo `src/components/auth/SecurityHeaders.tsx` (linha 13) ja contem a CSP expandida:
+```
+connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;
 ```
 
-**Correcao:**
-Expandir a diretiva `connect-src` para incluir explicitamente:
-1. WebSockets do Supabase Realtime (`wss://`)
-2. Subdominio de funcoes (ja coberto, mas vamos deixar explicito)
-3. Fonte do Google Fonts
+### 2. Edge Function Funcionando
+Teste direto da Edge Function `unified-meta-review` via curl confirmou que ela:
+- Responde corretamente com headers CORS
+- Retorna erro 500 para UUID invalido (comportamento esperado)
+- Esta operacional no servidor
 
-```typescript
-{ 
-  httpEquiv: "Content-Security-Policy", 
-  content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;" 
-}
+### 3. Causa Raiz Identificada
+O erro de CORS persiste porque:
+- **O projeto NAO foi republicado** apos a correcao da CSP, OU
+- **Cache do Netlify/Cloudflare** esta servindo a versao antiga do HTML/JS
+- O navegador ainda carrega o bundle antigo com a CSP restritiva
+
+### 4. Arquivo Pendente - API v23.0
+Encontrei mais uma Edge Function usando versao antiga da API Meta:
+- `supabase/functions/create-meta-audiences/index.ts` usa `v23.0` (linha 4)
+
+---
+
+## Solucao em 3 Partes
+
+### Parte 1: Atualizar API Meta Restante
+
+**Arquivo:** `supabase/functions/create-meta-audiences/index.ts`
+
+| Linha | Antes | Depois |
+|-------|-------|--------|
+| 4 | `const GRAPH_API_VERSION = "v23.0";` | `const GRAPH_API_VERSION = "v24.0";` |
+
+### Parte 2: Criar Arquivo de Headers HTTP para Netlify
+
+Para garantir que os headers CORS e CSP sejam aplicados corretamente no nivel do servidor (mais robusto que meta tags), criar o arquivo:
+
+**Arquivo:** `public/_headers`
+
+```text
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co;
 ```
 
-### Alteracoes principais na CSP:
+Este arquivo sera lido automaticamente pelo Netlify durante o deploy e aplicara os headers em todas as respostas HTTP.
 
-| Diretiva | Antes | Depois |
-|----------|-------|--------|
-| `script-src` | `'self' 'unsafe-inline' 'unsafe-eval'` | `+ https://cdn.gpteng.co` |
-| `style-src` | `'self' 'unsafe-inline'` | `+ https://fonts.googleapis.com` |
-| `font-src` | (nao existia) | `'self' https://fonts.gstatic.com` |
-| `img-src` | `'self' data: https:` | `+ blob:` |
-| `connect-src` | `'self' https://socrnutfpqtcjmetskta.supabase.co` | `+ https://*.supabase.co wss://*.supabase.co` |
+### Parte 3: Instrucoes de Deploy e Cache
 
----
+Apos aprovar o plano e as mudancas serem aplicadas:
 
-## Alternativa mais segura: Remover CSP via meta tag
-
-Como alternativa, podemos **remover completamente a CSP via meta tag** e configurar diretamente no Netlify/Cloudflare via headers HTTP (mais robusto e recomendado para producao).
-
-Se preferir, posso:
-1. Remover a CSP do `SecurityHeaders.tsx`
-2. Criar um arquivo `public/_headers` para Netlify ou configuracao equivalente
+1. **Publicar o projeto** no Lovable (botao Publish)
+2. **Limpar cache do Netlify**:
+   - Acessar Netlify Dashboard > Deploys
+   - Clicar em "Trigger deploy" > "Clear cache and deploy site"
+3. **Limpar cache do Cloudflare** (se aplicavel):
+   - Acessar Cloudflare Dashboard > Caching > Configuration
+   - Clicar em "Purge Everything"
+4. **Testar em janela anonima** para evitar cache do navegador
 
 ---
 
-## Resumo
+## Resumo das Alteracoes
 
 | Arquivo | Tipo | Descricao |
 |---------|------|-----------|
-| `src/components/auth/SecurityHeaders.tsx` | Correcao | Expandir `connect-src` para permitir chamadas a Edge Functions |
+| `supabase/functions/create-meta-audiences/index.ts` | Correcao | Atualizar Meta API de v23.0 para v24.0 |
+| `public/_headers` | Novo | Headers HTTP para Netlify com CSP e seguranca |
 
 ---
 
 ## Resultado Esperado
 
-Apos a correcao:
-- Revisoes manuais funcionarao no app.muranmarketing.com.br
-- Chamadas para `supabase.functions.invoke()` nao serao bloqueadas
-- Consistencia entre ambiente de preview e producao
+- Revisoes individuais funcionarao no dominio customizado (app.muranmarketing.com.br)
+- Headers de seguranca aplicados no nivel do servidor (mais robusto)
+- Todas as Edge Functions usando Meta API v24.0 (conformidade com email da Meta)
+- Fim dos erros de CORS para chamadas ao Supabase Functions
+
+---
+
+## Detalhes Tecnicos
+
+### Por que headers HTTP sao melhores que meta tags para CSP?
+
+1. **Prioridade**: Headers HTTP tem precedencia sobre meta tags
+2. **Timing**: Headers sao aplicados ANTES do HTML ser parseado
+3. **Cobertura**: Afetam todos os recursos, incluindo service workers
+4. **Cloudflare**: Alguns proxies podem remover/ignorar meta tags
+
+### Diagrama do Fluxo de Requisicao
+
+```text
+[Browser] --> [Cloudflare CDN] --> [Netlify] --> [Supabase Edge Functions]
+    |              |                   |
+    |              |                   +-- _headers aplica CSP
+    |              +-- Cache pode servir versao antiga
+    +-- Valida CSP ANTES de fazer fetch
+```
