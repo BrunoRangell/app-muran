@@ -742,34 +742,47 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
       totalDailyBudget: `R$ ${totalDailyBudget.toFixed(2)}`
     });
     
-    // 3. Buscar gastos do mês atual
+    // 3. Buscar gastos do mês atual ATÉ ONTEM (para cálculo consistente do orçamento ideal)
+    // Isso garante que a recomendação seja a mesma às 08h ou às 18h
     const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     
     const sinceParam = firstDayOfMonth.toISOString().split('T')[0];
-    const untilParam = lastDayOfMonth.toISOString().split('T')[0];
+    // Usar ontem para garantir consistência no cálculo do orçamento ideal
+    // Isso evita que o gasto parcial de hoje afete a recomendação
+    const untilParam = yesterday.toISOString().split('T')[0];
     
-    console.log(`💸 [META-API] Buscando gastos de ${sinceParam} até ${untilParam}...`);
-    
-    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={'since':'${sinceParam}','until':'${untilParam}'}&access_token=${accessToken}`;
-    
-    const insightsResponse = await fetch(insightsUrl);
-    if (!insightsResponse.ok) {
-      console.error(`❌ [META-API] Erro na API de insights:`, insightsResponse.status);
-      throw new Error(`Insights API error: ${insightsResponse.status} - ${insightsResponse.statusText}`);
-    }
-    
-    const insightsData = await insightsResponse.json();
-    const insights = insightsData.data || [];
-    
+    // Tratamento especial para o primeiro dia do mês
+    // Se ontem pertence ao mês anterior, não há gasto confirmado ainda
     let totalSpent = 0;
-    if (insights.length > 0 && insights[0].spend) {
-      totalSpent = parseFloat(insights[0].spend);
+    
+    if (yesterday < firstDayOfMonth) {
+      // Primeiro dia do mês - gasto confirmado = R$ 0
+      console.log(`📅 [META-API] Primeiro dia do mês - gasto confirmado até ontem = R$ 0`);
+    } else {
+      console.log(`💸 [META-API] Buscando gastos de ${sinceParam} até ${untilParam} (até ontem)...`);
+      
+      const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={'since':'${sinceParam}','until':'${untilParam}'}&access_token=${accessToken}`;
+      
+      const insightsResponse = await fetch(insightsUrl);
+      if (!insightsResponse.ok) {
+        console.error(`❌ [META-API] Erro na API de insights:`, insightsResponse.status);
+        throw new Error(`Insights API error: ${insightsResponse.status} - ${insightsResponse.statusText}`);
+      }
+      
+      const insightsData = await insightsResponse.json();
+      const insights = insightsData.data || [];
+      
+      if (insights.length > 0 && insights[0].spend) {
+        totalSpent = parseFloat(insights[0].spend);
+      }
     }
     
     const responseTime = Date.now() - startTime;
-    console.log(`✅ [META-API] Gastos obtidos (${responseTime}ms): R$ ${totalSpent.toFixed(2)}`);
+    console.log(`✅ [META-API] Gastos até ontem obtidos (${responseTime}ms): R$ ${totalSpent.toFixed(2)}`);
     
     // 4. Buscar nome da conta
     console.log(`🏷️ [META-API] Buscando nome da conta...`);
