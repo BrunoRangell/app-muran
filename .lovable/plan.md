@@ -1,146 +1,133 @@
 
-# Plano: Corrigir Calculo de Dias Restantes para Orcamentos Personalizados Multi-Mes
+# Plano: Corrigir Calculo de Orcamento Diario Ideal para Usar Gasto ate Ontem
 
-## Problema Identificado
+## Problema Atual
 
-O calculo de dias restantes para orcamentos personalizados esta incorreto quando o periodo cruza meses diferentes. O codigo atual usa apenas o dia do mes (`endDate.getDate()`) ao inves de calcular a diferenca real entre as datas.
+O calculo do orcamento diario ideal varia ao longo do dia porque usa o `totalSpent` parcial de hoje:
 
-**Exemplo do bug:**
-- Orcamento personalizado: 25/01/2026 a 28/02/2026
-- Hoje: 26/01/2026
-- Calculo errado: `28 - 26 + 1 = 3 dias`
-- Calculo correto: `34 dias` (de 26/01 ate 28/02)
+| Horario | Gasto ate Agora | Restante | Dias | Ideal |
+|---------|-----------------|----------|------|-------|
+| 08h     | R$ 93k          | R$ 7k    | 2    | R$ 3.500 |
+| 18h     | R$ 95k          | R$ 5k    | 2    | R$ 2.500 |
 
-## Arquivos Afetados
+**Isso causa inconsistencia!** A mesma recomendacao muda dependendo do horario.
 
-### 1. src/workers/metaReviews.worker.ts (PRINCIPAL)
-Funcao `calculateBudget` nas linhas 23-69
+## Logica Correta
 
-**Codigo com bug:**
-```typescript
-if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
-  budgetStartDay = startDate.getDate();
-  budgetEndDay = endDate.getDate(); // BUG: ignora mes diferente
-}
-const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
-```
+O Meta/Google vai tentar gastar o orcamento diario **configurado para o dia inteiro**, nao apenas para as horas restantes. Portanto:
 
-**Correcao:**
-Substituir toda a logica de calculo de dias restantes para usar diferenca real entre datas:
+- **Gasto confirmado** = gasto ate **ontem** (dias 100% completos)
+- **Dias restantes** = hoje + dias futuros
+- **Ideal** = (Orcamento mensal - Gasto confirmado) / Dias restantes
 
-```typescript
-const calculateBudget = (input: {...}) => {
-  const now = new Date();
-  let remainingDays: number;
-  
-  if (input.customBudgetStartDate && input.customBudgetEndDate) {
-    // Orcamento personalizado: calcular diferenca real entre datas
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startDate = new Date(input.customBudgetStartDate);
-    const endDate = new Date(input.customBudgetEndDate);
-    
-    // Se hoje eh antes do inicio, usar periodo completo
-    if (today < startDate) {
-      const diffTime = endDate.getTime() - startDate.getTime();
-      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    } 
-    // Se hoje eh depois do fim, nao ha dias restantes
-    else if (today > endDate) {
-      remainingDays = 0;
-    } 
-    // Calcular dias de hoje ate o fim
-    else {
-      const diffTime = endDate.getTime() - today.getTime();
-      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    }
-  } else {
-    // Orcamento mensal padrao
-    const currentDay = now.getDate();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    remainingDays = daysInMonth - currentDay + 1;
-  }
-  
-  remainingDays = Math.max(remainingDays, 1);
-  // ... resto do calculo
-};
-```
-
-### 2. src/components/improved-reviews/hooks/useUnifiedReviewsData.ts (FALLBACK)
-Linhas 117-140 - Mesmo bug, mesma correcao
-
-**Codigo com bug (linhas 125-137):**
-```typescript
-if (customBudgetStartDate && customBudgetEndDate) {
-  const startDate = new Date(customBudgetStartDate);
-  const endDate = new Date(customBudgetEndDate);
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  
-  if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
-    budgetStartDay = startDate.getDate();
-    budgetEndDay = endDate.getDate(); // BUG
-  }
-}
-const remainingDays = Math.max(budgetEndDay - currentDay + 1, 1);
-```
-
-**Correcao:**
-Aplicar a mesma logica corrigida, calculando diferenca real entre datas.
+**Resultado:** O calculo sera **identico** as 08h ou as 18h!
 
 ---
 
-## Referencia: Codigo Correto Ja Existente
+## Implementacao Tecnica
 
-O arquivo `src/utils/budgetCalculations.ts` ja possui a implementacao correta usando `date-fns`:
+### Arquivo Principal: supabase/functions/unified-meta-review/meta-api.ts
 
+**Linha 746-755 (funcao `fetchMetaApiData`):**
+
+Codigo atual:
 ```typescript
-export function calculateRemainingDays(
-  customBudgetEndDate?: string,
-  customBudgetStartDate?: string
-): number {
-  const today = startOfDay(new Date());
-  
-  if (customBudgetEndDate && customBudgetStartDate) {
-    const endDate = startOfDay(parseISO(customBudgetEndDate));
-    const startDate = startOfDay(parseISO(customBudgetStartDate));
-    
-    if (isBefore(today, startDate)) {
-      return differenceInDays(endDate, startDate) + 1;
-    }
-    if (isAfter(today, endDate)) {
-      return 0;
-    }
-    return differenceInDays(endDate, today) + 1;
-  }
-  
-  // Logica mensal padrao...
-}
+// 3. Buscar gastos do mes atual
+const today = new Date();
+const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+const sinceParam = firstDayOfMonth.toISOString().split('T')[0];
+const untilParam = lastDayOfMonth.toISOString().split('T')[0];
 ```
 
-O Google Ads tambem calcula corretamente em `useGoogleAdsBudgetCalculation.ts`:
+Codigo corrigido:
 ```typescript
-const timeDiff = endDate.getTime() - today.getTime();
-return Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+// 3. Buscar gastos do mes atual ATE ONTEM (para calculo consistente do orcamento ideal)
+const today = new Date();
+const yesterday = new Date(today);
+yesterday.setDate(yesterday.getDate() - 1);
+
+const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+const sinceParam = firstDayOfMonth.toISOString().split('T')[0];
+// Usar ontem para garantir consistencia no calculo do orcamento ideal
+// Isso evita que o gasto parcial de hoje afete a recomendacao
+const untilParam = yesterday.toISOString().split('T')[0];
+```
+
+**Tratamento especial para dia 1 do mes:**
+
+Se hoje for dia 1, ontem pertence ao mes anterior. Neste caso, `totalSpent` sera 0 (nenhum dia do mes atual foi completado), o que esta correto!
+
+```typescript
+// Se ontem for do mes anterior, usar hoje como data inicial (ainda nao ha dados do mes)
+if (yesterday < firstDayOfMonth) {
+  // Primeiro dia do mes - nao ha gasto confirmado ainda
+  // Retornar totalSpent = 0 diretamente
+  console.log(`[META-API] Primeiro dia do mes - gasto confirmado = R$ 0`);
+  return {
+    account_name: accountName,
+    daily_budget: totalDailyBudget,
+    total_spent: 0,
+    total_spent_until_yesterday: 0,
+    active_campaigns: activeCampaignsCount
+  };
+}
 ```
 
 ---
 
-## Resumo das Alteracoes
+## Impacto nos Calculos
 
-| Arquivo | Tipo | Descricao |
-|---------|------|-----------|
-| `src/workers/metaReviews.worker.ts` | Correcao | Alterar `calculateBudget` para usar diferenca real entre datas |
-| `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts` | Correcao | Alterar calculo de `remainingDays` no fallback da main thread |
+### Cenario: Dia 30 de janeiro, orcamento R$ 100k
+
+**Antes (logica atual):**
+- As 08h: Gasto = R$ 93k, Restante = R$ 7k, Dias = 2, Ideal = R$ 3.500
+- As 18h: Gasto = R$ 95k, Restante = R$ 5k, Dias = 2, Ideal = R$ 2.500
+- **Problema:** Recomendacao muda durante o dia!
+
+**Depois (logica corrigida):**
+- As 08h: Gasto ate ontem = R$ 89k, Restante = R$ 11k, Dias = 2, Ideal = R$ 5.500
+- As 18h: Gasto ate ontem = R$ 89k, Restante = R$ 11k, Dias = 2, Ideal = R$ 5.500
+- **Resultado:** Recomendacao consistente o dia todo!
 
 ---
 
-## Resultado Esperado
+## Consideracoes Importantes
 
-Apos a correcao:
-- Orcamento 25/01/2026 a 28/02/2026, hoje 26/01/2026:
-  - Antes: 3 dias (errado)
-  - Depois: 34 dias (correto)
+### Por que isso funciona?
 
-- O calculo de orcamento diario ideal sera preciso
-- Os alertas de ajuste serao exibidos corretamente
-- Consistencia com o calculo do Google Ads que ja funciona
+Quando voce ajusta o orcamento diario no Meta/Google:
+1. A plataforma tenta gastar o novo valor **para o dia inteiro**
+2. Se o limite era R$ 4k e voce muda para R$ 5.500, ela tentara gastar R$ 5.500 total no dia
+3. O gasto parcial de hoje nao importa para a decisao de **quanto configurar**
+
+### E se o cliente ja gastou muito hoje?
+
+Nao afeta o calculo porque:
+- O objetivo e atingir o orcamento mensal total
+- Se configurar o orcamento ideal, os proximos dias compensam automaticamente
+- O Meta/Google faz o trabalho de distribuir o gasto
+
+### Orcamentos personalizados
+
+A mesma logica se aplica:
+- Gasto confirmado = soma dos dias completos dentro do periodo personalizado
+- Dias restantes = de hoje ate o fim do periodo
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `supabase/functions/unified-meta-review/meta-api.ts` | Alterar `untilParam` para usar "ontem" em vez de "ultimo dia do mes" |
+
+---
+
+## Proximos Passos Apos Implementacao
+
+1. Testar com clientes de alto volume para validar consistencia
+2. Verificar se a API retorna corretamente quando `until < since` (primeiro dia do mes)
+3. Considerar adicionar indicador visual mostrando "baseado no gasto ate ontem"
