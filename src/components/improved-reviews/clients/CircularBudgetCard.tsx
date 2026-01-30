@@ -562,7 +562,7 @@ export function CircularBudgetCard({
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 mb-1">Gasto atual</p>
+                <p className="text-xs text-gray-500 mb-1">Gasto atual <span className="text-gray-400">(até ontem)</span></p>
                 <p className="text-sm font-semibold text-gray-700">{formatCurrency(spentAmount)}</p>
               </div>
             </div>
