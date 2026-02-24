@@ -665,19 +665,33 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
 }`);
 
   try {
-    // 1. Buscar todas as campanhas da conta
-    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,status,effective_status,daily_budget&access_token=${accessToken}&limit=100`;
-    console.log(`📞 [META-API] Buscando campanhas...`);
+    // 1. Buscar TODAS as campanhas da conta com paginação
+    let allCampaigns: any[] = [];
+    let campaignsNextUrl: string | null = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,status,effective_status,daily_budget,lifetime_budget&access_token=${accessToken}&limit=500`;
+    let pageCount = 0;
     
-    const campaignsResponse = await fetch(campaignsUrl);
-    if (!campaignsResponse.ok) {
-      throw new Error(`Campaigns API error: ${campaignsResponse.status} - ${campaignsResponse.statusText}`);
+    console.log(`📞 [META-API] Buscando campanhas (com paginação)...`);
+    
+    while (campaignsNextUrl) {
+      pageCount++;
+      const campaignsResponse = await fetch(campaignsNextUrl);
+      if (!campaignsResponse.ok) {
+        throw new Error(`Campaigns API error: ${campaignsResponse.status} - ${campaignsResponse.statusText}`);
+      }
+      
+      const campaignsData = await campaignsResponse.json();
+      const pageCampaigns = campaignsData.data || [];
+      allCampaigns = allCampaigns.concat(pageCampaigns);
+      
+      campaignsNextUrl = campaignsData.paging?.next || null;
+      
+      if (campaignsNextUrl) {
+        console.log(`📄 [META-API] Página ${pageCount}: ${pageCampaigns.length} campanhas, buscando próxima página...`);
+      }
     }
     
-    const campaignsData = await campaignsResponse.json();
-    const campaigns = campaignsData.data || [];
-    
-    console.log(`✅ [META-API] ${campaigns.length} campanhas encontradas`);
+    const campaigns = allCampaigns;
+    console.log(`✅ [META-API] ${campaigns.length} campanhas encontradas (${pageCount} página(s))`);
     
     // 2. Processar campanhas e calcular orçamento total
     let totalDailyBudget = 0;
