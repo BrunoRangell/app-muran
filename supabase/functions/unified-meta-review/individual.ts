@@ -89,7 +89,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     const budgetStartTime = Date.now();
     console.log(`💰 [INDIVIDUAL] Verificando orçamento personalizado...`);
     
-    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
+    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today, metaAccount.id);
     const budgetTime = Date.now() - budgetStartTime;
     
     console.log(`${customBudget ? '✅' : 'ℹ️'} [INDIVIDUAL] Orçamento personalizado: ${customBudget ? 'ENCONTRADO' : 'NÃO ENCONTRADO'} (${budgetTime}ms)`);

@@ -113,8 +113,8 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
     console.log("✅ Queries invalidadas com sucesso");
   };
 
-  const reviewClient = async (clientId: string, accountId?: string) => {
-    if (processingIds.includes(clientId)) return;
+  const reviewClient = async (clientId: string, accountId?: string): Promise<{ success: boolean; reason?: string }> => {
+    if (processingIds.includes(clientId)) return { success: false, reason: "already_processing" };
     
     // Validar se accountId existe para evitar chamadas inválidas
     if (!accountId) {
@@ -124,7 +124,7 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
         description: `Este cliente não possui conta ${platform === "meta" ? "Meta Ads" : "Google Ads"} cadastrada.`,
         variant: "destructive"
       });
-      return;
+      return { success: false, reason: "no_account" };
     }
     
     console.log(`🔍 Iniciando revisão individual do cliente ${clientId} (plataforma: ${platform})`);
@@ -132,55 +132,111 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
     
     try {
       let result;
+      let lastError: any = null;
+      const maxRetries = 2;
       
-      if (platform === "meta") {
-        // Chamar função unificada do Meta Ads
-        console.log(`📊 Executando unified-meta-review para cliente ${clientId}`);
-        const { data, error } = await supabase.functions.invoke("unified-meta-review", {
-          body: {
-            clientId,
-            metaAccountId: accountId,
-            reviewDate: new Date().toISOString().split('T')[0]
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`🔄 Tentativa ${attempt + 1} de ${maxRetries + 1} para cliente ${clientId}`);
+            await new Promise(r => setTimeout(r, 1500 * attempt));
           }
-        });
-        
-        if (error) throw error;
-        result = data;
-        
-      } else {
-        // Chamar Edge Function do Google Ads
-        const { data, error } = await supabase.functions.invoke("daily-google-review", {
-          body: {
-            clientId,
-            googleAccountId: accountId,
-            reviewDate: new Date().toISOString().split('T')[0],
-            fetchRealData: true,
-            source: "ui_individual_review"
+          
+          if (platform === "meta") {
+            const { data, error } = await supabase.functions.invoke("unified-meta-review", {
+              body: {
+                clientId,
+                metaAccountId: accountId,
+                reviewDate: new Date().toISOString().split('T')[0]
+              }
+            });
+            if (error) throw error;
+            result = data;
+          } else {
+            const { data, error } = await supabase.functions.invoke("daily-google-review", {
+              body: {
+                clientId,
+                googleAccountId: accountId,
+                reviewDate: new Date().toISOString().split('T')[0],
+                fetchRealData: true,
+                source: "ui_individual_review"
+              }
+            });
+            if (error) throw error;
+            result = data;
           }
-        });
+          
+          // Se chegou aqui, deu certo
+          lastError = null;
+          break;
+        } catch (err: any) {
+          lastError = err;
+          const isTransient = err?.message?.includes('Failed to fetch') || 
+                              err?.name === 'FunctionsFetchError' ||
+                              err?.message?.includes('TypeError');
+          
+          if (!isTransient || attempt >= maxRetries) break;
+          console.warn(`⚠️ Erro transitório na tentativa ${attempt + 1}:`, err.message);
+        }
+      }
+      
+      // Se ainda falhou, verificar no banco se a revisão foi criada mesmo assim
+      if (lastError) {
+        console.log(`🔍 Verificando no banco se revisão foi criada apesar do erro...`);
+        const today = new Date().toISOString().split('T')[0];
+        const { data: existingReview } = await supabase
+          .from('budget_reviews')
+          .select('id, updated_at')
+          .eq('client_id', clientId)
+          .eq('platform', platform)
+          .eq('review_date', today)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         
-        if (error) throw error;
-        result = data;
+        if (existingReview) {
+          const updatedAt = new Date(existingReview.updated_at).getTime();
+          const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+          
+          if (updatedAt > fiveMinutesAgo) {
+            console.log(`✅ Revisão encontrada no banco (criada recentemente), tratando como sucesso`);
+            lastError = null;
+          }
+        }
+      }
+      
+      if (lastError) {
+        const isTransient = lastError?.message?.includes('Failed to fetch') || 
+                            lastError?.name === 'FunctionsFetchError';
+        toast({
+          title: isTransient ? "Instabilidade de conexão" : "Erro na revisão",
+          description: isTransient 
+            ? "A revisão pode ter sido processada no servidor. Atualize a página para verificar."
+            : "Não foi possível revisar este cliente. Tente novamente.",
+          variant: "destructive"
+        });
+        return { success: false, reason: isTransient ? "network_error" : "backend_error" };
       }
       
       console.log(`✅ Cliente ${clientId} analisado com sucesso:`, result);
       
-      // CORREÇÃO PRINCIPAL: Invalidar queries após revisão individual
       await invalidateAllQueries();
       
-      // NOVO: Chamar callback específico para revisões individuais
       if (onIndividualComplete) {
         console.log(`🔄 Executando callback de revisão individual para ${platform}`);
         onIndividualComplete();
       }
       
+      return { success: true };
+      
     } catch (error) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
       toast({
         title: "Erro na revisão",
-        description: `Não foi possível revisar este cliente. Tente novamente.`,
+        description: "Não foi possível revisar este cliente. Tente novamente.",
         variant: "destructive"
       });
+      return { success: false, reason: "unexpected_error" };
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
