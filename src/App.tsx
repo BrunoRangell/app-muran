@@ -7,9 +7,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import Login from "@/pages/Login";
 
-// Pré-carregamento das rotas principais
+// Pré-carregamento das rotas principais com retry
 const Index = lazy(() => {
-  const page = import("@/pages/Index");
+  const loadWithRetry = (retriesLeft = 3): Promise<any> => {
+    return import("@/pages/Index").catch((err) => {
+      if (retriesLeft > 0) {
+        return new Promise(resolve => setTimeout(resolve, 1000)).then(() => loadWithRetry(retriesLeft - 1));
+      }
+      // Último recurso: recarregar a página para obter chunks atualizados
+      window.location.reload();
+      throw err;
+    });
+  };
+  const page = loadWithRetry();
   // Pré-carregar outras páginas após a página inicial carregar
   page.then(() => {
     Promise.all([
