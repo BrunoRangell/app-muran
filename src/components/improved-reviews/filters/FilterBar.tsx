@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Search, TrendingUp, Calculator, Settings, Users, AlertTriangle, DollarSign } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
 
 interface FilterBarProps {
   searchQuery: string;
@@ -15,6 +16,8 @@ interface FilterBarProps {
   onActiveFilterChange?: (filter: string) => void;
   onAccountFilterChange: (showWithoutAccount: boolean) => void;
   onBudgetCalculationModeChange?: (mode: "weighted" | "current") => void;
+  considerTaxes?: boolean;
+  onConsiderTaxesChange?: (value: boolean) => void;
   platform?: "meta" | "google";
 }
 
@@ -27,6 +30,8 @@ export function FilterBar({
   onActiveFilterChange,
   onAccountFilterChange,
   onBudgetCalculationModeChange,
+  considerTaxes,
+  onConsiderTaxesChange,
   platform = "meta"
 }: FilterBarProps) {
   return (
@@ -86,6 +91,15 @@ export function FilterBar({
                       Sem conta cadastrada
                     </ToggleGroupItem>
                   </ToggleGroup>
+                )}
+
+                {onConsiderTaxesChange && (
+                  <div className="flex items-center space-x-2 ml-auto">
+                    <Switch checked={considerTaxes} onCheckedChange={onConsiderTaxesChange} />
+                    <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => onConsiderTaxesChange(!considerTaxes)}>
+                      Considerar tributos (12,15%)
+                    </Label>
+                  </div>
                 )}
               </>
             )}

@@ -10,6 +10,7 @@ interface ClientsListProps {
   activeFilter?: string;
   showWithoutAccount: boolean;
   budgetCalculationMode?: "weighted" | "current";
+  considerTaxes?: boolean;
   platform?: "meta" | "google";
 }
 
@@ -19,6 +20,7 @@ export function ClientsList({
   activeFilter = "",
   showWithoutAccount,
   budgetCalculationMode,
+  considerTaxes,
   platform = "meta"
 }: ClientsListProps) {
   // Filtrar os dados com base na pesquisa e nos filtros
@@ -148,7 +150,7 @@ export function ClientsList({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {sortedClients.map((client) => (
-        <ClientCard key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} budgetCalculationMode={budgetCalculationMode} />
+        <ClientCard key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} budgetCalculationMode={budgetCalculationMode} considerTaxes={considerTaxes} />
       ))}
     </div>
   );
