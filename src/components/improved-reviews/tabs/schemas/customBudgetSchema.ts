@@ -17,6 +17,7 @@ export const customBudgetSchema = z.object({
     required_error: "Selecione a data de término",
   }),
   description: z.string().optional(),
+  account_id: z.string().optional(),
 }).refine((data) => data.end_date >= data.start_date, {
   message: "Data de término deve ser maior ou igual à data de início",
   path: ["end_date"],

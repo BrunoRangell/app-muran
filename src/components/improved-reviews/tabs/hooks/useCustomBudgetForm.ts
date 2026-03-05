@@ -19,6 +19,7 @@ export const useCustomBudgetForm = () => {
           start_date: data.start_date.toISOString().split('T')[0],
           end_date: data.end_date.toISOString().split('T')[0],
           description: data.description || null,
+          account_id: data.account_id && data.account_id !== 'all' ? data.account_id : null,
           is_active: true,
         });
 
@@ -52,6 +53,7 @@ export const useCustomBudgetForm = () => {
           start_date: data.start_date.toISOString().split('T')[0],
           end_date: data.end_date.toISOString().split('T')[0],
           description: data.description || null,
+          account_id: data.account_id && data.account_id !== 'all' ? data.account_id : null,
         })
         .eq('id', id);
 
