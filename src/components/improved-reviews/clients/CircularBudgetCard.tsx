@@ -30,12 +30,14 @@ interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
   budgetCalculationMode?: "weighted" | "current";
+  considerTaxes?: boolean;
   onIndividualReviewComplete?: () => void;
 }
 export function CircularBudgetCard({
   client,
   platform = "meta",
   budgetCalculationMode = "weighted",
+  considerTaxes = false,
   onIndividualReviewComplete,
 }: CircularBudgetCardProps) {
   const { toast } = useToast();
@@ -67,18 +69,30 @@ export function CircularBudgetCard({
   const spentAmount = client.review?.total_spent || 0;
   const budgetAmount = client.budget_amount || 0;
   const originalBudgetAmount = client.original_budget_amount || budgetAmount;
-  const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
+  
+  // Cálculo de tributos Meta Ads (12,15%)
+  const TAX_RATE = 0.1215;
+  const effectiveBudget = considerTaxes ? budgetAmount * (1 - TAX_RATE) : budgetAmount;
+  const taxAmount = budgetAmount * TAX_RATE;
+  const spentPercentage = effectiveBudget > 0 ? (spentAmount / effectiveBudget) * 100 : 0;
 
   // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> CORREÇÃO AQUI (única mudança funcional)
-  const idealDailyBudget = client.budgetCalculation?.idealDailyBudget || 0;
+  const originalIdealDailyBudget = client.budgetCalculation?.idealDailyBudget || 0;
   const currentDailyBudget = client.review?.daily_budget_current || 0;
+  const remainingDays = client.budgetCalculation?.remainingDays || 0;
+  
+  // Recalcular diário ideal quando tributos estão ativos
+  const idealDailyBudget = considerTaxes
+    ? Math.max(effectiveBudget - spentAmount, 0) / Math.max(remainingDays, 1)
+    : originalIdealDailyBudget;
+  
   // diferença correta: IDEAL - ATUAL
   const budgetDifference = idealDailyBudget - currentDailyBudget;
   // define se precisa ajustar (threshold de R$ 5 ou mais)
   const needsAdjustment = Math.abs(budgetDifference) >= 5;
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< FIM DA CORREÇÃO
 
-  const remainingDays = client.budgetCalculation?.remainingDays || 0;
+  // remainingDays já declarado acima
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
 
@@ -558,7 +572,14 @@ export function CircularBudgetCard({
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Orçamento</p>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(budgetAmount)}</p>
+                <p className="text-lg font-bold text-gray-900">{formatCurrency(effectiveBudget)}</p>
+                {considerTaxes && (
+                  <div className="text-[10px] text-gray-400 leading-tight mt-0.5">
+                    <span>Original: {formatCurrency(budgetAmount)}</span>
+                    <span className="mx-1">|</span>
+                    <span>Tributo: {formatCurrency(taxAmount)}</span>
+                  </div>
+                )}
               </div>
 
               <div>

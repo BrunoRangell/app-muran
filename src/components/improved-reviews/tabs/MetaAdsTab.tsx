@@ -21,6 +21,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
+  const [considerTaxes, setConsiderTaxes] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
@@ -126,13 +127,15 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
           onCancelBatchProcessing={cancelBatchProcessing}
         />
 
-        <FilterBar
+          <FilterBar
           searchQuery={searchQuery}
           activeFilter={activeFilter}
           showWithoutAccount={activeFilter === "without-account"}
           onSearchChange={handleSearchChange}
           onActiveFilterChange={handleActiveFilterChange}
           onAccountFilterChange={handleAccountFilterChange}
+          considerTaxes={considerTaxes}
+          onConsiderTaxesChange={setConsiderTaxes}
           platform="meta"
         />
         
@@ -140,7 +143,8 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
           data={data}
           searchQuery={searchQuery}
           activeFilter={activeFilter}
-              showWithoutAccount={activeFilter === "without-account"}
+          showWithoutAccount={activeFilter === "without-account"}
+          considerTaxes={considerTaxes}
           platform="meta"
         />
       </div>
