@@ -11,6 +11,7 @@ interface CustomBudget {
   start_date: string;
   end_date: string;
   description?: string;
+  account_id?: string | null;
 }
 
 interface CustomBudgetDialogProps {
@@ -36,6 +37,7 @@ export function CustomBudgetDialog({
     start_date: new Date(budget.start_date),
     end_date: new Date(budget.end_date),
     description: budget.description || "",
+    account_id: budget.account_id || "",
   } : undefined;
 
   return (

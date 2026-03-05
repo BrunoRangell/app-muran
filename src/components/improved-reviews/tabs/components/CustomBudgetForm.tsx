@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useClientsPaginated } from "@/hooks/queries/useClientsPaginated";
+import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { customBudgetSchema, CustomBudgetFormData } from "../schemas/customBudgetSchema";
 
 interface CustomBudgetFormProps {
@@ -35,8 +36,13 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
       start_date: initialData?.start_date || new Date(),
       end_date: initialData?.end_date || new Date(),
       description: initialData?.description || "",
+      account_id: initialData?.account_id || "",
     },
   });
+
+  const clientId = form.watch("client_id");
+  const platform = form.watch("platform");
+  const { data: accounts } = useClientAccounts(clientId, platform);
 
   const handleSubmit = async (data: CustomBudgetFormData) => {
     await onSubmit(data);
@@ -96,6 +102,34 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
             </FormItem>
           )}
         />
+
+        {accounts && accounts.length > 1 && (
+          <FormField
+            control={form.control}
+            name="account_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Conta de Anúncio</FormLabel>
+                <Select value={field.value || ""} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as contas" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as contas</SelectItem>
+                    {accounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.account_name} ({acc.account_id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
