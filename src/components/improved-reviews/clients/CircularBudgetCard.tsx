@@ -86,8 +86,13 @@ export function CircularBudgetCard({
     ? Math.max(effectiveBudget - spentAmount, 0) / Math.max(remainingDays, 1)
     : originalIdealDailyBudget;
   
-  // diferença correta: IDEAL - ATUAL
-  const budgetDifference = idealDailyBudget - currentDailyBudget;
+  // Para Google Ads no modo "weighted", comparar com média ponderada
+  const weightedAverage = client.weightedAverage || 0;
+  const comparisonValue = (platform === "google" && budgetCalculationMode === "weighted" && weightedAverage > 0)
+    ? weightedAverage
+    : currentDailyBudget;
+
+  const budgetDifference = idealDailyBudget - comparisonValue;
   // define se precisa ajustar (threshold de R$ 5 ou mais)
   const needsAdjustment = Math.abs(budgetDifference) >= 5;
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< FIM DA CORREÇÃO
@@ -120,8 +125,7 @@ export function CircularBudgetCard({
   // Verificar se o aviso foi ignorado hoje (obtido do banco de dados OU estado local)
   const warningIgnoredToday = localWarningIgnored || client.budgetCalculation?.warningIgnoredToday || false;
 
-  // NOVA MÉTRICA: Média Ponderada ou Orçamento Atual para Google Ads
-  const weightedAverage = client.weightedAverage || 0;
+  // weightedAverage já declarado acima (linha 90)
 
   // Determinar cor e status - APENAS 2 estados principais + ignorado
   const getStatusInfo = () => {
