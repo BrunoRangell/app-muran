@@ -136,18 +136,45 @@ export async function fetchAllMetaAccounts(
   return metaAccounts || [];
 }
 
-// Buscar orçamento personalizado ativo
+// Buscar orçamento personalizado ativo - prioriza account_id específico, fallback para global
 export async function fetchActiveCustomBudget(
   supabase: any, 
   clientId: string,
-  today: string
+  today: string,
+  accountId?: string
 ): Promise<CustomBudget | null> {
-  console.log(`🔍 [DATABASE] Buscando orçamento personalizado ativo para cliente ${clientId}`);
+  console.log(`🔍 [DATABASE] Buscando orçamento personalizado ativo para cliente ${clientId}${accountId ? ` (conta ${accountId})` : ''}`);
   
-  const { data: customBudget, error: customBudgetError } = await supabase
+  // 1. Buscar orçamento específico da conta (se accountId fornecido)
+  if (accountId) {
+    const { data: accountBudget, error: accountBudgetError } = await supabase
+      .from("custom_budgets")
+      .select("*")
+      .eq("client_id", clientId)
+      .eq("account_id", accountId)
+      .eq("platform", "meta")
+      .eq("is_active", true)
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+
+    if (!accountBudgetError && accountBudget) {
+      console.log(`✅ [DATABASE] Orçamento personalizado da conta encontrado:`, {
+        id: accountBudget.id,
+        budget_amount: accountBudget.budget_amount,
+        account_id: accountBudget.account_id
+      });
+      return accountBudget;
+    }
+  }
+  
+  // 2. Fallback: buscar orçamento global do cliente (account_id is null)
+  const { data: globalBudget, error: globalBudgetError } = await supabase
     .from("custom_budgets")
     .select("*")
     .eq("client_id", clientId)
+    .is("account_id", null)
     .eq("platform", "meta")
     .eq("is_active", true)
     .lte("start_date", today)
@@ -155,21 +182,19 @@ export async function fetchActiveCustomBudget(
     .order("created_at", { ascending: false })
     .maybeSingle();
 
-  if (customBudgetError) {
-    console.error(`❌ [DATABASE] Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
+  if (globalBudgetError) {
+    console.error(`❌ [DATABASE] Erro ao buscar orçamento personalizado: ${globalBudgetError.message}`);
     return null;
   }
 
-  if (customBudget) {
-    console.log(`✅ [DATABASE] Orçamento personalizado encontrado:`, {
-      id: customBudget.id,
-      budget_amount: customBudget.budget_amount,
-      start_date: customBudget.start_date,
-      end_date: customBudget.end_date
+  if (globalBudget) {
+    console.log(`✅ [DATABASE] Orçamento personalizado global encontrado:`, {
+      id: globalBudget.id,
+      budget_amount: globalBudget.budget_amount
     });
   }
 
-  return customBudget;
+  return globalBudget;
 }
 
 // Verificar revisão existente na tabela budget_reviews

@@ -615,9 +615,12 @@ async function processIndividualGoogleReview(
       throw new Error(`Formato inválido do ID da conta Google Ads: ${googleAccountId}`);
     }
 
-    // Verificar orçamento personalizado
-    const customBudgetResponse = await fetch(
-      `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${reviewDate}&end_date=gte.${reviewDate}&order=created_at.desc&limit=1`, {
+    // Verificar orçamento personalizado - priorizar account_id específico, fallback para global
+    let customBudget = null;
+    
+    // 1. Buscar orçamento específico da conta
+    const accountBudgetResponse = await fetch(
+      `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&is_active=eq.true&platform=eq.google&start_date=lte.${reviewDate}&end_date=gte.${reviewDate}&order=created_at.desc&limit=1`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -625,20 +628,37 @@ async function processIndividualGoogleReview(
       }
     });
 
-    let customBudget = null;
-    
-    if (customBudgetResponse.ok) {
-      const customBudgets = await customBudgetResponse.json();
-      if (customBudgets && customBudgets.length > 0) {
-        customBudget = customBudgets[0];
-        console.log(`✅ [${clientId}] Usando orçamento personalizado (ID: ${customBudget.id})`);
+    if (accountBudgetResponse.ok) {
+      const accountBudgets = await accountBudgetResponse.json();
+      if (accountBudgets && accountBudgets.length > 0) {
+        customBudget = accountBudgets[0];
+        console.log(`✅ [${clientId}] Usando orçamento personalizado da conta (ID: ${customBudget.id})`);
       }
     }
 
-    // 🧹 LIMPEZA AUTOMÁTICA: Remover revisões antigas da tabela budget_reviews
-    console.log(`🧹 [CLEANUP] Iniciando limpeza automática da tabela budget_reviews...`);
+    // 2. Fallback: buscar orçamento global do cliente (account_id is null)
+    if (!customBudget) {
+      const globalBudgetResponse = await fetch(
+        `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&account_id=is.null&is_active=eq.true&platform=eq.google&start_date=lte.${reviewDate}&end_date=gte.${reviewDate}&order=created_at.desc&limit=1`, {
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (globalBudgetResponse.ok) {
+        const globalBudgets = await globalBudgetResponse.json();
+        if (globalBudgets && globalBudgets.length > 0) {
+          customBudget = globalBudgets[0];
+          console.log(`✅ [${clientId}] Usando orçamento personalizado global (ID: ${customBudget.id})`);
+        }
+      }
+    }
+
+    // 🧹 LIMPEZA: Remover revisões de dias anteriores (não de hoje)
+    console.log(`🧹 [CLEANUP] Removendo revisões de dias anteriores...`);
     
-    // 1. Remover TODAS as revisões anteriores a hoje
     const deleteOldResponse = await fetch(
       `${supabaseUrl}/rest/v1/budget_reviews?platform=eq.google&review_date=lt.${reviewDate}`, {
       method: "DELETE",
@@ -652,29 +672,10 @@ async function processIndividualGoogleReview(
     if (!deleteOldResponse.ok) {
       console.error('❌ [CLEANUP] Erro ao limpar revisões de dias anteriores');
     } else {
-      console.log(`✅ [CLEANUP] Revisões de dias anteriores removidas (review_date < ${reviewDate})`);
+      console.log(`✅ [CLEANUP] Revisões de dias anteriores removidas`);
     }
 
-    // 2. Remover revisões duplicadas de hoje para esta conta específica
-    const deleteTodayResponse = await fetch(
-      `${supabaseUrl}/rest/v1/budget_reviews?platform=eq.google&client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&review_date=eq.${reviewDate}`, {
-      method: "DELETE",
-      headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`,
-        "Content-Type": "application/json"
-      }
-    });
-
-    if (!deleteTodayResponse.ok) {
-      console.error('❌ [CLEANUP] Erro ao limpar revisões duplicadas de hoje');
-    } else {
-      console.log(`✅ [CLEANUP] Revisões duplicadas de hoje removidas para conta ${accountIdUuid}`);
-    }
-
-    console.log(`✅ [CLEANUP] Limpeza automática concluída`);
-
-    // CORREÇÃO: Verificar revisão existente na tabela budget_reviews unificada (após limpeza)
+    // Verificar revisão existente de hoje para esta conta (para decidir insert vs update)
     const existingReviewResponse = await fetch(
       `${supabaseUrl}/rest/v1/budget_reviews?client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&platform=eq.google&review_date=eq.${reviewDate}&select=id`, {
       headers: {

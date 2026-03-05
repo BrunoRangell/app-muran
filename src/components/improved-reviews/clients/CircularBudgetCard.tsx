@@ -185,30 +185,17 @@ export function CircularBudgetCard({
   };
   const handleReviewClick = async () => {
     console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name} (${platform})`);
-    console.log("Antes de reviewClient:", {
-      last_funding_detected_at: client.last_funding_detected_at,
-      last_funding_amount: client.last_funding_amount,
-    });
-    try {
-      const accountId = platform === "meta" ? client.meta_account_id : client.google_account_id;
-      
-      // Marcar como recém-revisado ANTES da revisão para manter posição durante atualização
-      markAsReviewed(client.id);
-      
-      await reviewClient(client.id, accountId);
-      console.log("Depois de reviewClient:", {
-        last_funding_detected_at: client.last_funding_detected_at,
-        last_funding_amount: client.last_funding_amount,
-      });
+    const accountId = platform === "meta" ? client.meta_account_id : client.google_account_id;
+    
+    // Marcar como recém-revisado ANTES da revisão para manter posição durante atualização
+    markAsReviewed(client.id);
+    
+    const result = await reviewClient(client.id, accountId);
+    
+    if (result?.success) {
       console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
-    } catch (error: any) {
-      console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
-      // Toast de erro removido - conforme solicitação do usuário
-      // toast({
-      //   title: "Erro na análise",
-      //   description: error.message || "Ocorreu um erro ao analisar o cliente",
-      //   variant: "destructive"
-      // });
+    } else {
+      console.warn(`⚠️ Revisão do cliente ${client.company_name} não confirmada: ${result?.reason}`);
     }
   };
   const handleWarningIgnored = async () => {
