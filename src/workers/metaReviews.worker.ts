@@ -162,9 +162,14 @@ const processMetaData = (
     campaignHealthByClientAccount.set(key, health);
   });
   
-  const customBudgetsByClientId = new Map();
+  const specificBudgets = new Map(); // key: client_id_account_id
+  const globalBudgets = new Map();   // key: client_id (account_id is null)
   activeCustomBudgets.forEach(budget => {
-    customBudgetsByClientId.set(budget.client_id, budget);
+    if (budget.account_id) {
+      specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+    } else {
+      globalBudgets.set(budget.client_id, budget);
+    }
   });
 
   const clientsWithAccounts = new Set();
@@ -215,13 +220,16 @@ const processMetaData = (
               end_date: review.custom_budget_end_date
             };
           }
-        } else if (customBudgetsByClientId.has(client.id)) {
-          const budget = customBudgetsByClientId.get(client.id);
-          customBudget = budget;
-          monthlyBudget = budget.budget_amount;
-          isUsingCustomBudget = true;
-          customBudgetEndDate = budget.end_date;
-          customBudgetStartDate = budget.start_date;
+        } else {
+          const specificKey = `${client.id}_${account.id}`;
+          const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+          if (matchingBudget) {
+            customBudget = matchingBudget;
+            monthlyBudget = matchingBudget.budget_amount;
+            isUsingCustomBudget = true;
+            customBudgetEndDate = matchingBudget.end_date;
+            customBudgetStartDate = matchingBudget.start_date;
+          }
         }
         
         const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
