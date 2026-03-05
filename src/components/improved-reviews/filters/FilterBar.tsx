@@ -35,7 +35,7 @@ export function FilterBar({
   platform = "meta"
 }: FilterBarProps) {
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm sticky top-0 z-30 bg-background">
       <CardContent className="p-4">
         <div className="space-y-4">
           {/* Primeira linha: Busca */}
