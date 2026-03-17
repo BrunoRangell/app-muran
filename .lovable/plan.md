@@ -1,57 +1,71 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Nova Aba "Todas as Plataformas" - Visão Unificada por Cliente
 
-## Problema
+## Conceito
 
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+Criar uma nova aba que agrupa as revisões por **cliente** (não por plataforma). Ao pesquisar "Ford Amazon", aparecem todas as contas Meta e Google desse cliente juntas, num layout que facilita a visão completa.
 
-## Causa raiz
+## Design da UI
 
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+Cada cliente aparece como um **card expandível** ou **grupo visual**:
 
-## Solução
-
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
-
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
-
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
-
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
-}
+```text
+┌─────────────────────────────────────────────┐
+│  Ford Amazon                                │
+│  ┌──────────────┐  ┌──────────────┐         │
+│  │ 🔵 Meta Ads  │  │ 🟡 Google Ads│         │
+│  │ cnpjCaxias   │  │ Ford Search  │         │
+│  │ R$ 5.000     │  │ R$ 2.000     │         │
+│  │ ██████░░ 72% │  │ ████░░░░ 48% │         │
+│  └──────────────┘  └──────────────┘         │
+│  ┌──────────────┐                           │
+│  │ 🔵 Meta Ads  │                           │
+│  │ cnpjSCS      │                           │
+│  │ R$ 3.000     │                           │
+│  │ █████░░░ 65% │                           │
+│  └──────────────┘                           │
+└─────────────────────────────────────────────┘
 ```
 
-### 2. `src/workers/metaReviews.worker.ts`
+- Cada sub-card reutiliza o `CircularBudgetCard` existente (sem modificação)
+- Badge colorido indica a plataforma (azul = Meta, amarelo = Google)
+- Busca filtra pelo nome do cliente, mostrando todas as contas de uma vez
 
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+## Implementação Técnica
 
-## Impacto
+### 1. Novo hook: `useAllPlatformsData.ts`
+- Consome dados dos dois hooks existentes (`useUnifiedReviewsData` para Meta e `useGoogleAdsData` para Google)
+- Agrupa por `client.id` num Map, gerando estrutura `{ clientId, clientName, accounts: [...] }` onde cada account tem `platform` e os dados do card
+- Calcula métricas agregadas (total clientes, total orçamento ambas plataformas)
 
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+### 2. Nova tab: `AllPlatformsTab.tsx`
+- Estrutura idêntica às abas existentes (FilterBar + lista)
+- Usa apenas busca por texto (sem filtros específicos de plataforma como "saldo pré-pago" que só existe no Meta)
+- Renderiza agrupado por cliente: cada grupo é um card contendo sub-cards por conta/plataforma
+
+### 3. Novo componente: `ClientGroupCard.tsx`
+- Recebe `{ clientName, accounts: Array<{platform, clientData}> }`
+- Renderiza o nome do cliente como header
+- Para cada account, renderiza o `ClientCard` existente com a prop `platform` correta
+- Badge de plataforma em cada sub-card para identificação visual
+
+### 4. Registro da aba em `ImprovedDailyReviews.tsx`
+- Adicionar `all-platforms` como primeira aba nas TabsList
+- Lazy load do componente
+- Adicionar no array de abas válidas para hash/localStorage
+
+## Arquivos novos
+- `src/components/improved-reviews/hooks/useAllPlatformsData.ts`
+- `src/components/improved-reviews/tabs/AllPlatformsTab.tsx`
+- `src/components/improved-reviews/clients/ClientGroupCard.tsx`
+
+## Arquivos modificados
+- `src/pages/ImprovedDailyReviews.tsx` — adicionar aba (sem alterar abas existentes)
+
+## O que NÃO muda
+- Hooks `useUnifiedReviewsData` e `useGoogleAdsData` permanecem intactos
+- Componentes `ClientCard`, `CircularBudgetCard`, `ClientsList` não são alterados
+- Abas Meta Ads e Google Ads continuam funcionando exatamente como estão
+- Nenhuma mudança no banco de dados ou edge functions
 
