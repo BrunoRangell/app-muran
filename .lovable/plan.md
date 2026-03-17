@@ -1,25 +1,57 @@
 
 
-# Responsividade dos Cards na Aba "Todas as Plataformas"
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
 ## Problema
-Os cards têm `max-w-sm` (384px máximo) e o grid interno das seções usa `md:grid-cols-2 xl:grid-cols-3`, mas como o container pai já divide em 2 colunas (`lg:grid-cols-2`), o espaço disponível por seção é insuficiente — os cards ficam apertados ou com muito espaço vazio.
+
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+
+## Causa raiz
+
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
 ## Solução
 
-### 1. Remover `max-w-sm` do CircularBudgetCard (linha 281)
-- Trocar `max-w-sm` por `w-full` para que o card preencha o espaço disponível no grid
-- O grid pai controla quantos cards cabem por linha
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-### 2. Ajustar grid interno do ClientGroupCard
-- Dentro de cada seção de plataforma (que já ocupa metade da tela em `lg`), usar `grid-cols-1` como base — cada card ocupa a largura total da seção
-- Para seções com muitas contas, permitir 2 colunas apenas em telas muito largas (`2xl:grid-cols-2`)
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-### 3. Layout responsivo do container pai
-- Manter `grid-cols-1 lg:grid-cols-2` para as seções Meta/Google lado a lado
-- Quando um cliente tem apenas uma plataforma, a seção única já ocupa a largura toda naturalmente
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
 
-## Arquivos editados
-- `src/components/improved-reviews/clients/CircularBudgetCard.tsx` — remover `max-w-sm`
-- `src/components/improved-reviews/clients/ClientGroupCard.tsx` — ajustar breakpoints do grid interno
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
+```
+
+### 2. `src/workers/metaReviews.worker.ts`
+
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
