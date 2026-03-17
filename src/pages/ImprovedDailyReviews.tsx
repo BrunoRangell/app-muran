@@ -103,11 +103,18 @@ export default function ImprovedDailyReviews() {
       <div className="grid grid-cols-1 gap-6">
         <Tabs value={selectedTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
+            <TabsTrigger value="all-platforms">Todas as Plataformas</TabsTrigger>
             <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
             <TabsTrigger value="budgets">Orçamentos</TabsTrigger>
             <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="all-platforms" className="space-y-6">
+            <Suspense fallback={<ImprovedLoadingState />}>
+              <AllPlatformsTab />
+            </Suspense>
+          </TabsContent>
           
           <TabsContent value="meta-ads" className="space-y-6">
             <Suspense fallback={<ImprovedLoadingState />}>
