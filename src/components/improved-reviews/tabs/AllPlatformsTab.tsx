@@ -18,6 +18,10 @@ export function AllPlatformsTab() {
     setActiveFilter,
     platformFilter,
     setPlatformFilter,
+    considerTaxes,
+    setConsiderTaxes,
+    budgetCalculationMode,
+    setBudgetCalculationMode,
   } = useAllPlatformsData();
 
   if (isLoading) {
@@ -65,9 +69,13 @@ export function AllPlatformsTab() {
         searchQuery={searchQuery}
         activeFilter={activeFilter}
         platformFilter={platformFilter}
+        considerTaxes={considerTaxes}
+        budgetCalculationMode={budgetCalculationMode}
         onSearchChange={setSearchQuery}
         onActiveFilterChange={setActiveFilter}
         onPlatformFilterChange={setPlatformFilter}
+        onConsiderTaxesChange={setConsiderTaxes}
+        onBudgetCalculationModeChange={setBudgetCalculationMode}
       />
 
       {/* Client groups */}
@@ -80,6 +88,8 @@ export function AllPlatformsTab() {
               key={group.clientId}
               clientName={group.clientName}
               accounts={group.accounts}
+              considerTaxes={considerTaxes}
+              budgetCalculationMode={budgetCalculationMode}
             />
           ))}
         </div>

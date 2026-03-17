@@ -5,6 +5,8 @@ import type { PlatformAccount } from "../hooks/useAllPlatformsData";
 interface ClientGroupCardProps {
   clientName: string;
   accounts: PlatformAccount[];
+  considerTaxes?: boolean;
+  budgetCalculationMode?: "weighted" | "current";
 }
 
 const platformConfig = {
@@ -18,7 +20,7 @@ const platformConfig = {
   },
 };
 
-export function ClientGroupCard({ clientName, accounts }: ClientGroupCardProps) {
+export function ClientGroupCard({ clientName, accounts, considerTaxes, budgetCalculationMode }: ClientGroupCardProps) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
@@ -50,6 +52,8 @@ export function ClientGroupCard({ clientName, accounts }: ClientGroupCardProps) 
             <ClientCard
               client={acc.clientData}
               platform={acc.platform}
+              considerTaxes={acc.platform === "meta" ? considerTaxes : undefined}
+              budgetCalculationMode={acc.platform === "google" ? budgetCalculationMode : undefined}
             />
           </div>
         ))}

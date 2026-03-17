@@ -1,27 +1,38 @@
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Settings, AlertTriangle, Users, Layers } from "lucide-react";
+import { Search, Settings, AlertTriangle, Users, Layers, Wallet, Calculator, Receipt } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
-export type AllPlatformsFilter = "" | "adjustments" | "campaigns" | "without-account";
+export type AllPlatformsFilter = "" | "adjustments" | "campaigns" | "without-account" | "balance";
 export type PlatformFilter = "all" | "meta" | "google";
 
 interface AllPlatformsFilterBarProps {
   searchQuery: string;
   activeFilter: AllPlatformsFilter;
   platformFilter: PlatformFilter;
+  considerTaxes: boolean;
+  budgetCalculationMode: "weighted" | "current";
   onSearchChange: (query: string) => void;
   onActiveFilterChange: (filter: AllPlatformsFilter) => void;
   onPlatformFilterChange: (platform: PlatformFilter) => void;
+  onConsiderTaxesChange: (value: boolean) => void;
+  onBudgetCalculationModeChange: (mode: "weighted" | "current") => void;
 }
 
 export function AllPlatformsFilterBar({
   searchQuery,
   activeFilter,
   platformFilter,
+  considerTaxes,
+  budgetCalculationMode,
   onSearchChange,
   onActiveFilterChange,
   onPlatformFilterChange,
+  onConsiderTaxesChange,
+  onBudgetCalculationModeChange,
 }: AllPlatformsFilterBarProps) {
   return (
     <Card className="shadow-sm sticky top-0 z-30 bg-background">
@@ -69,6 +80,13 @@ export function AllPlatformsFilterBar({
                 <Users className="h-3 w-3" />
                 Sem conta cadastrada
               </ToggleGroupItem>
+              <ToggleGroupItem
+                value="balance"
+                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
+              >
+                <Wallet className="h-3 w-3" />
+                Saldo disponível baixo
+              </ToggleGroupItem>
             </ToggleGroup>
 
             {/* Platform toggle */}
@@ -97,6 +115,48 @@ export function AllPlatformsFilterBar({
                   className="h-8 px-3 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md"
                 >
                   Google
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </div>
+
+          {/* Platform-specific options */}
+          <Separator />
+          <div className="flex flex-wrap gap-6 items-center">
+            {/* Meta: Considerar tributos */}
+            <div className="flex items-center gap-2">
+              <Receipt className="h-3.5 w-3.5 text-blue-600" />
+              <Switch
+                id="consider-taxes"
+                checked={considerTaxes}
+                onCheckedChange={onConsiderTaxesChange}
+              />
+              <Label htmlFor="consider-taxes" className="text-xs text-muted-foreground cursor-pointer">
+                Considerar tributos (12,15%)
+              </Label>
+            </div>
+
+            {/* Google: Base de cálculo */}
+            <div className="flex items-center gap-2">
+              <Calculator className="h-3.5 w-3.5 text-amber-600" />
+              <span className="text-xs text-muted-foreground">Base de cálculo:</span>
+              <ToggleGroup
+                type="single"
+                value={budgetCalculationMode}
+                onValueChange={(value) => value && onBudgetCalculationModeChange(value as "weighted" | "current")}
+                className="h-7"
+              >
+                <ToggleGroupItem
+                  value="weighted"
+                  className="h-7 px-2.5 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md"
+                >
+                  Média Pond.
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="current"
+                  className="h-7 px-2.5 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md"
+                >
+                  Orç. atual
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
