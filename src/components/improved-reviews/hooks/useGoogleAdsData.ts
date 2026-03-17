@@ -157,7 +157,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
         .eq('status', 'active'),
       supabase
         .from('budget_reviews')
-        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date')
+        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date, campaign_budgets')
         .in('client_id', clientIds)
         .eq('platform', 'google')
         .order('review_date', { ascending: false }),
