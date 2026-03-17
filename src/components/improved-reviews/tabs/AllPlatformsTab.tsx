@@ -1,16 +1,24 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, Layers } from "lucide-react";
+import { Users, Layers } from "lucide-react";
 import { useAllPlatformsData } from "../hooks/useAllPlatformsData";
 import { ClientGroupCard } from "../clients/ClientGroupCard";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
+import { AllPlatformsFilterBar } from "../filters/AllPlatformsFilterBar";
 
 export function AllPlatformsTab() {
-  const { groups, metrics, isLoading, searchQuery, setSearchQuery } =
-    useAllPlatformsData();
+  const {
+    groups,
+    metrics,
+    isLoading,
+    searchQuery,
+    setSearchQuery,
+    activeFilter,
+    setActiveFilter,
+    platformFilter,
+    setPlatformFilter,
+  } = useAllPlatformsData();
 
   if (isLoading) {
     return <ImprovedLoadingState />;
@@ -52,20 +60,19 @@ export function AllPlatformsTab() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar cliente..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      {/* Filter bar */}
+      <AllPlatformsFilterBar
+        searchQuery={searchQuery}
+        activeFilter={activeFilter}
+        platformFilter={platformFilter}
+        onSearchChange={setSearchQuery}
+        onActiveFilterChange={setActiveFilter}
+        onPlatformFilterChange={setPlatformFilter}
+      />
 
       {/* Client groups */}
       {groups.length === 0 ? (
-        <EmptyState title="Nenhum cliente encontrado" description="Tente buscar por outro nome" />
+        <EmptyState title="Nenhum cliente encontrado" description="Tente buscar por outro nome ou altere os filtros" />
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (

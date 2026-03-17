@@ -1,38 +1,57 @@
 
 
-# Filtros na Aba "Todas as Plataformas"
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
 ## Problema
-Meta e Google têm filtros diferentes:
-- **Comuns**: Ajuste de orçamento, Campanhas com problemas, Sem conta cadastrada
-- **Só Meta**: Saldo disponível baixo, Considerar tributos (12,15%)
-- **Só Google**: Base de cálculo (Média Pond / Orç. atual)
+
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+
+## Causa raiz
+
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
 ## Solução
 
-Exibir os **3 filtros comuns** + um filtro extra **"Só Meta"** e **"Só Google"** para filtrar por plataforma. Os filtros específicos (saldo, tributos, base de cálculo) ficam omitidos nesta aba — eles continuam disponíveis nas abas dedicadas.
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-### Filtros da aba unificada:
-1. **Ajuste de orçamento** — filtra clientes com `needsAdjustment` (ambas plataformas)
-2. **Campanhas com problemas** — filtra por `veiculationStatus` (ambas)
-3. **Sem conta cadastrada** — filtra por `!hasAccount` (ambas)
-4. **Plataforma** — novo toggle: Todas / Meta / Google (filtra os grupos mostrando só contas da plataforma selecionada)
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-### Implementação
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
 
-1. **Criar `AllPlatformsFilterBar.tsx`** — componente de filtros dedicado para esta aba, com os 3 filtros comuns + filtro de plataforma (ToggleGroup com "Todas", "Meta", "Google")
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
 
-2. **Atualizar `AllPlatformsTab.tsx`** — usar o novo FilterBar, passar estado de filtros para a lógica de filtragem
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
 
-3. **Atualizar `useAllPlatformsData.ts`** — adicionar parâmetros de filtro (activeFilter + platformFilter), aplicar filtragem nos grupos:
-   - `activeFilter` filtra as contas individuais dentro de cada grupo
-   - `platformFilter` filtra por plataforma
-   - Grupos sem contas após filtragem são removidos
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
 
-### Arquivos
-- **Novo**: `src/components/improved-reviews/filters/AllPlatformsFilterBar.tsx`
-- **Editar**: `src/components/improved-reviews/tabs/AllPlatformsTab.tsx`
-- **Editar**: `src/components/improved-reviews/hooks/useAllPlatformsData.ts`
+if (matchingBudget) {
+  // aplicar orçamento
+}
+```
 
-Nenhuma alteração nas abas Meta/Google existentes.
+### 2. `src/workers/metaReviews.worker.ts`
+
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
