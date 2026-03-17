@@ -39,7 +39,7 @@ export function ClientGroupCard({ clientName, accounts, considerTaxes, budgetCal
             {accs.length} {accs.length === 1 ? "conta" : "contas"}
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
           {accs.map((acc, i) => (
             <ClientCard
               key={`${acc.platform}-${i}`}
