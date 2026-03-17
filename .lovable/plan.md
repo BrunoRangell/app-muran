@@ -1,57 +1,41 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Reorganizar Filtros por Plataforma na AllPlatformsFilterBar
 
 ## Problema
-
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
-
-## Causa raiz
-
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+Os filtros estão todos misturados numa linha só. O usuário quer ver claramente quais filtros são comuns, quais são do Meta e quais são do Google -- separados visualmente em linhas/seções distintas.
 
 ## Solução
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+Reorganizar o `AllPlatformsFilterBar.tsx` em 3 seções visuais claras:
 
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
-
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
-
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
-}
+```text
+┌──────────────────────────────────────────────────────────┐
+│  🔍 Buscar clientes...                                  │
+│                                                          │
+│  ── Filtros comuns ──────────────────────────────────     │
+│  [Ajuste de orçamento] [Campanhas com problemas]         │
+│  [Sem conta cadastrada]        Plataforma: [All|Meta|G]  │
+│                                                          │
+│  ── 🔵 Meta Ads ────────────────────────────────────     │
+│  [Saldo disponível baixo]   🔘 Considerar tributos       │
+│                                                          │
+│  ── 🟡 Google Ads ──────────────────────────────────     │
+│  Base de cálculo: [Média Pond.] [Orç. atual]             │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### 2. `src/workers/metaReviews.worker.ts`
+- **Linha 1**: Busca (sem mudança)
+- **Linha 2**: Filtros comuns (Ajuste, Campanhas, Sem conta) + toggle de plataforma no canto direito
+- **Linha 3**: Seção Meta (badge azul) com "Saldo disponível baixo" e switch "Considerar tributos"
+- **Linha 4**: Seção Google (badge amber) com toggle "Base de cálculo"
 
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+Cada seção de plataforma tem um badge colorido como label e uma borda lateral colorida (mesmo padrão dos cards).
 
-## Impacto
+## Arquivo editado
+- `src/components/improved-reviews/filters/AllPlatformsFilterBar.tsx` -- reorganizar layout em seções
 
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+## O que NÃO muda
+- `ClientGroupCard.tsx` -- cards ficam lado a lado como estão (com as seções Meta/Google que já implementamos)
+- Hook, Tab, lógica de filtro -- tudo permanece igual
 
