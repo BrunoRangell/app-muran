@@ -900,6 +900,7 @@ async function processIndividualGoogleReview(
           }
           
           console.log(`💰 Orçamento diário REAL total: ${currentDailyBudget.toFixed(2)}`);
+          console.log(`📦 [DEBUG] googleCampaignBudgets coletados: ${JSON.stringify(googleCampaignBudgets)}`);
         } else {
           console.log("📊 Nenhuma campanha ativa encontrada - orçamento diário mantido zerado");
           currentDailyBudget = 0;
