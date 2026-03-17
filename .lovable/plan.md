@@ -1,29 +1,57 @@
 
 
-# Diagnóstico: Composição do orçamento Google Ads vazia
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Evidências
+## Problema
 
-1. **DB confirma**: Todas as revisões Google têm `campaign_budgets: []` (vazio)
-2. **Logs confirmam**: 2 campanhas ativas encontradas, orçamento diário real = R$ 16,00
-3. **Código está correto**: Linhas 891-899 populam `googleCampaignBudgets` e linha 984 inclui no `reviewData`
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
-## Causa provável
+## Causa raiz
 
-A edge function `daily-google-review` provavelmente **não foi redeployada** com a versão que inclui a coleta de `campaign_budgets`. O código no repositório está correto, mas a versão rodando no Supabase pode ser anterior.
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
-## Plano
+## Solução
 
-### 1. Adicionar log de debug para `googleCampaignBudgets`
-- **Arquivo**: `supabase/functions/daily-google-review/index.ts` (~linha 902)
-- Adicionar `console.log` mostrando o conteúdo de `googleCampaignBudgets` após o loop das campanhas, para confirmar se está sendo populado
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-### 2. Redeployar a edge function
-- Deploy de `daily-google-review` para garantir que a versão atualizada está em produção
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-### 3. Testar
-- Rodar uma revisão Google Ads individual e verificar nos logs se `googleCampaignBudgets` aparece populado
-- Verificar no banco se `campaign_budgets` ficou preenchido
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
 
-Isso é uma correção mínima (1 linha de log + redeploy).
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
+```
+
+### 2. `src/workers/metaReviews.worker.ts`
+
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
