@@ -887,10 +887,17 @@ async function processIndividualGoogleReview(
         if (campaignsData && campaignsData.results && campaignsData.results.length > 0) {
           console.log(`📋 Encontradas ${campaignsData.results.length} campanhas ativas`);
           
-          currentDailyBudget = campaignsData.results.reduce((acc: number, campaign: any) => {
-            const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
-            return acc + budget;
-          }, 0);
+          currentDailyBudget = 0;
+          googleCampaignBudgets = [];
+          
+          for (const campaignResult of campaignsData.results) {
+            const budget = campaignResult.campaignBudget?.amountMicros ? campaignResult.campaignBudget.amountMicros / 1e6 : 0;
+            const campaignName = campaignResult.campaign?.name || 'Campanha sem nome';
+            currentDailyBudget += budget;
+            if (budget > 0) {
+              googleCampaignBudgets.push({ name: campaignName, budget, source: 'campaign' });
+            }
+          }
           
           console.log(`💰 Orçamento diário REAL total: ${currentDailyBudget.toFixed(2)}`);
         } else {
