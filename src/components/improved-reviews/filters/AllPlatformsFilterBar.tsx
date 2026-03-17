@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Settings, AlertTriangle, Users, Layers, Wallet, Calculator, Receipt } from "lucide-react";
+import { Search, Settings, AlertTriangle, Users, Layers, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
