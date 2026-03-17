@@ -17,13 +17,13 @@ export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
   const getInitialTab = () => {
     const hashTab = window.location.hash.replace('#', '');
-    if (hashTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(hashTab)) {
+    if (hashTab && ['all-platforms', 'meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(hashTab)) {
       console.log("🔗 Aba inicial da URL:", hashTab);
       return hashTab;
     }
     
     const savedTab = localStorage.getItem("selected_tab");
-    if (savedTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(savedTab)) {
+    if (savedTab && ['all-platforms', 'meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(savedTab)) {
       console.log("💾 Aba inicial do localStorage:", savedTab);
       return savedTab;
     }
