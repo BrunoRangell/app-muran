@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useUnifiedReviewsData } from "./useUnifiedReviewsData";
 import { useGoogleAdsData } from "./useGoogleAdsData";
+import type { AllPlatformsFilter, PlatformFilter } from "../filters/AllPlatformsFilterBar";
 
 export interface PlatformAccount {
   platform: "meta" | "google";
@@ -24,8 +25,25 @@ export interface AllPlatformsMetrics {
   clientsNeedingAdjustment: number;
 }
 
+function matchesFilter(acc: PlatformAccount, filter: AllPlatformsFilter): boolean {
+  if (!filter) return true;
+  const d = acc.clientData;
+  switch (filter) {
+    case "adjustments":
+      return !!d.needsAdjustment;
+    case "campaigns":
+      return d.veiculationStatus === "not_serving" || d.veiculationStatus === "partial";
+    case "without-account":
+      return !d.hasAccount;
+    default:
+      return true;
+  }
+}
+
 export function useAllPlatformsData() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<AllPlatformsFilter>("");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
 
   const { data: metaData, isLoading: metaLoading } = useUnifiedReviewsData();
   const { data: googleData, isLoading: googleLoading } = useGoogleAdsData();
@@ -112,10 +130,30 @@ export function useAllPlatformsData() {
   }, [metaData, googleData]);
 
   const filteredGroups = useMemo(() => {
-    if (!searchQuery) return groups;
-    const q = searchQuery.toLowerCase();
-    return groups.filter((g) => g.clientName.toLowerCase().includes(q));
-  }, [groups, searchQuery]);
+    let result = groups;
+
+    // Text search
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((g) => g.clientName.toLowerCase().includes(q));
+    }
+
+    // Platform + active filter: filter accounts within each group
+    if (platformFilter !== "all" || activeFilter) {
+      result = result
+        .map((group) => {
+          const filtered = group.accounts.filter((acc) => {
+            if (platformFilter !== "all" && acc.platform !== platformFilter) return false;
+            if (!matchesFilter(acc, activeFilter)) return false;
+            return true;
+          });
+          return { ...group, accounts: filtered };
+        })
+        .filter((group) => group.accounts.length > 0);
+    }
+
+    return result;
+  }, [groups, searchQuery, platformFilter, activeFilter]);
 
   return {
     groups: filteredGroups,
@@ -124,5 +162,9 @@ export function useAllPlatformsData() {
     isLoading,
     searchQuery,
     setSearchQuery,
+    activeFilter,
+    setActiveFilter,
+    platformFilter,
+    setPlatformFilter,
   };
 }
