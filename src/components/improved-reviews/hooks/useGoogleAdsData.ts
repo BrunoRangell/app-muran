@@ -22,6 +22,12 @@ interface VeiculationStatus {
   campaignsDetailed: CampaignDetail[];
 }
 
+export interface CampaignBudgetItem {
+  name: string;
+  budget: number;
+  source?: string;
+}
+
 export interface GoogleAdsClientData {
   id: string;
   company_name: string;
@@ -31,6 +37,7 @@ export interface GoogleAdsClientData {
   review?: {
     total_spent: number;
     daily_budget_current: number;
+    campaign_budgets?: CampaignBudgetItem[];
   };
   budget_amount: number;
   original_budget_amount: number;
