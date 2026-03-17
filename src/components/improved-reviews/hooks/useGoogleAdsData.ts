@@ -243,7 +243,8 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             hasAccount: true,
             review: {
               total_spent: totalSpent,
-              daily_budget_current: currentDailyBudget
+              daily_budget_current: currentDailyBudget,
+              campaign_budgets: Array.isArray(latestReview?.campaign_budgets) ? latestReview.campaign_budgets : []
             },
             budget_amount: budgetAmount,
             original_budget_amount: account.budget_amount || 0,
