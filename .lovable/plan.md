@@ -1,57 +1,53 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Plano: Detalhar "Diário Atual" com breakdown por campanha
 
 ## Problema
-
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
-
-## Causa raiz
-
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+O valor "Diário atual" no card é um número agregado (soma de todos os orçamentos de campanhas ativas). Não há como saber quais campanhas compõem esse valor.
 
 ## Solução
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+### 1. Adicionar coluna JSONB em `budget_reviews`
+Nova coluna `campaign_budgets` para armazenar o detalhamento:
+```sql
+ALTER TABLE budget_reviews ADD COLUMN campaign_budgets jsonb DEFAULT '[]'::jsonb;
+```
+Formato: `[{ "name": "Campanha X", "budget": 50.00, "source": "campaign" }, { "name": "Adset Y", "budget": 30.00, "source": "adset" }]`
 
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+### 2. Edge Function `unified-meta-review/meta-api.ts`
+Coletar detalhes de cada campanha/adset durante o cálculo do `daily_budget` (já itera sobre eles). Montar array e retornar junto com `daily_budget`. Propagar até o upsert em `budget_reviews`.
 
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+### 3. Edge Function `daily-google-review`
+Mesma lógica: ao iterar campanhas Google, coletar nome e budget individual e salvar no campo `campaign_budgets`.
 
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
+### 4. UI: Popover no "Diário atual" do `CircularBudgetCard.tsx`
+Ao clicar/hover no valor "Diário atual", abrir um Popover listando cada campanha e seu orçamento individual. Similar ao padrão já usado para "Status das Campanhas" (linhas 460-506 do mesmo arquivo).
 
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
-}
+```text
+┌─────────────────────────────┐
+│ Diário atual: R$ 150,00  ℹ │  ← clicável
+└─────────────────────────────┘
+        ↓ Popover
+┌─────────────────────────────┐
+│ Composição do orçamento     │
+│                             │
+│ Campanha A        R$ 80,00  │
+│ Campanha B        R$ 40,00  │
+│   └ Adset B1      R$ 20,00 │
+│   └ Adset B2      R$ 20,00 │
+│ Campanha C        R$ 30,00  │
+│─────────────────────────────│
+│ Total             R$ 150,00 │
+└─────────────────────────────┘
 ```
 
-### 2. `src/workers/metaReviews.worker.ts`
-
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
-
-## Impacto
-
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+### 5. Arquivos impactados
+- **Migration SQL**: nova coluna `campaign_budgets`
+- **`supabase/functions/unified-meta-review/meta-api.ts`**: coletar e retornar detalhes
+- **`supabase/functions/unified-meta-review/types.ts`**: adicionar tipo
+- **`supabase/functions/unified-meta-review/individual.ts`** e **`budget-calculation.ts`**: propagar campo
+- **`supabase/functions/daily-google-review/index.ts`**: coletar detalhes Google
+- **`src/components/improved-reviews/clients/CircularBudgetCard.tsx`**: Popover com breakdown
+- **`src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`**: incluir `campaign_budgets` no select
+- **`src/workers/metaReviews.worker.ts`**: propagar campo
 
