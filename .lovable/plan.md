@@ -1,45 +1,57 @@
 
 
-# Diagnóstico: "Status das Campanhas" não aparece para alguns clientes
+# Plano: Filtrar orçamento personalizado por conta no frontend
+
+## Problema
+
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
 ## Causa raiz
 
-Em `supabase/functions/unified-meta-review/campaigns.ts` (linha 131-137), a função `updateCampaignHealth` faz:
-
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
 ```ts
-.from('client_accounts')
-.eq('client_id', clientId)
-.eq('platform', 'meta')
-.eq('status', 'active')
-.single()  // ← PROBLEMA
+customBudgetsByClientId.set(budget.client_id, budget);
 ```
-
-Ford Amazon tem **duas contas Meta** (cnpjCaxias e cnpjSCS). O `.single()` retorna erro quando há múltiplas linhas, então a função aborta silenciosamente e **nenhuma** das duas contas recebe dados de `campaign_health`.
-
-Clientes com apenas uma conta Meta funcionam normalmente — por isso a maioria mostra o badge.
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
 ## Solução
 
-### `supabase/functions/unified-meta-review/campaigns.ts`
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-A função já recebe `accountId` como parâmetro (o account_id do Meta, ex: `3382384108459221`), mas não o usa. Corrigir para:
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-1. Adicionar filtro `.eq('account_id', accountId)` na query, tornando o resultado único sem depender de `.single()` para clientes com múltiplas contas
-2. Manter `.single()` pois agora será de fato único
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
 
 ```ts
-const { data: accountData, error: accountError } = await supabase
-  .from('client_accounts')
-  .select('id, account_id')
-  .eq('client_id', clientId)
-  .eq('account_id', accountId)   // ← ADICIONAR
-  .eq('platform', 'meta')
-  .eq('status', 'active')
-  .single();
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
 ```
 
-Isso é uma correção de uma linha. Após deploy, a próxima revisão do Ford Amazon criará os registros de `campaign_health` para ambas as contas.
+### 2. `src/workers/metaReviews.worker.ts`
 
-## Arquivos impactados
-- **`supabase/functions/unified-meta-review/campaigns.ts`**: adicionar filtro por `accountId` na query (1 linha)
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 

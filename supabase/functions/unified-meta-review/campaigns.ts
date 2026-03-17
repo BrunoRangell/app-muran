@@ -132,6 +132,7 @@ export async function updateCampaignHealth(
       .from('client_accounts')
       .select('id, account_id')
       .eq('client_id', clientId)
+      .eq('account_id', accountId)
       .eq('platform', 'meta')
       .eq('status', 'active')
       .single();
