@@ -7,6 +7,7 @@ import { usePrefetch } from "@/hooks/usePrefetch";
 import { ImprovedLoadingState } from "@/components/improved-reviews/common/ImprovedLoadingState";
 
 // FASE 5D: Lazy loading de abas para reduzir bundle inicial (-40%)
+const AllPlatformsTab = lazy(() => import("@/components/improved-reviews/tabs/AllPlatformsTab").then(m => ({ default: m.AllPlatformsTab })));
 const MetaAdsTab = lazy(() => import("@/components/improved-reviews/tabs/MetaAdsTab").then(m => ({ default: m.MetaAdsTab })));
 const GoogleAdsTab = lazy(() => import("@/components/improved-reviews/tabs/GoogleAdsTab").then(m => ({ default: m.GoogleAdsTab })));
 const BudgetManagerTab = lazy(() => import("@/components/improved-reviews/tabs/BudgetManagerTab").then(m => ({ default: m.BudgetManagerTab })));
@@ -16,19 +17,19 @@ export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
   const getInitialTab = () => {
     const hashTab = window.location.hash.replace('#', '');
-    if (hashTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(hashTab)) {
+    if (hashTab && ['all-platforms', 'meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(hashTab)) {
       console.log("🔗 Aba inicial da URL:", hashTab);
       return hashTab;
     }
     
     const savedTab = localStorage.getItem("selected_tab");
-    if (savedTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(savedTab)) {
+    if (savedTab && ['all-platforms', 'meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(savedTab)) {
       console.log("💾 Aba inicial do localStorage:", savedTab);
       return savedTab;
     }
     
-    console.log("🔄 Usando aba padrão: meta-ads");
-    return "meta-ads";
+    console.log("🔄 Usando aba padrão: all-platforms");
+    return "all-platforms";
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
@@ -46,7 +47,7 @@ export default function ImprovedDailyReviews() {
   useEffect(() => {
     const handleHashChange = () => {
       const newTab = window.location.hash.replace('#', '');
-      if (newTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(newTab)) {
+      if (newTab && ['all-platforms', 'meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(newTab)) {
         console.log("🔗 Hash mudou para:", newTab);
         setSelectedTab(newTab);
       }
@@ -102,11 +103,18 @@ export default function ImprovedDailyReviews() {
       <div className="grid grid-cols-1 gap-6">
         <Tabs value={selectedTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
+            <TabsTrigger value="all-platforms">Todas as Plataformas</TabsTrigger>
             <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
             <TabsTrigger value="budgets">Orçamentos</TabsTrigger>
             <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="all-platforms" className="space-y-6">
+            <Suspense fallback={<ImprovedLoadingState />}>
+              <AllPlatformsTab />
+            </Suspense>
+          </TabsContent>
           
           <TabsContent value="meta-ads" className="space-y-6">
             <Suspense fallback={<ImprovedLoadingState />}>
