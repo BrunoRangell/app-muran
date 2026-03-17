@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Settings, AlertTriangle, Users, Layers, Wallet, Calculator, Receipt } from "lucide-react";
+import { Search, Settings, AlertTriangle, Users, Layers, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -50,9 +51,8 @@ export function AllPlatformsFilterBar({
             />
           </div>
 
-          {/* Filters row */}
+          {/* Common filters row */}
           <div className="flex flex-wrap gap-3 items-center">
-            {/* Common filters */}
             <ToggleGroup
               type="single"
               value={activeFilter}
@@ -79,13 +79,6 @@ export function AllPlatformsFilterBar({
               >
                 <Users className="h-3 w-3" />
                 Sem conta cadastrada
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="balance"
-                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-              >
-                <Wallet className="h-3 w-3" />
-                Saldo disponível baixo
               </ToggleGroupItem>
             </ToggleGroup>
 
@@ -120,25 +113,46 @@ export function AllPlatformsFilterBar({
             </div>
           </div>
 
-          {/* Platform-specific options */}
           <Separator />
-          <div className="flex flex-wrap gap-6 items-center">
-            {/* Meta: Considerar tributos */}
-            <div className="flex items-center gap-2">
-              <Receipt className="h-3.5 w-3.5 text-blue-600" />
-              <Switch
-                id="consider-taxes"
-                checked={considerTaxes}
-                onCheckedChange={onConsiderTaxesChange}
-              />
-              <Label htmlFor="consider-taxes" className="text-xs text-muted-foreground cursor-pointer">
-                Considerar tributos (12,15%)
-              </Label>
+
+          {/* Platform-specific sections */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Meta Ads section */}
+            <div className="flex items-center gap-3 pl-3 border-l-2 border-blue-500">
+              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 text-xs shrink-0">
+                Meta Ads
+              </Badge>
+              <ToggleGroup
+                type="single"
+                value={activeFilter === "balance" ? "balance" : ""}
+                onValueChange={(value) => onActiveFilterChange((value || "") as AllPlatformsFilter)}
+                className="h-8"
+              >
+                <ToggleGroupItem
+                  value="balance"
+                  className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
+                >
+                  <Wallet className="h-3 w-3" />
+                  Saldo baixo
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="consider-taxes"
+                  checked={considerTaxes}
+                  onCheckedChange={onConsiderTaxesChange}
+                />
+                <Label htmlFor="consider-taxes" className="text-xs text-muted-foreground cursor-pointer">
+                  Tributos (12,15%)
+                </Label>
+              </div>
             </div>
 
-            {/* Google: Base de cálculo */}
-            <div className="flex items-center gap-2">
-              <Calculator className="h-3.5 w-3.5 text-amber-600" />
+            {/* Google Ads section */}
+            <div className="flex items-center gap-3 pl-3 border-l-2 border-amber-500">
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 text-xs shrink-0">
+                Google Ads
+              </Badge>
               <span className="text-xs text-muted-foreground">Base de cálculo:</span>
               <ToggleGroup
                 type="single"
