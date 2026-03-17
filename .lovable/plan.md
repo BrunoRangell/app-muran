@@ -1,57 +1,50 @@
 
+Problema confirmado: o backend do Google Ads está funcionando, mas o frontend da aba Google não está trazendo esse detalhamento.
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+O que verifiquei:
+- Os logs da edge function `daily-google-review` mostram `googleCampaignBudgets` preenchido.
+- O banco também confirma isso: já existem revisões Google com `campaign_budgets` contendo campanhas.
+- O componente `CircularBudgetCard` já tenta renderizar `client.review?.campaign_budgets`.
+- A quebra está em `src/components/improved-reviews/hooks/useGoogleAdsData.ts`: a query de `budget_reviews` para Google não seleciona `campaign_budgets`, e o objeto `review` retornado ao card também não inclui esse campo.
 
-## Problema
+Plano de correção:
+1. Atualizar `useGoogleAdsData.ts`
+   - Incluir `campaign_budgets` no `.select(...)` da query em `budget_reviews`
+   - Propagar `campaign_budgets` dentro de `review` no objeto retornado para cada cliente
 
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+2. Ajustar tipagem local
+   - Expandir a interface `GoogleAdsClientData.review` para incluir `campaign_budgets`
+   - Preferencialmente tipar como array de itens com `name`, `budget`, `source`
 
-## Causa raiz
+3. Validar compatibilidade
+   - Garantir que o popover do Google use exatamente o mesmo shape salvo no banco
+   - Manter fallback “Detalhamento não disponível” só para revisões antigas ou contas sem composição salva
 
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+4. Resultado esperado
+   - Após a correção, os clientes Google que já têm `campaign_budgets` salvos passarão a mostrar as campanhas no popover sem depender de nova revisão
+
+Detalhe técnico:
+Hoje a query Google está assim, sem o campo necessário:
 ```ts
-customBudgetsByClientId.set(budget.client_id, budget);
+.select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date')
 ```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
-## Solução
-
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
-
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
-
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
-
+Ela precisa incluir `campaign_budgets`, e depois o retorno precisa montar:
 ```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
+review: {
+  total_spent,
+  daily_budget_current,
+  campaign_budgets: latestReview?.campaign_budgets || []
 }
 ```
 
-### 2. `src/workers/metaReviews.worker.ts`
+Impacto:
+- Sem mudança de banco
+- Sem mudança na edge function
+- Correção pequena e localizada no hook de dados da aba Google
 
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
-
-## Impacto
-
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
-
+<lov-actions>
+<lov-suggestion message="Teste isso ponta a ponta na aba Google Ads e verifique se o popover do orçamento agora lista as campanhas salvas no banco.">Verifique ponta a ponta</lov-suggestion>
+<lov-suggestion message="Implemente a correção no useGoogleAdsData para incluir campaign_budgets na query e no objeto review retornado ao CircularBudgetCard.">Corrigir carregamento do Google</lov-suggestion>
+<lov-suggestion message="Padronize os tipos de campaign_budgets entre Meta e Google para evitar divergências futuras no popover de composição do orçamento.">Padronizar tipagem</lov-suggestion>
+</lov-actions>
