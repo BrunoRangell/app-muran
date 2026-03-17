@@ -121,6 +121,7 @@ export type Database = {
       budget_reviews: {
         Row: {
           account_id: string
+          campaign_budgets: Json | null
           client_id: string
           created_at: string
           custom_budget_amount: number | null
@@ -145,6 +146,7 @@ export type Database = {
         }
         Insert: {
           account_id: string
+          campaign_budgets?: Json | null
           client_id: string
           created_at?: string
           custom_budget_amount?: number | null
@@ -169,6 +171,7 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          campaign_budgets?: Json | null
           client_id?: string
           created_at?: string
           custom_budget_amount?: number | null
