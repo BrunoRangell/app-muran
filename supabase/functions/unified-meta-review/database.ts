@@ -237,18 +237,23 @@ export async function updateExistingReview(
   console.log(`🔄 [DATABASE] Atualizando revisão existente: ${reviewId}`);
   
   // Atualizar budget_reviews
+  const updatePayload: any = {
+    daily_budget_current: reviewData.daily_budget_current,
+    total_spent: reviewData.total_spent,
+    using_custom_budget: reviewData.using_custom_budget,
+    custom_budget_id: reviewData.custom_budget_id,
+    custom_budget_amount: reviewData.custom_budget_amount,
+    custom_budget_start_date: reviewData.custom_budget_start_date,
+    custom_budget_end_date: reviewData.custom_budget_end_date,
+    updated_at: new Date().toISOString()
+  };
+  if (reviewData.campaign_budgets) {
+    updatePayload.campaign_budgets = reviewData.campaign_budgets;
+  }
+  
   const { error: updateError } = await supabase
     .from("budget_reviews")
-    .update({
-      daily_budget_current: reviewData.daily_budget_current,
-      total_spent: reviewData.total_spent,
-      using_custom_budget: reviewData.using_custom_budget,
-      custom_budget_id: reviewData.custom_budget_id,
-      custom_budget_amount: reviewData.custom_budget_amount,
-      custom_budget_start_date: reviewData.custom_budget_start_date,
-      custom_budget_end_date: reviewData.custom_budget_end_date,
-      updated_at: new Date().toISOString()
-    })
+    .update(updatePayload)
     .eq("id", reviewId);
 
   if (updateError) {
