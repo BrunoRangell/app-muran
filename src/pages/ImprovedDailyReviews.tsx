@@ -28,8 +28,8 @@ export default function ImprovedDailyReviews() {
       return savedTab;
     }
     
-    console.log("🔄 Usando aba padrão: meta-ads");
-    return "meta-ads";
+    console.log("🔄 Usando aba padrão: all-platforms");
+    return "all-platforms";
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());

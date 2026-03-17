@@ -64,7 +64,7 @@ export function useAllPlatformsData() {
             accounts: [],
           });
         }
-        clientMap.get(client.id)!accounts.push({
+        clientMap.get(client.id)!.accounts.push({
           platform: "google",
           clientData: client,
         });
