@@ -57,8 +57,10 @@ export function ClientGroupCard({ clientName, accounts, considerTaxes, budgetCal
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <h3 className="text-base font-semibold text-foreground">{clientName}</h3>
-      {renderSection("meta", metaAccounts)}
-      {renderSection("google", googleAccounts)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {renderSection("meta", metaAccounts)}
+        {renderSection("google", googleAccounts)}
+      </div>
     </div>
   );
 }
