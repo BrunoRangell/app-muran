@@ -826,7 +826,8 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
       account_name: accountName,
       daily_budget: totalDailyBudget,
       total_spent: totalSpent,
-      active_campaigns: activeCampaignsCount
+      active_campaigns: activeCampaignsCount,
+      campaign_budgets: campaignBudgets
     };
     
   } catch (error) {
