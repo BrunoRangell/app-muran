@@ -47,7 +47,7 @@ export default function ImprovedDailyReviews() {
   useEffect(() => {
     const handleHashChange = () => {
       const newTab = window.location.hash.replace('#', '');
-      if (newTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(newTab)) {
+      if (newTab && ['all-platforms', 'meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(newTab)) {
         console.log("🔗 Hash mudou para:", newTab);
         setSelectedTab(newTab);
       }

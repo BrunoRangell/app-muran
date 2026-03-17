@@ -65,7 +65,7 @@ export function AllPlatformsTab() {
 
       {/* Client groups */}
       {groups.length === 0 ? (
-        <EmptyState message="Nenhum cliente encontrado" />
+        <EmptyState title="Nenhum cliente encontrado" description="Tente buscar por outro nome" />
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
