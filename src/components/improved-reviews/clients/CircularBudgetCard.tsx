@@ -626,12 +626,42 @@ export function CircularBudgetCard({
               {/* NOVA MÉTRICA: Mostrar valor baseado no modo selecionado para Google Ads */}
               {platform === "google" && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {budgetCalculationMode === "weighted" ? "Média Pond" : "Orç. atual"}
-                  </p>
-                  <p className="text-sm font-semibold text-gray-700">
-                    {formatCurrency(budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget)}
-                  </p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div className="cursor-pointer group">
+                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                          {budgetCalculationMode === "weighted" ? "Média Pond" : "Orç. atual"}
+                          <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </p>
+                        <p className="text-sm font-semibold text-gray-700">
+                          {formatCurrency(budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget)}
+                        </p>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm">Composição do orçamento diário</h4>
+                        {client.review?.campaign_budgets && client.review.campaign_budgets.length > 0 ? (
+                          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                            {client.review.campaign_budgets.map((item: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between text-xs p-1.5 bg-muted/30 rounded">
+                                <span className="font-medium truncate flex-1 min-w-0">{item.name}</span>
+                                <span className="font-medium ml-2 whitespace-nowrap">{formatCurrency(item.budget)}</span>
+                              </div>
+                            ))}
+                            <div className="border-t pt-2 flex justify-between text-xs font-semibold">
+                              <span>Total</span>
+                              <span>{formatCurrency(client.review?.daily_budget_current || 0)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Detalhamento não disponível. Analise o cliente para ver a composição.
+                          </p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 
@@ -644,13 +674,51 @@ export function CircularBudgetCard({
                 </div>
               ) : null}
 
-              {/* Para Meta Ads, mostrar diário atual - CORRIGIDO: usar campo unificado */}
               {platform === "meta" && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Diário atual</p>
-                  <p className="text-sm font-semibold text-gray-700">
-                    {formatCurrency(client.review?.daily_budget_current || 0)}
-                  </p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div className="cursor-pointer group">
+                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                          Diário atual
+                          <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </p>
+                        <p className="text-sm font-semibold text-gray-700">
+                          {formatCurrency(client.review?.daily_budget_current || 0)}
+                        </p>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm">Composição do orçamento diário</h4>
+                        {client.review?.campaign_budgets && client.review.campaign_budgets.length > 0 ? (
+                          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                            {client.review.campaign_budgets.map((item: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between text-xs p-1.5 bg-muted/30 rounded">
+                                <div className="flex-1 min-w-0">
+                                  {item.source === 'adset' && item.campaign_name && (
+                                    <span className="text-muted-foreground text-[10px] block truncate">{item.campaign_name}</span>
+                                  )}
+                                  <span className={`block truncate ${item.source === 'adset' ? 'pl-2' : 'font-medium'}`}>
+                                    {item.source === 'adset' ? `└ ${item.name}` : item.name}
+                                  </span>
+                                </div>
+                                <span className="font-medium ml-2 whitespace-nowrap">{formatCurrency(item.budget)}</span>
+                              </div>
+                            ))}
+                            <div className="border-t pt-2 flex justify-between text-xs font-semibold">
+                              <span>Total</span>
+                              <span>{formatCurrency(client.review?.daily_budget_current || 0)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Detalhamento não disponível. Analise o cliente para ver a composição.
+                          </p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 

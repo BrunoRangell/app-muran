@@ -18,6 +18,13 @@ export interface CustomBudget {
   end_date: string;
 }
 
+export interface CampaignBudgetDetail {
+  name: string;
+  budget: number;
+  source: 'campaign' | 'adset';
+  campaign_name?: string;
+}
+
 export interface ReviewData {
   daily_budget_current: number;
   total_spent: number;
@@ -29,6 +36,7 @@ export interface ReviewData {
   custom_budget_end_date?: string | null;
   saldo_restante?: number | null;
   is_prepay_account?: boolean;
+  campaign_budgets?: CampaignBudgetDetail[];
 }
 
 export interface CampaignHealthData {

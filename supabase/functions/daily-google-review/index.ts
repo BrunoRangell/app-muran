@@ -694,6 +694,7 @@ async function processIndividualGoogleReview(
     let currentDailyBudget = 0;
     let apiErrorDetails = null;
     let realAccountName = accountName; // Usar nome atual como padrão (agora "Conta não identificada")
+    let googleCampaignBudgets: Array<{ name: string; budget: number; source: 'campaign' }> = [];
     
     // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
     let googleDay1Spent = 0;
@@ -886,10 +887,17 @@ async function processIndividualGoogleReview(
         if (campaignsData && campaignsData.results && campaignsData.results.length > 0) {
           console.log(`📋 Encontradas ${campaignsData.results.length} campanhas ativas`);
           
-          currentDailyBudget = campaignsData.results.reduce((acc: number, campaign: any) => {
-            const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
-            return acc + budget;
-          }, 0);
+          currentDailyBudget = 0;
+          googleCampaignBudgets = [];
+          
+          for (const campaignResult of campaignsData.results) {
+            const budget = campaignResult.campaignBudget?.amountMicros ? campaignResult.campaignBudget.amountMicros / 1e6 : 0;
+            const campaignName = campaignResult.campaign?.name || 'Campanha sem nome';
+            currentDailyBudget += budget;
+            if (budget > 0) {
+              googleCampaignBudgets.push({ name: campaignName, budget, source: 'campaign' });
+            }
+          }
           
           console.log(`💰 Orçamento diário REAL total: ${currentDailyBudget.toFixed(2)}`);
         } else {
@@ -973,6 +981,7 @@ async function processIndividualGoogleReview(
       day_3_spent: googleDay3Spent, // 3 dias atrás
       day_4_spent: googleDay4Spent, // anteontem
       day_5_spent: googleDay5Spent, // ontem (mais recente)
+      campaign_budgets: googleCampaignBudgets,
       ...customBudgetInfo,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -1018,6 +1027,7 @@ async function processIndividualGoogleReview(
             day_3_spent: googleDay3Spent,
             day_4_spent: googleDay4Spent,
             day_5_spent: googleDay5Spent,
+            campaign_budgets: googleCampaignBudgets,
             ...customBudgetInfo,
             updated_at: new Date().toISOString()
           })
@@ -1048,6 +1058,7 @@ async function processIndividualGoogleReview(
                 day_3_spent: googleDay3Spent,
                 day_4_spent: googleDay4Spent,
                 day_5_spent: googleDay5Spent,
+                campaign_budgets: googleCampaignBudgets,
                 using_custom_budget: false,
                 custom_budget_id: null,
                 custom_budget_amount: null,

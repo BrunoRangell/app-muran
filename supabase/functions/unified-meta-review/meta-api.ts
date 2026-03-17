@@ -696,6 +696,7 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
     // 2. Processar campanhas e calcular orçamento total
     let totalDailyBudget = 0;
     let activeCampaignsCount = 0;
+    const campaignBudgets: Array<{ name: string; budget: number; source: 'campaign' | 'adset'; campaign_name?: string }> = [];
     const now = new Date();
     
     console.log(`🔄 [META-API] Processando campanhas...`);
@@ -729,6 +730,7 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
       if (campaign.daily_budget) {
         const budgetValue = parseFloat(campaign.daily_budget) / 100; // Converter de centavos
         totalDailyBudget += budgetValue;
+        campaignBudgets.push({ name: campaign.name, budget: budgetValue, source: 'campaign' });
         console.log(`💰 [META-API] Orçamento direto: R$ ${budgetValue.toFixed(2)} (${Date.now() - startTime}ms)`);
         continue;
       }
@@ -742,6 +744,7 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
           if (adset.daily_budget) {
             const budgetValue = parseFloat(adset.daily_budget) / 100; // Converter de centavos
             totalDailyBudget += budgetValue;
+            campaignBudgets.push({ name: adset.name, budget: budgetValue, source: 'adset', campaign_name: campaign.name });
             console.log(`💰 [META-API] Orçamento do adset ${adset.name}: R$ ${budgetValue.toFixed(2)}`);
           }
         }
@@ -823,7 +826,8 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
       account_name: accountName,
       daily_budget: totalDailyBudget,
       total_spent: totalSpent,
-      active_campaigns: activeCampaignsCount
+      active_campaigns: activeCampaignsCount,
+      campaign_budgets: campaignBudgets
     };
     
   } catch (error) {

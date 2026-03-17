@@ -352,7 +352,7 @@ export function useUnifiedReviewsData() {
         
         supabase
           .from("budget_reviews")
-          .select("id, client_id, account_id, platform, review_date, daily_budget_current, total_spent, using_custom_budget, custom_budget_id, custom_budget_amount, custom_budget_start_date, custom_budget_end_date, warning_ignored_today, warning_ignored_date, day_1_spent, day_2_spent, day_3_spent, day_4_spent, day_5_spent, last_five_days_spent")
+          .select("id, client_id, account_id, platform, review_date, daily_budget_current, total_spent, using_custom_budget, custom_budget_id, custom_budget_amount, custom_budget_start_date, custom_budget_end_date, warning_ignored_today, warning_ignored_date, day_1_spent, day_2_spent, day_3_spent, day_4_spent, day_5_spent, last_five_days_spent, campaign_budgets")
           .eq("platform", "meta")
           .gte("review_date", firstDayStr)
           .order("review_date", { ascending: false }),

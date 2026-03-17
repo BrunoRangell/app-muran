@@ -1,0 +1,1 @@
+ALTER TABLE public.budget_reviews ADD COLUMN campaign_budgets jsonb DEFAULT '[]'::jsonb;
