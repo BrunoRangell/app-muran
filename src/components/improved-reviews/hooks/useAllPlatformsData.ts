@@ -32,9 +32,11 @@ function matchesFilter(acc: PlatformAccount, filter: AllPlatformsFilter): boolea
     case "adjustments":
       return !!d.needsAdjustment;
     case "campaigns":
-      return d.veiculationStatus === "not_serving" || d.veiculationStatus === "partial";
+      return ["none_running", "no_campaigns", "partial_running"].includes(d.veiculationStatus?.status);
     case "without-account":
       return !d.hasAccount;
+    case "balance":
+      return acc.platform === "meta" && d.balance_info?.billing_model === "pre";
     default:
       return true;
   }
@@ -44,6 +46,8 @@ export function useAllPlatformsData() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<AllPlatformsFilter>("");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
+  const [considerTaxes, setConsiderTaxes] = useState(false);
+  const [budgetCalculationMode, setBudgetCalculationMode] = useState<"weighted" | "current">("weighted");
 
   const { data: metaData, isLoading: metaLoading } = useUnifiedReviewsData();
   const { data: googleData, isLoading: googleLoading } = useGoogleAdsData();
@@ -166,5 +170,9 @@ export function useAllPlatformsData() {
     setActiveFilter,
     platformFilter,
     setPlatformFilter,
+    considerTaxes,
+    setConsiderTaxes,
+    budgetCalculationMode,
+    setBudgetCalculationMode,
   };
 }
