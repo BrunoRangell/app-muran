@@ -144,7 +144,8 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       custom_budget_start_date: customBudget?.start_date || null,
       custom_budget_end_date: customBudget?.end_date || null,
       saldo_restante: balanceData.saldo_restante,
-      is_prepay_account: balanceData.is_prepay_account
+      is_prepay_account: balanceData.is_prepay_account,
+      campaign_budgets: metaApiData.campaign_budgets || []
     };
     
     // 9. Limpar revisões antigas ANTES de salvar a nova

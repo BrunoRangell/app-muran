@@ -296,21 +296,26 @@ export async function createNewReview(
 ): Promise<string> {
   console.log(`📝 [DATABASE] Criando nova revisão para cliente ${clientId}, conta ${reviewData.account_id}`);
   
+  const insertPayload: any = {
+    client_id: clientId,
+    account_id: reviewData.account_id,
+    review_date: reviewDate,
+    platform: "meta",
+    daily_budget_current: reviewData.daily_budget_current,
+    total_spent: reviewData.total_spent,
+    using_custom_budget: reviewData.using_custom_budget,
+    custom_budget_id: reviewData.custom_budget_id,
+    custom_budget_amount: reviewData.custom_budget_amount,
+    custom_budget_start_date: reviewData.custom_budget_start_date,
+    custom_budget_end_date: reviewData.custom_budget_end_date
+  };
+  if (reviewData.campaign_budgets) {
+    insertPayload.campaign_budgets = reviewData.campaign_budgets;
+  }
+  
   const { data: newReview, error: insertError } = await supabase
     .from("budget_reviews")
-    .insert({
-      client_id: clientId,
-      account_id: reviewData.account_id,
-      review_date: reviewDate,
-      platform: "meta",
-      daily_budget_current: reviewData.daily_budget_current,
-      total_spent: reviewData.total_spent,
-      using_custom_budget: reviewData.using_custom_budget,
-      custom_budget_id: reviewData.custom_budget_id,
-      custom_budget_amount: reviewData.custom_budget_amount,
-      custom_budget_start_date: reviewData.custom_budget_start_date,
-      custom_budget_end_date: reviewData.custom_budget_end_date
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
