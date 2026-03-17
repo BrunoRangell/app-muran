@@ -7,6 +7,7 @@ import { usePrefetch } from "@/hooks/usePrefetch";
 import { ImprovedLoadingState } from "@/components/improved-reviews/common/ImprovedLoadingState";
 
 // FASE 5D: Lazy loading de abas para reduzir bundle inicial (-40%)
+const AllPlatformsTab = lazy(() => import("@/components/improved-reviews/tabs/AllPlatformsTab").then(m => ({ default: m.AllPlatformsTab })));
 const MetaAdsTab = lazy(() => import("@/components/improved-reviews/tabs/MetaAdsTab").then(m => ({ default: m.MetaAdsTab })));
 const GoogleAdsTab = lazy(() => import("@/components/improved-reviews/tabs/GoogleAdsTab").then(m => ({ default: m.GoogleAdsTab })));
 const BudgetManagerTab = lazy(() => import("@/components/improved-reviews/tabs/BudgetManagerTab").then(m => ({ default: m.BudgetManagerTab })));
