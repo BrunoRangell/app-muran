@@ -80,6 +80,13 @@ export function AllPlatformsFilterBar({
                 <Users className="h-3 w-3" />
                 Sem conta cadastrada
               </ToggleGroupItem>
+              <ToggleGroupItem
+                value="balance"
+                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
+              >
+                <Wallet className="h-3 w-3" />
+                Saldo baixo
+              </ToggleGroupItem>
             </ToggleGroup>
 
             {/* Platform toggle */}
@@ -115,27 +122,13 @@ export function AllPlatformsFilterBar({
 
           <Separator />
 
-          {/* Platform-specific sections */}
+          {/* Platform-specific settings */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Meta Ads section */}
             <div className="flex items-center gap-3 pl-3 border-l-2 border-blue-500">
               <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 text-xs shrink-0">
                 Meta Ads
               </Badge>
-              <ToggleGroup
-                type="single"
-                value={activeFilter === "balance" ? "balance" : ""}
-                onValueChange={(value) => onActiveFilterChange((value || "") as AllPlatformsFilter)}
-                className="h-8"
-              >
-                <ToggleGroupItem
-                  value="balance"
-                  className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-                >
-                  <Wallet className="h-3 w-3" />
-                  Saldo baixo
-                </ToggleGroupItem>
-              </ToggleGroup>
               <div className="flex items-center gap-2">
                 <Switch
                   id="consider-taxes"

@@ -2,10 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Layers } from "lucide-react";
 import { useAllPlatformsData } from "../hooks/useAllPlatformsData";
-import { ClientGroupCard } from "../clients/ClientGroupCard";
+import { ClientCard } from "../clients/ClientCard";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { AllPlatformsFilterBar } from "../filters/AllPlatformsFilterBar";
+import { useMemo } from "react";
 
 export function AllPlatformsTab() {
   const {
@@ -23,6 +24,17 @@ export function AllPlatformsTab() {
     budgetCalculationMode,
     setBudgetCalculationMode,
   } = useAllPlatformsData();
+
+  // Flatten all accounts into a single list for grid display
+  const flatAccounts = useMemo(() => {
+    return groups.flatMap((group) =>
+      group.accounts.map((acc) => ({
+        ...acc,
+        clientName: group.clientName,
+        clientId: group.clientId,
+      }))
+    );
+  }, [groups]);
 
   if (isLoading) {
     return <ImprovedLoadingState />;
@@ -78,16 +90,16 @@ export function AllPlatformsTab() {
         onBudgetCalculationModeChange={setBudgetCalculationMode}
       />
 
-      {/* Client groups */}
-      {groups.length === 0 ? (
+      {/* Flat grid of all account cards */}
+      {flatAccounts.length === 0 ? (
         <EmptyState title="Nenhum cliente encontrado" description="Tente buscar por outro nome ou altere os filtros" />
       ) : (
-        <div className="space-y-4">
-          {groups.map((group) => (
-            <ClientGroupCard
-              key={group.clientId}
-              clientName={group.clientName}
-              accounts={group.accounts}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {flatAccounts.map((acc) => (
+            <ClientCard
+              key={`${acc.clientId}-${acc.platform}`}
+              client={acc.clientData}
+              platform={acc.platform}
               considerTaxes={considerTaxes}
               budgetCalculationMode={budgetCalculationMode}
             />
