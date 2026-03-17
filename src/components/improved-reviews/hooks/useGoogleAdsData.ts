@@ -22,6 +22,12 @@ interface VeiculationStatus {
   campaignsDetailed: CampaignDetail[];
 }
 
+export interface CampaignBudgetItem {
+  name: string;
+  budget: number;
+  source?: string;
+}
+
 export interface GoogleAdsClientData {
   id: string;
   company_name: string;
@@ -31,6 +37,7 @@ export interface GoogleAdsClientData {
   review?: {
     total_spent: number;
     daily_budget_current: number;
+    campaign_budgets?: CampaignBudgetItem[];
   };
   budget_amount: number;
   original_budget_amount: number;
@@ -150,7 +157,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
         .eq('status', 'active'),
       supabase
         .from('budget_reviews')
-        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date')
+        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date, campaign_budgets')
         .in('client_id', clientIds)
         .eq('platform', 'google')
         .order('review_date', { ascending: false }),
@@ -236,7 +243,8 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             hasAccount: true,
             review: {
               total_spent: totalSpent,
-              daily_budget_current: currentDailyBudget
+              daily_budget_current: currentDailyBudget,
+              campaign_budgets: Array.isArray(latestReview?.campaign_budgets) ? latestReview.campaign_budgets : []
             },
             budget_amount: budgetAmount,
             original_budget_amount: account.budget_amount || 0,
