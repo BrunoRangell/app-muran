@@ -694,6 +694,7 @@ async function processIndividualGoogleReview(
     let currentDailyBudget = 0;
     let apiErrorDetails = null;
     let realAccountName = accountName; // Usar nome atual como padrão (agora "Conta não identificada")
+    let googleCampaignBudgets: Array<{ name: string; budget: number; source: 'campaign' }> = [];
     
     // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
     let googleDay1Spent = 0;
