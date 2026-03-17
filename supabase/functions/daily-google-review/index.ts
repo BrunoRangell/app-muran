@@ -1027,6 +1027,7 @@ async function processIndividualGoogleReview(
             day_3_spent: googleDay3Spent,
             day_4_spent: googleDay4Spent,
             day_5_spent: googleDay5Spent,
+            campaign_budgets: googleCampaignBudgets,
             ...customBudgetInfo,
             updated_at: new Date().toISOString()
           })
