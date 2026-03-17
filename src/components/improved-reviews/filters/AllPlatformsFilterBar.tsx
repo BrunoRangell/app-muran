@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Search, Settings, AlertTriangle, Users, Layers, Wallet, Calculator, Receipt } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
@@ -38,59 +39,19 @@ export function AllPlatformsFilterBar({
     <Card className="shadow-sm sticky top-0 z-30 bg-background">
       <CardContent className="p-4">
         <div className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Buscar clientes em todas as plataformas..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-          </div>
-
-          {/* Filters row */}
+          {/* Search + Platform toggle */}
           <div className="flex flex-wrap gap-3 items-center">
-            {/* Common filters */}
-            <ToggleGroup
-              type="single"
-              value={activeFilter}
-              onValueChange={(value) => onActiveFilterChange((value || "") as AllPlatformsFilter)}
-              className="h-8"
-            >
-              <ToggleGroupItem
-                value="adjustments"
-                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
-              >
-                <Settings className="h-3 w-3" />
-                Ajuste de orçamento
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="campaigns"
-                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
-              >
-                <AlertTriangle className="h-3 w-3" />
-                Campanhas com problemas
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="without-account"
-                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
-              >
-                <Users className="h-3 w-3" />
-                Sem conta cadastrada
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="balance"
-                className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-              >
-                <Wallet className="h-3 w-3" />
-                Saldo disponível baixo
-              </ToggleGroupItem>
-            </ToggleGroup>
-
-            {/* Platform toggle */}
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar clientes em todas as plataformas..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
               <Layers className="h-3.5 w-3.5 text-muted-foreground" />
               <ToggleGroup
                 type="single"
@@ -98,33 +59,61 @@ export function AllPlatformsFilterBar({
                 onValueChange={(value) => value && onPlatformFilterChange(value as PlatformFilter)}
                 className="h-8"
               >
-                <ToggleGroupItem
-                  value="all"
-                  className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
-                >
+                <ToggleGroupItem value="all" className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md">
                   Todas
                 </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="meta"
-                  className="h-8 px-3 text-xs data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-                >
+                <ToggleGroupItem value="meta" className="h-8 px-3 text-xs data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md">
                   Meta
                 </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="google"
-                  className="h-8 px-3 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-                >
+                <ToggleGroupItem value="google" className="h-8 px-3 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md">
                   Google
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
           </div>
 
-          {/* Platform-specific options */}
+          {/* Common filters */}
           <Separator />
+          <div className="flex flex-wrap gap-3 items-center">
+            <span className="text-xs font-medium text-muted-foreground">Filtros:</span>
+            <ToggleGroup
+              type="single"
+              value={activeFilter === "balance" ? "" : activeFilter}
+              onValueChange={(value) => onActiveFilterChange((value || "") as AllPlatformsFilter)}
+              className="h-8"
+            >
+              <ToggleGroupItem value="adjustments" className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md">
+                <Settings className="h-3 w-3" />
+                Ajuste de orçamento
+              </ToggleGroupItem>
+              <ToggleGroupItem value="campaigns" className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md">
+                <AlertTriangle className="h-3 w-3" />
+                Campanhas com problemas
+              </ToggleGroupItem>
+              <ToggleGroupItem value="without-account" className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md">
+                <Users className="h-3 w-3" />
+                Sem conta cadastrada
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          {/* Platform-specific options */}
           <div className="flex flex-wrap gap-6 items-center">
-            {/* Meta: Considerar tributos */}
+            {/* Meta Ads section */}
             <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0">Meta Ads</Badge>
+              <ToggleGroup
+                type="single"
+                value={activeFilter === "balance" ? "balance" : ""}
+                onValueChange={(value) => onActiveFilterChange((value || "") as AllPlatformsFilter)}
+                className="h-8"
+              >
+                <ToggleGroupItem value="balance" className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:shadow-md">
+                  <Wallet className="h-3 w-3" />
+                  Saldo disponível baixo
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <Separator orientation="vertical" className="h-5" />
               <Receipt className="h-3.5 w-3.5 text-blue-600" />
               <Switch
                 id="consider-taxes"
@@ -132,12 +121,15 @@ export function AllPlatformsFilterBar({
                 onCheckedChange={onConsiderTaxesChange}
               />
               <Label htmlFor="consider-taxes" className="text-xs text-muted-foreground cursor-pointer">
-                Considerar tributos (12,15%)
+                Tributos (12,15%)
               </Label>
             </div>
 
-            {/* Google: Base de cálculo */}
+            <Separator orientation="vertical" className="h-6" />
+
+            {/* Google Ads section */}
             <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0">Google Ads</Badge>
               <Calculator className="h-3.5 w-3.5 text-amber-600" />
               <span className="text-xs text-muted-foreground">Base de cálculo:</span>
               <ToggleGroup
@@ -146,16 +138,10 @@ export function AllPlatformsFilterBar({
                 onValueChange={(value) => value && onBudgetCalculationModeChange(value as "weighted" | "current")}
                 className="h-7"
               >
-                <ToggleGroupItem
-                  value="weighted"
-                  className="h-7 px-2.5 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-                >
+                <ToggleGroupItem value="weighted" className="h-7 px-2.5 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md">
                   Média Pond.
                 </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="current"
-                  className="h-7 px-2.5 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md"
-                >
+                <ToggleGroupItem value="current" className="h-7 px-2.5 text-xs data-[state=on]:bg-amber-600 data-[state=on]:text-white data-[state=on]:shadow-md">
                   Orç. atual
                 </ToggleGroupItem>
               </ToggleGroup>
