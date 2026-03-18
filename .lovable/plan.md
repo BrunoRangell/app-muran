@@ -1,57 +1,43 @@
 
+Objetivo: corrigir o cálculo de “dias restantes” do Meta para orçamentos personalizados ativos, mantendo o Google como referência correta.
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+Diagnóstico
+- Confirmei no banco que o cliente Rehab Odontologia está com as mesmas datas nos dois canais:
+  - Meta: 2026-03-17 até 2026-03-20
+  - Google: 2026-03-17 até 2026-03-20
+- Portanto, o problema não está nos dados salvos.
+- O Google já usa a função compartilhada `calculateRemainingDays()` em `src/components/improved-reviews/hooks/useGoogleAdsData.ts`.
+- O Meta ainda usa uma lógica duplicada e antiga em 2 lugares:
+  1. `src/workers/metaReviews.worker.ts`
+  2. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts` (fallback na main thread)
+- Nesses dois pontos, o código faz `new Date("YYYY-MM-DD")`, o que gera deslocamento de fuso e faz o Meta contar 1 dia a menos em orçamento personalizado.
 
-## Problema
+O que vou implementar
+1. Substituir a lógica manual de datas no worker do Meta
+- Em `src/workers/metaReviews.worker.ts`, trocar o cálculo com `new Date(...)` por uso da lógica compartilhada baseada em `parseLocalDate` / `calculateRemainingDays`.
+- Isso fará o Meta contar o dia de hoje igual ao Google.
 
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+2. Corrigir também o fallback do Meta
+- Em `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`, remover a duplicação do cálculo manual e usar a mesma função compartilhada.
+- Assim, mesmo se o worker falhar ou não estiver disponível, o resultado continua consistente.
 
-## Causa raiz
+3. Unificar a origem da regra de negócio
+- Idealmente, usar também `calculateIdealDailyBudget` no Meta onde fizer sentido, para reduzir chance de divergência futura entre Meta e Google.
+- Resultado esperado: uma única regra para “dias restantes” e orçamento ideal.
 
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+Validação esperada
+- Rehab deve mostrar o mesmo número de dias restantes em Meta e Google.
+- Casos a validar:
+  - orçamento personalizado ativo: incluir hoje
+  - orçamento futuro: usar período completo
+  - orçamento encerrado: 0 dias
+  - orçamento mensal comum: manter comportamento atual
 
-## Solução
+Arquivos a ajustar
+- `src/workers/metaReviews.worker.ts`
+- `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+- possivelmente reaproveitando `src/utils/budgetCalculations.ts` como fonte única da regra
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
-
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
-
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
-
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
-}
-```
-
-### 2. `src/workers/metaReviews.worker.ts`
-
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
-
-## Impacto
-
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
-
+Resultado esperado
+- Meta e Google passam a exibir exatamente o mesmo “dias restantes” para o mesmo intervalo personalizado.
+- O bug deixa de depender de timezone e não volta no fallback.
