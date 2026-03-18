@@ -370,8 +370,8 @@ export function CircularBudgetCard({
 
   return (
     <>
-      <Card className={`w-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
-        <CardContent className="p-3">
+      <Card className={`w-full h-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
+        <CardContent className="p-3 flex flex-col h-full">
           {/* Header com nome e ícones */}
            <div className="flex items-start justify-between mb-2">
             <div className="flex-1 min-w-0">
