@@ -543,9 +543,9 @@ export function CircularBudgetCard({
           )}
 
           {/* Layout principal: barra de progresso + infos */}
-          <div className="flex flex-col mb-5">
+          <div className="flex flex-col mb-3">
             {/* Barra de progresso horizontal */}
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-2">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full ${statusInfo.barColor}`} 
