@@ -273,11 +273,6 @@ export function CircularBudgetCard({
     }
   };
 
-  // Calcular coordenadas do círculo
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (spentPercentage / 100) * circumference;
   return (
     <>
       <Card className={`w-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
