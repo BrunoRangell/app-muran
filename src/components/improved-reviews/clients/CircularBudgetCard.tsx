@@ -395,39 +395,29 @@ export function CircularBudgetCard({
 
               {/* Conta com SALDO NUMÉRICO (pré-paga ou pós-paga com saldo manual) */}
               {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-blue-900">
+                    <span className="text-sm font-bold text-blue-900">
                       {formatCurrency(client.balance_info.balance_value)}
                     </span>
-                    {client.balance_info.balance_percent && (
-                      <span className="text-sm text-blue-700">
-                        {Math.round(client.balance_info.balance_percent * 100)}%
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5">
+                      {client.balance_info.billing_model === "pre" &&
+                        (() => {
+                          const balance = client.balance_info.balance_value || 0;
+                          const dailyBudget = client.meta_daily_budget || 0;
+                          if (balance <= 0) return <span className="text-[10px] text-red-600">Saldo esgotado</span>;
+                          if (dailyBudget <= 0) return null;
+                          const daysUntilEmpty = balance / dailyBudget;
+                          if (daysUntilEmpty > 365) return <span className="text-[10px] text-gray-500">&gt;1 ano</span>;
+                          return <span className="text-[10px] text-gray-500">~{Math.floor(daysUntilEmpty)}d</span>;
+                        })()}
+                      {client.balance_info.balance_percent && (
+                        <span className="text-xs text-blue-700">
+                          {Math.round(client.balance_info.balance_percent * 100)}%
+                        </span>
+                      )}
+                    </span>
                   </div>
-
-                  {/* Cálculo dias até esgotar - apenas para pré-pagas */}
-                  {client.balance_info.billing_model === "pre" &&
-                    (() => {
-                      const balance = client.balance_info.balance_value || 0;
-                      const dailyBudget = client.meta_daily_budget || 0;
-
-                      if (balance <= 0) {
-                        return <div className="text-xs text-red-600">📅 Saldo esgotado</div>;
-                      } else if (dailyBudget <= 0) {
-                        return <div className="text-xs text-gray-600">📅 Sem limite definido</div>;
-                      } else {
-                        const daysUntilEmpty = balance / dailyBudget;
-                        if (daysUntilEmpty > 365) {
-                          return <div className="text-xs text-gray-600">📅 &gt; 1 ano restante</div>;
-                        } else {
-                          return (
-                            <div className="text-xs text-gray-600">📅 ~{Math.floor(daysUntilEmpty)} dias restantes</div>
-                          );
-                        }
-                      }
-                    })()}
 
                   {client.balance_info.balance_percent && (
                     <div className="w-full bg-blue-200 rounded-full h-2">
