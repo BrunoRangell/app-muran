@@ -1,30 +1,57 @@
 
 
-# Ajustes de Layout no CircularBudgetCard
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Problemas identificados
+## Problema
 
-1. **Orçamento coberto pelo círculo**: O grid `grid-cols-3` na linha 566 faz o texto "R$ 100.400,00" (col 1) invadir o espaço do círculo (col 2) quando o valor é grande, pois `text-lg font-bold` não tem truncamento.
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
-2. **"Ver saldo" muito junto**: Na seção de saldo (linhas 378-399), o "Saldo da Conta", "Ver saldo" e o badge "Pré-paga" estão todos na mesma linha com `justify-between`, ficando apertados em cards menores.
+## Causa raiz
 
-3. **Encavalamento em telas pequenas**: O grid `grid-cols-3 gap-4` (linha 566) nunca quebra — em cards estreitos, as 3 colunas ficam comprimidas.
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
-## Soluções
+## Solução
 
-### 1. Grid principal responsivo (linha 566)
-- Trocar `grid grid-cols-3 gap-4` por um layout que empilhe em cards pequenos
-- Usar `flex flex-wrap` ou `grid grid-cols-2` com o círculo centralizado em cima
-- Layout: círculo + percentual no topo centralizado, depois as infos em 2 colunas abaixo
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-### 2. Orçamento sem overflow
-- Reduzir fonte do valor de `text-lg` para `text-base` 
-- Adicionar `truncate` ou `whitespace-nowrap` para evitar quebra
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-### 3. Seção de saldo — espaçamento
-- Separar "Ver saldo" e badge "Pré-paga" em uma linha própria abaixo do título "Saldo da Conta"
-- Layout: linha 1 = ícone + "Saldo da Conta", linha 2 = "Ver saldo" link + badge
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
 
-## Arquivo editado
-- `src/components/improved-reviews/clients/CircularBudgetCard.tsx`
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
+```
+
+### 2. `src/workers/metaReviews.worker.ts`
+
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 

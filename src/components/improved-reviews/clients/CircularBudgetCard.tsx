@@ -374,29 +374,31 @@ export function CircularBudgetCard({
           {/* Seção de Saldo Meta Ads (apenas para Meta) */}
           {platform === "meta" && client.balance_info && (
             <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <div className="flex items-center justify-between mb-2">
+              <div className="space-y-1.5 mb-2">
                 <div className="flex items-center gap-2">
                   <BadgeDollarSign className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium text-blue-800">Saldo da Conta</span>
                 </div>
-                <a
-                  href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  Ver saldo
-                </a>
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    client.balance_info.billing_model === "pre"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : "bg-blue-100 text-blue-800 border-blue-200"
-                  }`}
-                >
-                  {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Ver saldo
+                  </a>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      client.balance_info.billing_model === "pre"
+                        ? "bg-green-100 text-green-800 border-green-200"
+                        : "bg-blue-100 text-blue-800 border-blue-200"
+                    }`}
+                  >
+                    {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
+                  </Badge>
+                </div>
               </div>
 
               {/* Conta com SALDO NUMÉRICO (pré-paga ou pós-paga com saldo manual) */}
@@ -562,13 +564,26 @@ export function CircularBudgetCard({
             </div>
           )}
 
-          {/* Layout principal com informações organizadas */}
-          <div className="grid grid-cols-3 gap-4 items-center mb-5">
-            {/* Coluna 1: Orçamento e gasto */}
-            <div className="space-y-3">
+          {/* Layout principal: círculo no topo, infos embaixo */}
+          <div className="flex flex-col items-center mb-5">
+            {/* Círculo de progresso centralizado */}
+            <div className="flex justify-center mb-4">
+              <div className="relative w-20 h-20">
+                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200" />
+                  <circle cx="50" cy="50" r={radius} fill="none" strokeWidth="8" strokeLinecap="round" className={statusInfo.color} strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} style={{ transition: "stroke-dashoffset 0.5s ease-in-out" }} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-base font-bold ${statusInfo.textColor}`}>{Math.round(spentPercentage)}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid 2 colunas com infos */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-full">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Orçamento</p>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(effectiveBudget)}</p>
+                <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
                 {considerTaxes && (
                   <div className="text-[10px] text-gray-400 leading-tight mt-0.5">
                     <span>Original: {formatCurrency(budgetAmount)}</span>
@@ -582,53 +597,13 @@ export function CircularBudgetCard({
                 <p className="text-xs text-gray-500 mb-1">Gasto atual <span className="text-gray-400">(até ontem)</span></p>
                 <p className="text-sm font-semibold text-gray-700">{formatCurrency(spentAmount)}</p>
               </div>
-            </div>
 
-            {/* Coluna 2: Gráfico circular */}
-            <div className="flex justify-center">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
-                  {/* Círculo de fundo */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r={radius}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    className="text-gray-200"
-                  />
-                  {/* Círculo de progresso */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r={radius}
-                    fill="none"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    className={statusInfo.color}
-                    strokeDasharray={strokeDasharray}
-                    strokeDashoffset={strokeDashoffset}
-                    style={{
-                      transition: "stroke-dashoffset 0.5s ease-in-out",
-                    }}
-                  />
-                </svg>
-                {/* Texto central */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-base font-bold ${statusInfo.textColor}`}>{Math.round(spentPercentage)}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Coluna 3: Informações à direita */}
-            <div className="space-y-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Restante</p>
                 <p className="text-sm font-semibold text-gray-700">{remainingDays} dias</p>
               </div>
 
-              {/* NOVA MÉTRICA: Mostrar valor baseado no modo selecionado para Google Ads */}
+              {/* Métrica baseada no modo selecionado para Google Ads */}
               {platform === "google" && (
                 <div>
                   <Popover>
@@ -670,7 +645,7 @@ export function CircularBudgetCard({
                 </div>
               )}
 
-              {/* Mostrar diário ideal sempre que houver diferença (para Google) */}
+              {/* Diário ideal Google */}
               {platform === "google" &&
               idealDailyBudget !== (budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget) ? (
                 <div>
@@ -727,7 +702,7 @@ export function CircularBudgetCard({
                 </div>
               )}
 
-              {/* Para Meta Ads, mostrar diário ideal quando diferente do atual - CORRIGIDO */}
+              {/* Diário ideal Meta */}
               {platform === "meta" && idealDailyBudget !== (client.review?.daily_budget_current || 0) ? (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
