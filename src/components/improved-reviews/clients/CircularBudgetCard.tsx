@@ -715,19 +715,20 @@ export function CircularBudgetCard({
               ) : null}
             </div>
 
-            {/* Ajuste recomendado compacto */}
-            {needsAdjustment && !warningIgnoredToday && (
-              <div className={`mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium ${
-                budgetDifference > 0 
-                  ? "bg-green-50 text-green-700 border border-dashed border-green-200" 
-                  : "bg-red-50 text-red-700 border border-dashed border-red-200"
-              }`}>
+            {/* Ajuste recomendado / Status OK */}
+            {needsAdjustment && !warningIgnoredToday ? (
+              <div className="mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium bg-red-50 text-red-700 border border-dashed border-red-200">
                 {budgetDifference > 0 
                   ? <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" /> 
                   : <TrendingDown className="h-3.5 w-3.5 flex-shrink-0" />}
                 <span>{budgetDifference > 0 ? "Aumentar" : "Reduzir"} orçamento: {budgetDifference > 0 ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}</span>
               </div>
-            )}
+            ) : !warningIgnoredToday ? (
+              <div className="mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium bg-green-50 text-green-700 border border-dashed border-green-200">
+                <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Orçamento OK</span>
+              </div>
+            ) : null}
           </div>
 
           {/* Botão */}
