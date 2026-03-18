@@ -690,22 +690,8 @@ export function CircularBudgetCard({
             </div>
           </div>
 
-          {/* Resto do componente permanece igual */}
-          {needsAdjustment && budgetDifference !== 0 && !warningIgnoredToday && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 border">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Ajuste recomendado:</span>
-                <span className={`text-sm font-semibold ${statusInfo.statusColor}`}>
-                  {budgetDifference > 0 ? "+" : "-"}
-                  {formatCurrency(Math.abs(budgetDifference))}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Botão */}
-          <div className="space-y-3">
-
+          <div>
             <Button
               className="w-full bg-[#321e32] hover:bg-[#321e32]/90 text-white"
               onClick={handleReviewClick}
