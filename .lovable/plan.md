@@ -1,49 +1,57 @@
 
 
-# Cards preenchendo 100% do espaço horizontal do grupo
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
 ## Problema
-O grid atual usa breakpoints fixos (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`), então se um cliente tem 2 contas numa tela `xl`, os 2 cards ocupam metade do espaço e deixam 2 colunas vazias.
+
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+
+## Causa raiz
+
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
 ## Solução
-Usar colunas dinâmicas baseadas no número de contas do cliente. Se o cliente tem 2 contas, cada uma ocupa 50%. Se tem 3, cada uma 33%. Se tem 5+, limitar a 4 colunas para não ficarem estreitos demais.
 
-### `ClientGroupCard.tsx`
-- Calcular `cols = Math.min(accounts.length, 4)` 
-- Aplicar via `gridTemplateColumns: \`repeat(${cols}, minmax(0, 1fr))\``
-- Em telas pequenas (`sm` para baixo), manter empilhamento vertical com classe responsiva
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-```tsx
-const cols = Math.min(sortedAccounts.length, 4);
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-<div 
-  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-  style={{ gridTemplateColumns: undefined }}
-  // Em md+, usar colunas dinâmicas via style
->
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
 ```
 
-Abordagem com classes Tailwind responsivas + style inline para `md+`:
-```tsx
-<div 
-  className="grid grid-cols-1 gap-3"
-  style={{}}
->
-```
+### 2. `src/workers/metaReviews.worker.ts`
 
-Na prática, usar um wrapper com media query via className condicional ou simplesmente style inline com CSS que respeita responsividade:
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
 
-```tsx
-const cols = Math.min(sortedAccounts.length, 4);
+## Impacto
 
-<div 
-  className="grid gap-3" 
-  style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
->
-```
-
-E para telas pequenas, adicionar uma classe `max-sm:!grid-cols-1` para forçar empilhamento.
-
-## Arquivo editado
-- `src/components/improved-reviews/clients/ClientGroupCard.tsx`
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
