@@ -541,6 +541,19 @@ export function CircularBudgetCard({
             </div>
           )}
 
+          {/* Placeholder de Saldo para Google Ads */}
+          {platform === "google" && (
+            <div className="mb-2 p-2 rounded-lg bg-gray-50 border border-gray-200">
+              <div className="flex items-center gap-2">
+                <BadgeDollarSign className="h-3.5 w-3.5 text-gray-400" />
+                <span className="text-xs font-medium text-gray-500">Saldo da Conta</span>
+              </div>
+              <span className="text-xs text-gray-400 mt-1 block">
+                Visualização de saldo indisponível
+              </span>
+            </div>
+          )}
+
           {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
           {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
             <div className="mb-2">
