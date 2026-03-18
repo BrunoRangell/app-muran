@@ -1,57 +1,54 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Corrigir erro ao cadastrar conta quando já existe registro vazio
 
 ## Problema
+Quando o usuário apagou os números do Aracuri Google em "orçamentos" e salvou, ficou um registro na tabela `client_accounts` com `account_id` vazio, `is_primary: true`, plataforma `google`. Agora ao tentar cadastrar uma nova conta pelo card "Nenhuma conta cadastrada", o INSERT falha porque:
+1. Já existe um registro `is_primary: true` para esse `client_id + platform` (constraint `unique_primary_per_platform`)
+2. Já existe um registro com `account_id = ""` para essa platform (constraint `unique_account_per_platform`)
 
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
-
-## Causa raiz
-
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+Além disso, o erro exibe `[object Object]` porque `String(error)` não serializa o erro do Supabase corretamente.
 
 ## Solução
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+### 1. `src/components/improved-reviews/clients/CircularBudgetCard.tsx`
+Na mutation `registerAccountMutation`, antes de inserir, fazer um **upsert**: verificar se já existe um registro para esse `client_id + platform` com `account_id` vazio e, se sim, **atualizar** esse registro em vez de inserir um novo.
 
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+```typescript
+mutationFn: async (data) => {
+  // Verificar se já existe registro vazio para este client+platform
+  const { data: existing } = await supabase
+    .from("client_accounts")
+    .select("id")
+    .eq("client_id", client.id)
+    .eq("platform", data.platform)
+    .maybeSingle();
 
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
-
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  if (existing) {
+    // Atualizar registro existente
+    const { error } = await supabase
+      .from("client_accounts")
+      .update({
+        account_id: data.accountId,
+        account_name: data.accountName,
+        budget_amount: data.budgetAmount,
+        status: 'active'
+      })
+      .eq("id", existing.id);
+    if (error) throw error;
   } else {
-    globalBudgets.set(budget.client_id, budget);
+    // Inserir novo
+    const { error } = await supabase
+      .from("client_accounts")
+      .insert({ ... });
+    if (error) throw error;
   }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
 }
 ```
 
-### 2. `src/workers/metaReviews.worker.ts`
+### 2. Corrigir exibição do erro
+Trocar `String(error)` por `error?.message || JSON.stringify(error)` no `onError` para mostrar a mensagem real em vez de `[object Object]`.
 
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
-
-## Impacto
-
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+### Arquivos editados
+- `src/components/improved-reviews/clients/CircularBudgetCard.tsx`
 
