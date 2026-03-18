@@ -34,12 +34,11 @@ const calculateBudget = (input: {
   if (input.customBudgetStartDate && input.customBudgetEndDate) {
     // Orçamento personalizado: calcular diferença real entre datas
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startDate = new Date(input.customBudgetStartDate);
-    const endDate = new Date(input.customBudgetEndDate);
-    
-    // Normalizar para meia-noite para evitar problemas de timezone
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(0, 0, 0, 0);
+    // Parse local para evitar deslocamento UTC
+    const [sY, sM, sD] = input.customBudgetStartDate.split('-').map(Number);
+    const startDate = new Date(sY, sM - 1, sD);
+    const [eY, eM, eD] = input.customBudgetEndDate.split('-').map(Number);
+    const endDate = new Date(eY, eM - 1, eD);
     
     // Se hoje é antes do início, usar período completo
     if (today < startDate) {
