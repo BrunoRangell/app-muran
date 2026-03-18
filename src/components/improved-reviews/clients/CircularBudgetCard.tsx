@@ -11,6 +11,8 @@ import {
   EyeOff,
   ExternalLink,
   Activity,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
