@@ -13,8 +13,8 @@ export function calculateRemainingDays(
   
   // Se há orçamento personalizado, usar o período dele
   if (customBudgetEndDate && customBudgetStartDate) {
-    const endDate = startOfDay(parseISO(customBudgetEndDate));
-    const startDate = startOfDay(parseISO(customBudgetStartDate));
+    const endDate = startOfDay(parseLocalDate(customBudgetEndDate));
+    const startDate = startOfDay(parseLocalDate(customBudgetStartDate));
     
     // Se hoje é antes da data de início, calcular desde o início
     if (isBefore(today, startDate)) {
