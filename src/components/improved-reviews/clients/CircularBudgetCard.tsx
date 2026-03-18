@@ -558,7 +558,7 @@ export function CircularBudgetCard({
             </div>
 
             {/* Grid 2 colunas com infos */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-full">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 w-full">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Orçamento</p>
                 <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
