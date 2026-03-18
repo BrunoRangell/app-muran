@@ -96,7 +96,7 @@ export function ClientsList({
       }
       
       // Se activeFilter "balance" está ativo, ordenar por dias restantes (menor primeiro)
-      if (activeFilter === "balance" && platform === "meta") {
+      if (activeFilter === "balance") {
         const calculateDaysRemaining = (client: any) => {
           const balance = client.balance_info?.balance_value || 0;
           const dailyBudget = client.meta_daily_budget || 0;

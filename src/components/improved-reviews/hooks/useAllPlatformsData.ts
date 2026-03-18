@@ -156,6 +156,25 @@ export function useAllPlatformsData() {
         .filter((group) => group.accounts.length > 0);
     }
 
+    // Sort by days until balance runs out when balance filter is active
+    if (activeFilter === "balance") {
+      result = [...result].sort((a, b) => {
+        const getDaysRemaining = (group: ClientGroup) => {
+          for (const acc of group.accounts) {
+            if (acc.platform === "meta") {
+              const balance = acc.clientData.balance_info?.balance_value || 0;
+              const dailyBudget = acc.clientData.meta_daily_budget || 0;
+              if (balance <= 0) return -1;
+              if (dailyBudget <= 0) return Infinity;
+              return balance / dailyBudget;
+            }
+          }
+          return Infinity;
+        };
+        return getDaysRemaining(a) - getDaysRemaining(b);
+      });
+    }
+
     return result;
   }, [groups, searchQuery, platformFilter, activeFilter]);
 
