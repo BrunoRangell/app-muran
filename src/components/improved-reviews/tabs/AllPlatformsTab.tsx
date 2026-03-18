@@ -82,7 +82,7 @@ export function AllPlatformsTab() {
       {groups.length === 0 ? (
         <EmptyState title="Nenhum cliente encontrado" description="Tente buscar por outro nome ou altere os filtros" />
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {groups.map((group) => (
             <ClientGroupCard
               key={group.clientId}
