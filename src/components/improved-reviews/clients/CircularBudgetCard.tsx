@@ -374,29 +374,31 @@ export function CircularBudgetCard({
           {/* Seção de Saldo Meta Ads (apenas para Meta) */}
           {platform === "meta" && client.balance_info && (
             <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <div className="flex items-center justify-between mb-2">
+              <div className="space-y-1.5 mb-2">
                 <div className="flex items-center gap-2">
                   <BadgeDollarSign className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium text-blue-800">Saldo da Conta</span>
                 </div>
-                <a
-                  href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  Ver saldo
-                </a>
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    client.balance_info.billing_model === "pre"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : "bg-blue-100 text-blue-800 border-blue-200"
-                  }`}
-                >
-                  {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Ver saldo
+                  </a>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      client.balance_info.billing_model === "pre"
+                        ? "bg-green-100 text-green-800 border-green-200"
+                        : "bg-blue-100 text-blue-800 border-blue-200"
+                    }`}
+                  >
+                    {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
+                  </Badge>
+                </div>
               </div>
 
               {/* Conta com SALDO NUMÉRICO (pré-paga ou pós-paga com saldo manual) */}
