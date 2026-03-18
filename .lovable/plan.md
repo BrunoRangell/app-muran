@@ -1,49 +1,57 @@
 
 
-# Reduzir altura vertical dos cards na aba Todas as Plataformas
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Análise do card atual (CircularBudgetCard.tsx, 758 linhas)
+## Problema
 
-Seções que consomem espaço vertical:
-1. **Header**: nome, badge plataforma, account name, account ID, ícones (~4 linhas)
-2. **Saldo Meta** (condicional): título, link+badge, valor, barra de progresso (~6 linhas)
-3. **Status Campanhas** (condicional): ícone+título, badge+contagem (~3 linhas)
-4. **Barra de progresso** + grid de métricas: barra, orçamento, gasto, restante, diário atual, diário ideal (~6 linhas)
-5. **Ajuste recomendado** (condicional): caixa com valor (~2 linhas)
-6. **Botão Analisar** (~2 linhas)
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
-## Otimizações propostas
+## Causa raiz
 
-### 1. Reduzir paddings e margins globais
-- `p-5` → `p-3` no CardContent
-- `mb-4` → `mb-2` nas seções (header, saldo, campanhas)
-- `mb-5` → `mb-3` no layout principal
-- `gap-y-3` → `gap-y-2` no grid de métricas
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
-### 2. Header mais compacto
-- Remover linha do **Account ID** (`p "text-xs text-gray-500">ID: ...`). É redundante na visão unificada -- o nome da conta já identifica. O ID continua acessível via botão ExternalLink.
-- Colocar account name na mesma linha do company name (após o badge), separando com `·`
+## Solução
 
-### 3. Seção de Saldo mais compacta
-- Reduzir padding de `p-3` → `p-2`
-- Colocar "Saldo da Conta" e "Ver saldo / Pré-paga" na mesma linha
-- Mover "dias restantes" para a mesma linha do valor
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-### 4. Remover caixa "Ajuste recomendado" (linhas 713-723)
-- Essa informação já aparece no header como ícone AlertTriangle + tooltip, e no status do card (borderColor + statusInfo.status)
-- É **redundante** -- removê-la economiza ~40px verticais
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-### 5. Status de campanhas mais compacto
-- Reduzir padding de `p-3` → `p-2`
-- Colocar ícone, título e badge na **mesma linha** em vez de 2 linhas
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
 
-### 6. Barra de progresso + métricas
-- Reduzir `mb-4` → `mb-2` na barra
-- Grid de métricas: reduzir `gap-y-3` → `gap-y-1.5`
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
 
-## Estimativa de ganho
-Cada otimização economiza ~20-40px. No total, estimativa de **~120-160px de redução**, o que deve permitir visualizar o card completo sem scroll na viewport de 762px.
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
 
-## Arquivo editado
-- `src/components/improved-reviews/clients/CircularBudgetCard.tsx`
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
+```
+
+### 2. `src/workers/metaReviews.worker.ts`
+
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 

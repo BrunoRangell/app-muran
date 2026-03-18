@@ -276,18 +276,17 @@ export function CircularBudgetCard({
   return (
     <>
       <Card className={`w-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
-        <CardContent className="p-5">
+        <CardContent className="p-3">
           {/* Header com nome e ícones */}
-           <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-900 text-base line-clamp-1">{companyName}</h3>
+           <div className="flex items-start justify-between mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">{companyName}</h3>
                 <Badge variant="outline" className={platform === "meta" ? "bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0" : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0"}>
                   {platform === "meta" ? "Meta" : "Google"}
                 </Badge>
               </div>
-              <p className="text-gray-600 mb-1 text-xs">{accountInfo.name}</p>
-              <p className="text-xs text-gray-500">ID: {accountInfo.id}</p>
+              <p className="text-gray-500 text-xs truncate">{accountInfo.name}</p>
             </div>
 
             <div className="flex items-center gap-2 ml-3">
@@ -370,69 +369,55 @@ export function CircularBudgetCard({
 
           {/* Seção de Saldo Meta Ads (apenas para Meta) */}
           {platform === "meta" && client.balance_info && (
-            <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <div className="space-y-1.5 mb-2">
-                <div className="flex items-center gap-2">
-                  <BadgeDollarSign className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">Saldo da Conta</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Ver saldo
-                  </a>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs ${
-                      client.balance_info.billing_model === "pre"
-                        ? "bg-green-100 text-green-800 border-green-200"
-                        : "bg-blue-100 text-blue-800 border-blue-200"
-                    }`}
-                  >
-                    {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
-                  </Badge>
-                </div>
+            <div className="mb-2 p-2 rounded-lg bg-blue-50 border border-blue-200">
+              <div className="flex items-center gap-2 mb-1.5">
+                <BadgeDollarSign className="h-3.5 w-3.5 text-blue-600" />
+                <span className="text-xs font-medium text-blue-800">Saldo da Conta</span>
+                <a
+                  href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-blue-600 hover:text-blue-800 underline ml-auto"
+                >
+                  Ver saldo
+                </a>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 ${
+                    client.balance_info.billing_model === "pre"
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : "bg-blue-100 text-blue-800 border-blue-200"
+                  }`}
+                >
+                  {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
+                </Badge>
               </div>
 
               {/* Conta com SALDO NUMÉRICO (pré-paga ou pós-paga com saldo manual) */}
               {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-blue-900">
+                    <span className="text-sm font-bold text-blue-900">
                       {formatCurrency(client.balance_info.balance_value)}
                     </span>
-                    {client.balance_info.balance_percent && (
-                      <span className="text-sm text-blue-700">
-                        {Math.round(client.balance_info.balance_percent * 100)}%
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5">
+                      {client.balance_info.billing_model === "pre" &&
+                        (() => {
+                          const balance = client.balance_info.balance_value || 0;
+                          const dailyBudget = client.meta_daily_budget || 0;
+                          if (balance <= 0) return <span className="text-[10px] text-red-600">Saldo esgotado</span>;
+                          if (dailyBudget <= 0) return null;
+                          const daysUntilEmpty = balance / dailyBudget;
+                          if (daysUntilEmpty > 365) return <span className="text-[10px] text-gray-500">&gt;1 ano</span>;
+                          return <span className="text-[10px] text-gray-500">~{Math.floor(daysUntilEmpty)}d</span>;
+                        })()}
+                      {client.balance_info.balance_percent && (
+                        <span className="text-xs text-blue-700">
+                          {Math.round(client.balance_info.balance_percent * 100)}%
+                        </span>
+                      )}
+                    </span>
                   </div>
-
-                  {/* Cálculo dias até esgotar - apenas para pré-pagas */}
-                  {client.balance_info.billing_model === "pre" &&
-                    (() => {
-                      const balance = client.balance_info.balance_value || 0;
-                      const dailyBudget = client.meta_daily_budget || 0;
-
-                      if (balance <= 0) {
-                        return <div className="text-xs text-red-600">📅 Saldo esgotado</div>;
-                      } else if (dailyBudget <= 0) {
-                        return <div className="text-xs text-gray-600">📅 Sem limite definido</div>;
-                      } else {
-                        const daysUntilEmpty = balance / dailyBudget;
-                        if (daysUntilEmpty > 365) {
-                          return <div className="text-xs text-gray-600">📅 &gt; 1 ano restante</div>;
-                        } else {
-                          return (
-                            <div className="text-xs text-gray-600">📅 ~{Math.floor(daysUntilEmpty)} dias restantes</div>
-                          );
-                        }
-                      }
-                    })()}
 
                   {client.balance_info.balance_percent && (
                     <div className="w-full bg-blue-200 rounded-full h-2">
@@ -463,21 +448,19 @@ export function CircularBudgetCard({
 
           {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
           {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
-            <div className="mb-4">
+            <div className="mb-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-gray-600" />
+                      <span className="text-xs font-medium text-gray-800">Campanhas</span>
                       <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className={`text-xs font-medium ${veiculationInfo.badgeColor}`}>
+                      <Badge variant="outline" className={`text-[10px] font-medium ml-auto ${veiculationInfo.badgeColor}`}>
                         {veiculationInfo.message}
                       </Badge>
                       {veiculationInfo.activeCampaigns > 0 && (
-                        <span className="text-xs text-gray-600">
+                        <span className="text-[10px] text-gray-600">
                           {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? "s" : ""}
                         </span>
                       )}
@@ -513,21 +496,19 @@ export function CircularBudgetCard({
 
           {/* Seção de Status de Veiculação (apenas para Google Ads) */}
           {platform === "google" && veiculationInfo && veiculationInfo.status !== "no_data" && (
-            <div className="mb-4">
+            <div className="mb-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-gray-600" />
+                      <span className="text-xs font-medium text-gray-800">Campanhas</span>
                       <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className={`text-xs font-medium ${veiculationInfo.badgeColor}`}>
+                      <Badge variant="outline" className={`text-[10px] font-medium ml-auto ${veiculationInfo.badgeColor}`}>
                         {veiculationInfo.message}
                       </Badge>
                       {veiculationInfo.activeCampaigns > 0 && (
-                        <span className="text-xs text-gray-600">
+                        <span className="text-[10px] text-gray-600">
                           {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? "s" : ""}
                         </span>
                       )}
@@ -562,9 +543,9 @@ export function CircularBudgetCard({
           )}
 
           {/* Layout principal: barra de progresso + infos */}
-          <div className="flex flex-col mb-5">
+          <div className="flex flex-col mb-3">
             {/* Barra de progresso horizontal */}
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-2">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full ${statusInfo.barColor}`} 
@@ -577,7 +558,7 @@ export function CircularBudgetCard({
             </div>
 
             {/* Grid 2 colunas com infos */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-full">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 w-full">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Orçamento</p>
                 <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
@@ -709,22 +690,8 @@ export function CircularBudgetCard({
             </div>
           </div>
 
-          {/* Resto do componente permanece igual */}
-          {needsAdjustment && budgetDifference !== 0 && !warningIgnoredToday && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 border">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Ajuste recomendado:</span>
-                <span className={`text-sm font-semibold ${statusInfo.statusColor}`}>
-                  {budgetDifference > 0 ? "+" : "-"}
-                  {formatCurrency(Math.abs(budgetDifference))}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Botão */}
-          <div className="space-y-3">
-
+          <div>
             <Button
               className="w-full bg-[#321e32] hover:bg-[#321e32]/90 text-white"
               onClick={handleReviewClick}
