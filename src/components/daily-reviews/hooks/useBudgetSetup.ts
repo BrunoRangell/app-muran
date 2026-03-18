@@ -324,6 +324,7 @@ export const useBudgetSetup = () => {
           const { error } = await supabase
             .from("client_accounts")
             .update({
+              account_id: values.account_id?.trim() || "",
               budget_amount: budgetAmount
             })
             .eq("id", accountId);
