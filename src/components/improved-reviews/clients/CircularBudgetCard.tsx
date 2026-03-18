@@ -298,7 +298,11 @@ export function CircularBudgetCard({
     },
     onSuccess: () => {
       toast({ title: "Conta cadastrada", description: "A conta foi cadastrada com sucesso." });
-      queryClient.invalidateQueries({ queryKey: ["improved-reviews"] });
+      if (platform === "meta") {
+        queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["google-ads-clients-data"] });
+      }
       queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
       setShowRegisterModal(false);
     },
