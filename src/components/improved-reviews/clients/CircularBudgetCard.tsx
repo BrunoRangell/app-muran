@@ -503,8 +503,8 @@ export function CircularBudgetCard({
                           if (balance <= 0) return <span className="text-[10px] text-red-600">Saldo esgotado</span>;
                           if (dailyBudget <= 0) return null;
                           const daysUntilEmpty = balance / dailyBudget;
-                          if (daysUntilEmpty > 365) return <span className="text-[10px] text-gray-500">&gt;1 ano</span>;
-                          return <span className="text-[10px] text-gray-500">~{Math.floor(daysUntilEmpty)}d</span>;
+                          if (daysUntilEmpty > 365) return <span className="text-[10px] text-gray-500">Mais de 1 ano até o saldo acabar</span>;
+                          return <span className="text-[10px] text-gray-500">{Math.floor(daysUntilEmpty)} dias até o saldo acabar</span>;
                         })()}
                       {client.balance_info.balance_percent && (
                         <span className="text-xs text-blue-700">
@@ -688,7 +688,7 @@ export function CircularBudgetCard({
 
               {/* Linha 2: Dias restantes - largura total com destaque */}
               <div className="bg-gray-50 rounded-md px-3 py-1.5 flex items-center justify-between">
-                <span className="text-xs text-gray-500">Dias restantes</span>
+                <span className="text-xs text-gray-500">Dias restantes no mês</span>
                 <span className="text-sm font-bold text-gray-900">{remainingDays} dias</span>
               </div>
 
