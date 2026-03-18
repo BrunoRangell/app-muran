@@ -598,51 +598,12 @@ export function CircularBudgetCard({
                 <p className="text-sm font-semibold text-gray-700">{formatCurrency(spentAmount)}</p>
               </div>
 
-            {/* Coluna 2: Gráfico circular */}
-            <div className="flex justify-center">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
-                  {/* Círculo de fundo */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r={radius}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    className="text-gray-200"
-                  />
-                  {/* Círculo de progresso */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r={radius}
-                    fill="none"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    className={statusInfo.color}
-                    strokeDasharray={strokeDasharray}
-                    strokeDashoffset={strokeDashoffset}
-                    style={{
-                      transition: "stroke-dashoffset 0.5s ease-in-out",
-                    }}
-                  />
-                </svg>
-                {/* Texto central */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-base font-bold ${statusInfo.textColor}`}>{Math.round(spentPercentage)}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Coluna 3: Informações à direita */}
-            <div className="space-y-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Restante</p>
                 <p className="text-sm font-semibold text-gray-700">{remainingDays} dias</p>
               </div>
 
-              {/* NOVA MÉTRICA: Mostrar valor baseado no modo selecionado para Google Ads */}
+              {/* Métrica baseada no modo selecionado para Google Ads */}
               {platform === "google" && (
                 <div>
                   <Popover>
@@ -684,7 +645,7 @@ export function CircularBudgetCard({
                 </div>
               )}
 
-              {/* Mostrar diário ideal sempre que houver diferença (para Google) */}
+              {/* Diário ideal Google */}
               {platform === "google" &&
               idealDailyBudget !== (budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget) ? (
                 <div>
@@ -741,7 +702,7 @@ export function CircularBudgetCard({
                 </div>
               )}
 
-              {/* Para Meta Ads, mostrar diário ideal quando diferente do atual - CORRIGIDO */}
+              {/* Diário ideal Meta */}
               {platform === "meta" && idealDailyBudget !== (client.review?.daily_budget_current || 0) ? (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
