@@ -722,16 +722,8 @@ export function CircularBudgetCard({
             </div>
           )}
 
-          {/* Status e botão */}
+          {/* Botão */}
           <div className="space-y-3">
-            <div className="text-center">
-              <Badge
-                variant="outline"
-                className={`${statusInfo.borderColor} ${statusInfo.statusColor} text-xs px-3 py-1`}
-              >
-                {statusInfo.status}
-              </Badge>
-            </div>
 
             <Button
               className="w-full bg-[#321e32] hover:bg-[#321e32]/90 text-white"
