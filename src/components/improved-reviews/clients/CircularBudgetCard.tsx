@@ -131,26 +131,28 @@ export function CircularBudgetCard({
   const getStatusInfo = () => {
     if (warningIgnoredToday) {
       return {
-        color: "stroke-gray-400",
         borderColor: "border-gray-200",
         textColor: "text-gray-500",
+        barColor: "bg-gray-400",
         status: "Ajuste ocultado hoje",
         statusColor: "text-gray-500",
       };
     }
     if (needsAdjustment) {
       return {
-        color: "stroke-amber-500",
         borderColor: "border-amber-200",
         textColor: "text-amber-600",
-        status: budgetDifference > 0 ? "Aumentar orçamento" : "Reduzir orçamento",
+        barColor: "bg-amber-500",
+        status: budgetDifference > 0 
+          ? `+${formatCurrency(Math.abs(budgetDifference))}` 
+          : `-${formatCurrency(Math.abs(budgetDifference))}`,
         statusColor: "text-amber-600",
       };
     } else {
       return {
-        color: "stroke-emerald-500",
         borderColor: "border-emerald-200",
         textColor: "text-emerald-600",
+        barColor: "bg-emerald-500",
         status: "Sem ação necessária",
         statusColor: "text-emerald-600",
       };
