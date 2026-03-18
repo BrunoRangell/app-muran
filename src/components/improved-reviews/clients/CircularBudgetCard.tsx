@@ -496,21 +496,19 @@ export function CircularBudgetCard({
 
           {/* Seção de Status de Veiculação (apenas para Google Ads) */}
           {platform === "google" && veiculationInfo && veiculationInfo.status !== "no_data" && (
-            <div className="mb-4">
+            <div className="mb-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-gray-600" />
+                      <span className="text-xs font-medium text-gray-800">Campanhas</span>
                       <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className={`text-xs font-medium ${veiculationInfo.badgeColor}`}>
+                      <Badge variant="outline" className={`text-[10px] font-medium ml-auto ${veiculationInfo.badgeColor}`}>
                         {veiculationInfo.message}
                       </Badge>
                       {veiculationInfo.activeCampaigns > 0 && (
-                        <span className="text-xs text-gray-600">
+                        <span className="text-[10px] text-gray-600">
                           {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? "s" : ""}
                         </span>
                       )}
