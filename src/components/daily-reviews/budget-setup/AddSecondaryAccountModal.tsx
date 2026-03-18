@@ -79,6 +79,11 @@ export const AddSecondaryAccountModal = ({
           <p className="text-sm text-muted-foreground">
             Cliente: <span className="font-medium">{clientName}</span>
           </p>
+          {fixedPlatform && (
+            <p className="text-sm text-muted-foreground">
+              Plataforma: <span className="font-medium">{fixedPlatform === 'meta' ? 'Meta Ads' : 'Google Ads'}</span>
+            </p>
+          )}
         </DialogHeader>
         
         <div className="space-y-4">
