@@ -26,7 +26,8 @@ export const AddSecondaryAccountModal = ({
   onClose,
   onSave,
   clientName,
-  isLoading = false
+  isLoading = false,
+  title = "Adicionar Conta Secundária"
 }: AddSecondaryAccountModalProps) => {
   const [platform, setPlatform] = useState<'meta' | 'google'>('meta');
   const [accountName, setAccountName] = useState('');
