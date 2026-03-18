@@ -19,6 +19,10 @@ type AddSecondaryAccountModalProps = {
   clientName: string;
   isLoading?: boolean;
   title?: string;
+  /** Quando fornecido, esconde o seletor de plataforma e usa esse valor */
+  fixedPlatform?: 'meta' | 'google';
+  /** Quando true, esconde o campo nome da conta e usa "Conta Principal" */
+  hideAccountName?: boolean;
 };
 
 export const AddSecondaryAccountModal = ({
@@ -27,21 +31,28 @@ export const AddSecondaryAccountModal = ({
   onSave,
   clientName,
   isLoading = false,
-  title = "Adicionar Conta Secundária"
+  title = "Adicionar Conta Secundária",
+  fixedPlatform,
+  hideAccountName = false,
 }: AddSecondaryAccountModalProps) => {
-  const [platform, setPlatform] = useState<'meta' | 'google'>('meta');
+  const [platform, setPlatform] = useState<'meta' | 'google'>(fixedPlatform || 'meta');
   const [accountName, setAccountName] = useState('');
   const [accountId, setAccountId] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
 
+  const effectivePlatform = fixedPlatform || platform;
+  const effectiveAccountName = hideAccountName ? 'Conta Principal' : accountName.trim();
+  const hasNonNumericId = accountId.length > 0 && /\D/.test(accountId);
+  const isIdValid = accountId.length > 0 && !hasNonNumericId;
+
   const handleSave = () => {
-    if (!accountName.trim() || !accountId.trim() || !budgetAmount) {
+    if (!effectiveAccountName || !isIdValid || !budgetAmount) {
       return;
     }
 
     onSave({
-      platform,
-      accountName: accountName.trim(),
+      platform: effectivePlatform,
+      accountName: effectiveAccountName,
       accountId: accountId.trim(),
       budgetAmount: parseBrazilianCurrency(budgetAmount)
     });
@@ -50,7 +61,7 @@ export const AddSecondaryAccountModal = ({
     setAccountName('');
     setAccountId('');
     setBudgetAmount('');
-    setPlatform('meta');
+    if (!fixedPlatform) setPlatform('meta');
   };
 
   const handleBudgetChange = (value: string) => {
@@ -58,54 +69,64 @@ export const AddSecondaryAccountModal = ({
     setBudgetAmount(formatted);
   };
 
+  const canSave = (hideAccountName || !!accountName.trim()) && isIdValid && !!budgetAmount;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Cliente: <span className="font-medium">{clientName}</span>
           </p>
         </DialogHeader>
         
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="platform">Plataforma</Label>
-            <Select value={platform} onValueChange={(value: 'meta' | 'google') => setPlatform(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="meta">Meta Ads</SelectItem>
-                <SelectItem value="google">Google Ads</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {!fixedPlatform && (
+            <div>
+              <Label htmlFor="platform">Plataforma</Label>
+              <Select value={platform} onValueChange={(value: 'meta' | 'google') => setPlatform(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meta">Meta Ads</SelectItem>
+                  <SelectItem value="google">Google Ads</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-          <div>
-            <Label htmlFor="accountName">Nome da Conta</Label>
-            <Input
-              id="accountName"
-              placeholder="Ex: Campanha Sazonal"
-              value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-            />
-          </div>
+          {!hideAccountName && (
+            <div>
+              <Label htmlFor="accountName">Nome da Conta</Label>
+              <Input
+                id="accountName"
+                placeholder="Ex: Campanha Sazonal"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+              />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="accountId">ID da Conta</Label>
             <Input
               id="accountId"
-              placeholder="ID da conta da plataforma"
+              placeholder="Ex: 123456789"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
+              className={hasNonNumericId ? "border-destructive" : ""}
             />
+            {hasNonNumericId && (
+              <p className="text-xs text-destructive mt-1">O ID deve conter apenas números</p>
+            )}
           </div>
 
           <div>
             <Label htmlFor="budgetAmount">Orçamento</Label>
             <div className="flex items-center space-x-2">
-              <span className="text-gray-500">R$</span>
+              <span className="text-muted-foreground">R$</span>
               <Input
                 id="budgetAmount"
                 placeholder="0,00"
@@ -122,7 +143,7 @@ export const AddSecondaryAccountModal = ({
             </Button>
             <Button 
               onClick={handleSave} 
-              disabled={!accountName.trim() || !accountId.trim() || !budgetAmount || isLoading}
+              disabled={!canSave || isLoading}
               className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
             >
               {isLoading ? 'Salvando...' : 'Salvar'}
