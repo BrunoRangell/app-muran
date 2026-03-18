@@ -1,5 +1,6 @@
 
-import { differenceInDays, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
+import { differenceInDays, isAfter, isBefore, startOfDay } from "date-fns";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 /**
  * Calcula os dias restantes para um orçamento, considerando se é personalizado ou mensal
