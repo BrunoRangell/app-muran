@@ -577,7 +577,7 @@ export function CircularBudgetCard({
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 mb-1">Restante</p>
+                <p className="text-xs text-gray-500 mb-1">Dias restantes</p>
                 <p className="text-sm font-semibold text-gray-700">{remainingDays} dias</p>
               </div>
 
