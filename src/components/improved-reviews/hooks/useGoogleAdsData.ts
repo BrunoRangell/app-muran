@@ -213,7 +213,8 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
     const remainingDays = daysInMonth - currentDay + 1;
 
     for (const client of clients) {
-      const clientAccounts = accountsByClient.get(client.id) || [];
+      const clientAccounts = (accountsByClient.get(client.id) || [])
+        .filter(acc => acc.account_id && acc.account_id.trim() !== '');
 
       if (clientAccounts.length > 0) {
         for (const account of clientAccounts) {

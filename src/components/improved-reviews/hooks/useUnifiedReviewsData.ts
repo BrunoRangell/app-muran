@@ -60,8 +60,11 @@ export function useUnifiedReviewsData() {
       }
     });
 
+    // Filtrar contas com account_id vazio (registros sem ID real)
+    const validMetaAccounts = metaAccounts.filter(acc => acc.account_id && acc.account_id.trim() !== '');
+
     const clientsWithAccounts = new Set();
-    metaAccounts.forEach(account => {
+    validMetaAccounts.forEach(account => {
       clientsWithAccounts.add(account.client_id);
     });
     
@@ -74,7 +77,7 @@ export function useUnifiedReviewsData() {
         client.company_name = `Cliente ${client.id.slice(0, 8)}`;
       }
       
-      const clientMetaAccounts = metaAccounts.filter(account => 
+      const clientMetaAccounts = validMetaAccounts.filter(account => 
         account.client_id === client.id
       ) || [];
       
