@@ -131,26 +131,28 @@ export function CircularBudgetCard({
   const getStatusInfo = () => {
     if (warningIgnoredToday) {
       return {
-        color: "stroke-gray-400",
         borderColor: "border-gray-200",
         textColor: "text-gray-500",
+        barColor: "bg-gray-400",
         status: "Ajuste ocultado hoje",
         statusColor: "text-gray-500",
       };
     }
     if (needsAdjustment) {
       return {
-        color: "stroke-amber-500",
         borderColor: "border-amber-200",
         textColor: "text-amber-600",
-        status: budgetDifference > 0 ? "Aumentar orçamento" : "Reduzir orçamento",
+        barColor: "bg-amber-500",
+        status: budgetDifference > 0 
+          ? `+${formatCurrency(Math.abs(budgetDifference))}` 
+          : `-${formatCurrency(Math.abs(budgetDifference))}`,
         statusColor: "text-amber-600",
       };
     } else {
       return {
-        color: "stroke-emerald-500",
         borderColor: "border-emerald-200",
         textColor: "text-emerald-600",
+        barColor: "bg-emerald-500",
         status: "Sem ação necessária",
         statusColor: "text-emerald-600",
       };
@@ -271,11 +273,6 @@ export function CircularBudgetCard({
     }
   };
 
-  // Calcular coordenadas do círculo
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (spentPercentage / 100) * circumference;
   return (
     <>
       <Card className={`w-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
@@ -564,19 +561,19 @@ export function CircularBudgetCard({
             </div>
           )}
 
-          {/* Layout principal: círculo no topo, infos embaixo */}
-          <div className="flex flex-col items-center mb-5">
-            {/* Círculo de progresso centralizado */}
-            <div className="flex justify-center mb-4">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200" />
-                  <circle cx="50" cy="50" r={radius} fill="none" strokeWidth="8" strokeLinecap="round" className={statusInfo.color} strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} style={{ transition: "stroke-dashoffset 0.5s ease-in-out" }} />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-base font-bold ${statusInfo.textColor}`}>{Math.round(spentPercentage)}%</span>
-                </div>
+          {/* Layout principal: barra de progresso + infos */}
+          <div className="flex flex-col mb-5">
+            {/* Barra de progresso horizontal */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${statusInfo.barColor}`} 
+                  style={{ width: `${Math.min(spentPercentage, 100)}%`, transition: "width 0.5s ease-in-out" }} 
+                />
               </div>
+              <span className={`text-sm font-bold ${statusInfo.textColor} whitespace-nowrap`}>
+                {Math.round(spentPercentage)}%
+              </span>
             </div>
 
             {/* Grid 2 colunas com infos */}
