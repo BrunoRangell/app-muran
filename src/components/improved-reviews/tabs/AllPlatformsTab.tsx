@@ -87,12 +87,12 @@ export function AllPlatformsTab() {
             const count = group.accounts.length;
             const sizeClasses =
               count === 1
-                ? "min-w-[280px] max-w-[350px]"
+                ? "min-w-[280px] max-w-[350px] flex-1"
                 : count === 2
-                  ? "min-w-[500px] max-w-[700px]"
-                  : "min-w-[720px]";
+                  ? "min-w-[500px] max-w-[700px] flex-1"
+                  : "w-full";
             return (
-              <div key={group.clientId} className={`flex-1 ${sizeClasses}`}>
+              <div key={group.clientId} className={sizeClasses}>
                 <ClientGroupCard
                   clientName={group.clientName}
                   accounts={group.accounts}
