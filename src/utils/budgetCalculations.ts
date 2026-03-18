@@ -61,8 +61,8 @@ export function isCustomBudgetActive(startDate?: string, endDate?: string): bool
   if (!startDate || !endDate) return false;
   
   const today = startOfDay(new Date());
-  const start = startOfDay(parseISO(startDate));
-  const end = startOfDay(parseISO(endDate));
+  const start = startOfDay(parseLocalDate(startDate));
+  const end = startOfDay(parseLocalDate(endDate));
   
   return !isBefore(today, start) && !isAfter(today, end);
 }

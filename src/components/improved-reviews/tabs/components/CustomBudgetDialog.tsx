@@ -35,8 +35,8 @@ export function CustomBudgetDialog({
     platform: budget.platform as "meta" | "google",
     client_id: budget.client_id,
     budget_amount: budget.budget_amount,
-    start_date: new Date(budget.start_date),
-    end_date: new Date(budget.end_date),
+    start_date: parseLocalDate(budget.start_date),
+    end_date: parseLocalDate(budget.end_date),
     description: budget.description || "",
     account_id: budget.account_id || "",
   } : undefined;
