@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BadgeDollarSign,
   Calendar,
+  CheckCircle,
   ChevronRight,
   Loader,
   Loader2,
