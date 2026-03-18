@@ -62,7 +62,7 @@ export const AddSecondaryAccountModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Conta Secundária</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <p className="text-sm text-gray-600">
             Cliente: <span className="font-medium">{clientName}</span>
           </p>
