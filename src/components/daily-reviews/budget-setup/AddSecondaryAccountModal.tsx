@@ -18,6 +18,7 @@ type AddSecondaryAccountModalProps = {
   }) => void;
   clientName: string;
   isLoading?: boolean;
+  title?: string;
 };
 
 export const AddSecondaryAccountModal = ({
