@@ -276,6 +276,29 @@ export function CircularBudgetCard({
     }
   };
 
+  // Card simplificado para clientes sem conta cadastrada
+  if (!client.hasAccount) {
+    return (
+      <Card className="w-full bg-gray-50 border-gray-200 border-2">
+        <CardContent className="p-4 flex flex-col items-center justify-center text-center py-8">
+          <h3 className="font-semibold text-gray-900 text-sm mb-1">{companyName}</h3>
+          <Badge variant="outline" className={platform === "meta" ? "bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0" : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0"}>
+            {platform === "meta" ? "Meta" : "Google"}
+          </Badge>
+          <p className="text-xs text-gray-400 mt-3">Nenhuma conta cadastrada</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => window.open(`/clients/${client.id}`, "_blank")}
+          >
+            Cadastrar conta
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Card className={`w-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
