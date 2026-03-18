@@ -688,7 +688,7 @@ export function CircularBudgetCard({
 
               {/* Linha 2: Dias restantes - largura total com destaque */}
               <div className="bg-gray-50 rounded-md px-3 py-1.5 flex items-center justify-between">
-                <span className="text-xs text-gray-500">Dias restantes</span>
+                <span className="text-xs text-gray-500">Dias restantes no mês</span>
                 <span className="text-sm font-bold text-gray-900">{remainingDays} dias</span>
               </div>
 
