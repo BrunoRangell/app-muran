@@ -564,13 +564,26 @@ export function CircularBudgetCard({
             </div>
           )}
 
-          {/* Layout principal com informações organizadas */}
-          <div className="grid grid-cols-3 gap-4 items-center mb-5">
-            {/* Coluna 1: Orçamento e gasto */}
-            <div className="space-y-3">
+          {/* Layout principal: círculo no topo, infos embaixo */}
+          <div className="flex flex-col items-center mb-5">
+            {/* Círculo de progresso centralizado */}
+            <div className="flex justify-center mb-4">
+              <div className="relative w-20 h-20">
+                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-200" />
+                  <circle cx="50" cy="50" r={radius} fill="none" strokeWidth="8" strokeLinecap="round" className={statusInfo.color} strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} style={{ transition: "stroke-dashoffset 0.5s ease-in-out" }} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-base font-bold ${statusInfo.textColor}`}>{Math.round(spentPercentage)}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid 2 colunas com infos */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-full">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Orçamento</p>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(effectiveBudget)}</p>
+                <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
                 {considerTaxes && (
                   <div className="text-[10px] text-gray-400 leading-tight mt-0.5">
                     <span>Original: {formatCurrency(budgetAmount)}</span>
@@ -584,7 +597,6 @@ export function CircularBudgetCard({
                 <p className="text-xs text-gray-500 mb-1">Gasto atual <span className="text-gray-400">(até ontem)</span></p>
                 <p className="text-sm font-semibold text-gray-700">{formatCurrency(spentAmount)}</p>
               </div>
-            </div>
 
             {/* Coluna 2: Gráfico circular */}
             <div className="flex justify-center">
