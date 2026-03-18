@@ -278,26 +278,65 @@ export function CircularBudgetCard({
     }
   };
 
+  // Estado do modal de cadastro
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  
+  const registerAccountMutation = useMutation({
+    mutationFn: async (data: { platform: 'meta' | 'google'; accountName: string; accountId: string; budgetAmount: number }) => {
+      const { error } = await supabase
+        .from("client_accounts")
+        .insert({
+          client_id: client.id,
+          platform: data.platform,
+          account_name: data.accountName,
+          account_id: data.accountId,
+          budget_amount: data.budgetAmount,
+          is_primary: true,
+          status: 'active'
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Conta cadastrada", description: "A conta foi cadastrada com sucesso." });
+      queryClient.invalidateQueries({ queryKey: ["improved-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+      setShowRegisterModal(false);
+    },
+    onError: (error) => {
+      toast({ title: "Erro ao cadastrar conta", description: String(error), variant: "destructive" });
+    },
+  });
+
   // Card simplificado para clientes sem conta cadastrada
   if (!client.hasAccount) {
     return (
-      <Card className="w-full bg-gray-50 border-gray-200 border-2">
-        <CardContent className="p-4 flex flex-col items-center justify-center text-center py-8">
-          <h3 className="font-semibold text-gray-900 text-sm mb-1">{companyName}</h3>
-          <Badge variant="outline" className={platform === "meta" ? "bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0" : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0"}>
-            {platform === "meta" ? "Meta" : "Google"}
-          </Badge>
-          <p className="text-xs text-gray-400 mt-3">Nenhuma conta cadastrada</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3"
-            onClick={() => window.open(`/clients/${client.id}`, "_blank")}
-          >
-            Cadastrar conta
-          </Button>
-        </CardContent>
-      </Card>
+      <>
+        <Card className="w-full bg-gray-50 border-gray-200 border-2">
+          <CardContent className="p-4 flex flex-col items-center justify-center text-center py-8">
+            <h3 className="font-semibold text-gray-900 text-sm mb-1">{companyName}</h3>
+            <Badge variant="outline" className={platform === "meta" ? "bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0" : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0"}>
+              {platform === "meta" ? "Meta" : "Google"}
+            </Badge>
+            <p className="text-xs text-gray-400 mt-3">Nenhuma conta cadastrada</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => setShowRegisterModal(true)}
+            >
+              Cadastrar conta
+            </Button>
+          </CardContent>
+        </Card>
+        <AddSecondaryAccountModal
+          isOpen={showRegisterModal}
+          onClose={() => setShowRegisterModal(false)}
+          onSave={(data) => registerAccountMutation.mutate(data)}
+          clientName={companyName}
+          isLoading={registerAccountMutation.isPending}
+          title="Cadastrar Conta"
+        />
+      </>
     );
   }
 
