@@ -1,5 +1,6 @@
 
-import { differenceInDays, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
+import { differenceInDays, isAfter, isBefore, startOfDay } from "date-fns";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 /**
  * Calcula os dias restantes para um orçamento, considerando se é personalizado ou mensal
@@ -12,8 +13,8 @@ export function calculateRemainingDays(
   
   // Se há orçamento personalizado, usar o período dele
   if (customBudgetEndDate && customBudgetStartDate) {
-    const endDate = startOfDay(parseISO(customBudgetEndDate));
-    const startDate = startOfDay(parseISO(customBudgetStartDate));
+    const endDate = startOfDay(parseLocalDate(customBudgetEndDate));
+    const startDate = startOfDay(parseLocalDate(customBudgetStartDate));
     
     // Se hoje é antes da data de início, calcular desde o início
     if (isBefore(today, startDate)) {
@@ -60,8 +61,8 @@ export function isCustomBudgetActive(startDate?: string, endDate?: string): bool
   if (!startDate || !endDate) return false;
   
   const today = startOfDay(new Date());
-  const start = startOfDay(parseISO(startDate));
-  const end = startOfDay(parseISO(endDate));
+  const start = startOfDay(parseLocalDate(startDate));
+  const end = startOfDay(parseLocalDate(endDate));
   
   return !isBefore(today, start) && !isAfter(today, end);
 }
