@@ -20,9 +20,9 @@ export function ClientGroupCard({ clientName, accounts, considerTaxes, budgetCal
   });
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3 h-full">
       <h3 className="text-base font-semibold text-foreground">{clientName}</h3>
-      <div className="grid gap-3 max-sm:!grid-cols-1" style={{ gridTemplateColumns: `repeat(${Math.min(sortedAccounts.length, 4)}, minmax(0, 1fr))` }}>
+      <div className="grid gap-3 grid-cols-1">
         {sortedAccounts.map((acc, i) => (
           <ClientCard
             key={`${acc.platform}-${i}`}

@@ -1,42 +1,57 @@
 
 
-# Mostrar múltiplos blocos de cliente lado a lado
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Situação atual
-Os grupos de clientes estão empilhados verticalmente (`space-y-4`), cada um ocupando 100% da largura. Em telas grandes (1952px), isso desperdiça espaço horizontal — especialmente para clientes com apenas 1-2 contas.
+## Problema
+
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+
+## Causa raiz
+
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
 ## Solução
-Trocar o container dos grupos de `space-y-4` (vertical stack) por um grid responsivo que coloque blocos lado a lado quando houver espaço.
 
-### `AllPlatformsTab.tsx` — linha 85
-Substituir:
-```tsx
-<div className="space-y-4">
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
 ```
-Por um grid com colunas automáticas que se adaptam ao conteúdo:
-```tsx
-<div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-```
 
-Isso faz:
-- **Mobile/tablet**: 1 coluna (empilhado)
-- **md (768px+)**: 2 blocos lado a lado
-- **xl (1280px+)**: 3 blocos lado a lado
+### 2. `src/workers/metaReviews.worker.ts`
 
-### `ClientGroupCard.tsx` — ajuste de altura
-Adicionar `h-full` ao container do grupo para que blocos na mesma linha tenham altura uniforme:
-```tsx
-<div className="rounded-xl border border-border bg-card p-4 space-y-3 h-full">
-```
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
 
-E dentro do grupo, quando há 2+ contas lado a lado em tela grande, o grid interno pode ficar apertado. Ajustar para empilhar as contas verticalmente quando o grupo está em grid multi-coluna — trocar o grid dinâmico por `grid-cols-1` e deixar as contas empilhadas dentro de cada bloco:
-```tsx
-<div className="grid gap-3 grid-cols-1">
-```
+## Impacto
 
-Isso garante que nada fique cortado: cada bloco de cliente mostra suas contas empilhadas, e os blocos ficam lado a lado.
-
-## Arquivos editados
-- `src/components/improved-reviews/tabs/AllPlatformsTab.tsx`
-- `src/components/improved-reviews/clients/ClientGroupCard.tsx`
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
