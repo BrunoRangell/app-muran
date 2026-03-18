@@ -1,57 +1,21 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Alinhar verticalmente informações iguais entre cards Meta e Google
 
 ## Problema
-
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
-
-## Causa raiz
-
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+Na screenshot, "Orçamento mensal", "Dias restantes", "Diário atual/ideal" e o botão "Analisar" aparecem em alturas diferentes entre Meta e Google porque o Meta tem seções extras no topo (Saldo da Conta, Campanhas com layout diferente) que empurram tudo para baixo.
 
 ## Solução
+Usar flexbox com `mt-auto` para empurrar a seção de métricas compartilhadas (de "Orçamento mensal" para baixo) ao fundo do card. Como os cards já estão num CSS grid, eles têm a mesma altura -- basta alinhar o conteúdo interno pelo fundo.
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+## Mudanças em `CircularBudgetCard.tsx`
 
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+1. **Card raiz**: adicionar `h-full` ao `<Card>` (linha 373) para ocupar toda a célula do grid
+2. **CardContent**: transformar em flex column com `flex flex-col h-full` (linha 374)
+3. **Seção de métricas** (linha 641, `<div className="flex flex-col mb-3">`): adicionar `mt-auto` para empurrar ao fundo
 
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+Isso faz com que as seções exclusivas do Meta (saldo, campanhas) fiquem no topo, mas "Orçamento mensal", "Dias restantes", "Diário" e "Analisar" se alinhem na mesma posição vertical em ambos os cards.
 
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
-}
-```
-
-### 2. `src/workers/metaReviews.worker.ts`
-
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
-
-## Impacto
-
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+## Arquivo editado
+- `src/components/improved-reviews/clients/CircularBudgetCard.tsx`
 
