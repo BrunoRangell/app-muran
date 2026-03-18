@@ -335,6 +335,8 @@ export function CircularBudgetCard({
           clientName={companyName}
           isLoading={registerAccountMutation.isPending}
           title="Cadastrar Conta"
+          fixedPlatform={platform}
+          hideAccountName
         />
       </>
     );
