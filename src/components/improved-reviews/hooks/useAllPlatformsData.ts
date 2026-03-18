@@ -46,7 +46,7 @@ export function useAllPlatformsData() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<AllPlatformsFilter>("");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
-  const [considerTaxes, setConsiderTaxes] = useState(false);
+  const [considerTaxes, setConsiderTaxes] = useState(true);
   const [budgetCalculationMode, setBudgetCalculationMode] = useState<"weighted" | "current">("weighted");
 
   const { data: metaData, isLoading: metaLoading } = useUnifiedReviewsData();
