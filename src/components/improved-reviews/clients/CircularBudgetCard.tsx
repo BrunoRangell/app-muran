@@ -283,18 +283,40 @@ export function CircularBudgetCard({
   
   const registerAccountMutation = useMutation({
     mutationFn: async (data: { platform: 'meta' | 'google'; accountName: string; accountId: string; budgetAmount: number }) => {
-      const { error } = await supabase
+      // Verificar se já existe registro para este client+platform (pode ter account_id vazio)
+      const { data: existing } = await supabase
         .from("client_accounts")
-        .insert({
-          client_id: client.id,
-          platform: data.platform,
-          account_name: data.accountName,
-          account_id: data.accountId,
-          budget_amount: data.budgetAmount,
-          is_primary: true,
-          status: 'active'
-        });
-      if (error) throw error;
+        .select("id")
+        .eq("client_id", client.id)
+        .eq("platform", data.platform)
+        .maybeSingle();
+
+      if (existing) {
+        // Atualizar registro existente em vez de inserir (evita conflito de constraint)
+        const { error } = await supabase
+          .from("client_accounts")
+          .update({
+            account_id: data.accountId,
+            account_name: data.accountName,
+            budget_amount: data.budgetAmount,
+            status: 'active'
+          })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("client_accounts")
+          .insert({
+            client_id: client.id,
+            platform: data.platform,
+            account_name: data.accountName,
+            account_id: data.accountId,
+            budget_amount: data.budgetAmount,
+            is_primary: true,
+            status: 'active'
+          });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast({ title: "Conta cadastrada", description: "A conta foi cadastrada com sucesso." });
@@ -306,8 +328,8 @@ export function CircularBudgetCard({
       queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
       setShowRegisterModal(false);
     },
-    onError: (error) => {
-      toast({ title: "Erro ao cadastrar conta", description: String(error), variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Erro ao cadastrar conta", description: error?.message || JSON.stringify(error), variant: "destructive" });
     },
   });
 
