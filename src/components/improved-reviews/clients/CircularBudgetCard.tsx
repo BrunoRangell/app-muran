@@ -276,18 +276,17 @@ export function CircularBudgetCard({
   return (
     <>
       <Card className={`w-full bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
-        <CardContent className="p-5">
+        <CardContent className="p-3">
           {/* Header com nome e ícones */}
-           <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-900 text-base line-clamp-1">{companyName}</h3>
+           <div className="flex items-start justify-between mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">{companyName}</h3>
                 <Badge variant="outline" className={platform === "meta" ? "bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0" : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0"}>
                   {platform === "meta" ? "Meta" : "Google"}
                 </Badge>
               </div>
-              <p className="text-gray-600 mb-1 text-xs">{accountInfo.name}</p>
-              <p className="text-xs text-gray-500">ID: {accountInfo.id}</p>
+              <p className="text-gray-500 text-xs truncate">{accountInfo.name}</p>
             </div>
 
             <div className="flex items-center gap-2 ml-3">
