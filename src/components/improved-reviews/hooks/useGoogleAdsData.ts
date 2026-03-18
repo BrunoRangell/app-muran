@@ -225,8 +225,15 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
 
           const totalSpent = latestReview?.total_spent || 0;
           const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
+          
+          // Usar calculateRemainingDays para respeitar orçamentos personalizados
+          const isUsingCustom = latestReview?.using_custom_budget || false;
+          const customStartDate = isUsingCustom ? latestReview?.custom_budget_start_date : undefined;
+          const customEndDate = isUsingCustom ? latestReview?.custom_budget_end_date : undefined;
+          const accountRemainingDays = calculateRemainingDays(customEndDate, customStartDate);
+          
           const remainingBudget = Math.max(budgetAmount - totalSpent, 0);
-          const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+          const idealDailyBudget = accountRemainingDays > 0 ? remainingBudget / accountRemainingDays : 0;
           const weightedAverage = latestReview?.last_five_days_spent || 0;
           const currentDailyBudget = latestReview?.daily_budget_current || 0;
           
