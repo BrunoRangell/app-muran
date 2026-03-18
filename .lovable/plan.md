@@ -1,57 +1,23 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Simplificar modal de cadastro de conta
 
-## Problema
-
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
-
-## Causa raiz
-
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+## Problemas
+1. **Campo "Nome da Conta"** desnecessário neste contexto — pode usar o nome da empresa ou um default
+2. **Campo "Plataforma"** redundante — o card já indica se é Meta ou Google
+3. **ID da Conta** aceita qualquer caractere — precisa validar apenas números
 
 ## Solução
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+### `AddSecondaryAccountModal.tsx`
+- Adicionar prop opcional `platform?: 'meta' | 'google'` — quando fornecida, esconde o seletor de plataforma e usa o valor da prop
+- Adicionar prop opcional `hideAccountName?: boolean` — quando true, esconde o campo nome e usa um default (ex: "Conta Principal")
+- No campo ID da Conta: validar onChange para mostrar aviso inline quando contiver caracteres não numéricos (texto vermelho pequeno abaixo do input: "O ID deve conter apenas números")
+- Ajustar o `disabled` do botão Salvar para considerar a validação de números no ID
 
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+### `CircularBudgetCard.tsx`
+- Passar `platform={platform}` e `hideAccountName` ao `AddSecondaryAccountModal` no card vazio, eliminando campos redundantes
 
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
-
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
-
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
-
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
-}
-```
-
-### 2. `src/workers/metaReviews.worker.ts`
-
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
-
-## Impacto
-
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+## Resultado
+Modal simplificado com apenas 2 campos: **ID da Conta** (apenas números) e **Orçamento**. Sem perguntas desnecessárias.
 
