@@ -1,43 +1,57 @@
 
 
-# Reorganizar métricas do card de orçamento
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Layout proposto
+## Problema
 
-A seção de métricas (grid após a barra de progresso) será reorganizada:
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
-```text
-┌─────────────────────────────────────────┐
-│ Orçamento mensal          Gasto atual   │
-│ R$ 5.000,00               R$ 2.300,00  │
-│ (Original R$5.700 | Tributo R$692)     (até ontem)
-│                                         │
-├─────────────────────────────────────────┤
-│         Dias restantes: 15 dias         │  ← largura total, destaque
-├─────────────────────────────────────────┤
-│ Diário atual              Diário ideal  │  ← lado a lado
-│ R$ 180,00                 R$ 200,00     │
-└─────────────────────────────────────────┘
+## Causa raiz
+
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+
+## Solução
+
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
 ```
 
-## Mudanças em `CircularBudgetCard.tsx` (linhas 656-785)
+### 2. `src/workers/metaReviews.worker.ts`
 
-### 1. Orçamento mensal (1ª posição, col esquerda)
-- Manter onde está. Reorganizar info de tributos: quando `considerTaxes` ativo, mostrar o valor efetivo como principal e abaixo uma linha limpa tipo `"R$ 5.700 - R$ 692 tributos"` em vez do formato atual com pipes.
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
 
-### 2. Gasto atual (2ª posição, col direita)
-- Já está na posição correta, sem mudança.
+## Impacto
 
-### 3. Dias restantes (3ª posição, largura total)
-- Mover para fora do grid de 2 colunas, usando `col-span-2` ou um div separado com fundo sutil (ex: `bg-gray-50 rounded p-2`) e texto centralizado ou distribuído, dando mais destaque visual.
-
-### 4 e 5. Diário atual e Diário ideal (lado a lado)
-- Colocar ambos na mesma linha do grid 2 colunas, sempre visíveis (remover a condição que oculta "diário ideal" quando igual ao atual — ou mantê-la mas garantir alinhamento). Unificar a lógica Meta/Google para que ambas as métricas apareçam lado a lado independente da plataforma.
-
-### Alinhamento geral
-- Labels (`text-xs text-gray-500`) e valores (`text-sm font-semibold`) com espaçamento consistente (`mb-0.5` nos labels).
-- Sem aumento significativo de altura — a reorganização apenas redistribui o que já existe.
-
-### Arquivo editado
-- `src/components/improved-reviews/clients/CircularBudgetCard.tsx` (linhas ~656-785)
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 

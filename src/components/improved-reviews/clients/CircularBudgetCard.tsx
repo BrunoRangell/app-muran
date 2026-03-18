@@ -652,53 +652,67 @@ export function CircularBudgetCard({
               </span>
             </div>
 
-            {/* Grid 2 colunas com infos */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 w-full">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Orçamento</p>
-                <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
-                {considerTaxes && (
-                  <div className="text-[10px] text-gray-400 leading-tight mt-0.5">
-                    <span>Original: {formatCurrency(budgetAmount)}</span>
-                    <span className="mx-1">|</span>
-                    <span>Tributo: {formatCurrency(taxAmount)}</span>
-                  </div>
-                )}
+            {/* Métricas organizadas */}
+            <div className="space-y-1.5 w-full">
+              {/* Linha 1: Orçamento mensal + Gasto atual */}
+              <div className="grid grid-cols-2 gap-x-4">
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Orçamento mensal</p>
+                  <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
+                  {considerTaxes && (
+                    <p className="text-[10px] text-gray-400 leading-tight mt-0.5">
+                      {formatCurrency(budgetAmount)} − {formatCurrency(taxAmount)} tributos
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Gasto atual <span className="text-gray-400">(até ontem)</span></p>
+                  <p className="text-sm font-semibold text-gray-700">{formatCurrency(spentAmount)}</p>
+                </div>
               </div>
 
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Gasto atual <span className="text-gray-400">(até ontem)</span></p>
-                <p className="text-sm font-semibold text-gray-700">{formatCurrency(spentAmount)}</p>
+              {/* Linha 2: Dias restantes - largura total com destaque */}
+              <div className="bg-gray-50 rounded-md px-3 py-1.5 flex items-center justify-between">
+                <span className="text-xs text-gray-500">Dias restantes</span>
+                <span className="text-sm font-bold text-gray-900">{remainingDays} dias</span>
               </div>
 
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Dias restantes</p>
-                <p className="text-sm font-semibold text-gray-700">{remainingDays} dias</p>
-              </div>
-
-              {/* Métrica baseada no modo selecionado para Google Ads */}
-              {platform === "google" && (
+              {/* Linha 3: Diário atual + Diário ideal lado a lado */}
+              <div className="grid grid-cols-2 gap-x-4">
                 <div>
                   <Popover>
                     <PopoverTrigger asChild>
                       <div className="cursor-pointer group">
-                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                          {budgetCalculationMode === "weighted" ? "Média Pond" : "Orç. atual"}
+                        <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
+                          {platform === "google" ? (budgetCalculationMode === "weighted" ? "Média Pond." : "Diário atual") : "Diário atual"}
                           <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
                         </p>
                         <p className="text-sm font-semibold text-gray-700">
-                          {formatCurrency(budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget)}
+                          {platform === "google"
+                            ? formatCurrency(budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget)
+                            : formatCurrency(client.review?.daily_budget_current || 0)}
                         </p>
                       </div>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80" align="end">
+                    <PopoverContent className="w-80" align="start">
                       <div className="space-y-3">
                         <h4 className="font-semibold text-sm">Composição do orçamento diário</h4>
                         {client.review?.campaign_budgets && client.review.campaign_budgets.length > 0 ? (
                           <div className="space-y-1.5 max-h-60 overflow-y-auto">
                             {client.review.campaign_budgets.map((item: any, index: number) => (
                               <div key={index} className="flex items-center justify-between text-xs p-1.5 bg-muted/30 rounded">
-                                <span className="font-medium truncate flex-1 min-w-0">{item.name}</span>
+                                {platform === "meta" ? (
+                                  <div className="flex-1 min-w-0">
+                                    {item.source === 'adset' && item.campaign_name && (
+                                      <span className="text-muted-foreground text-[10px] block truncate">{item.campaign_name}</span>
+                                    )}
+                                    <span className={`block truncate ${item.source === 'adset' ? 'pl-2' : 'font-medium'}`}>
+                                      {item.source === 'adset' ? `└ ${item.name}` : item.name}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="font-medium truncate flex-1 min-w-0">{item.name}</span>
+                                )}
                                 <span className="font-medium ml-2 whitespace-nowrap">{formatCurrency(item.budget)}</span>
                               </div>
                             ))}
@@ -716,72 +730,11 @@ export function CircularBudgetCard({
                     </PopoverContent>
                   </Popover>
                 </div>
-              )}
-
-              {/* Diário ideal Google */}
-              {platform === "google" &&
-              idealDailyBudget !== (budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget) ? (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Diário ideal</p>
                   <p className="text-sm font-semibold text-gray-700">{formatCurrency(idealDailyBudget)}</p>
                 </div>
-              ) : null}
-
-              {platform === "meta" && (
-                <div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <div className="cursor-pointer group">
-                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                          Diário atual
-                          <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
-                        </p>
-                        <p className="text-sm font-semibold text-gray-700">
-                          {formatCurrency(client.review?.daily_budget_current || 0)}
-                        </p>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80" align="end">
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-sm">Composição do orçamento diário</h4>
-                        {client.review?.campaign_budgets && client.review.campaign_budgets.length > 0 ? (
-                          <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                            {client.review.campaign_budgets.map((item: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between text-xs p-1.5 bg-muted/30 rounded">
-                                <div className="flex-1 min-w-0">
-                                  {item.source === 'adset' && item.campaign_name && (
-                                    <span className="text-muted-foreground text-[10px] block truncate">{item.campaign_name}</span>
-                                  )}
-                                  <span className={`block truncate ${item.source === 'adset' ? 'pl-2' : 'font-medium'}`}>
-                                    {item.source === 'adset' ? `└ ${item.name}` : item.name}
-                                  </span>
-                                </div>
-                                <span className="font-medium ml-2 whitespace-nowrap">{formatCurrency(item.budget)}</span>
-                              </div>
-                            ))}
-                            <div className="border-t pt-2 flex justify-between text-xs font-semibold">
-                              <span>Total</span>
-                              <span>{formatCurrency(client.review?.daily_budget_current || 0)}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            Detalhamento não disponível. Analise o cliente para ver a composição.
-                          </p>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )}
-
-              {/* Diário ideal Meta */}
-              {platform === "meta" && idealDailyBudget !== (client.review?.daily_budget_current || 0) ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
-                  <p className="text-sm font-semibold text-gray-700">{formatCurrency(idealDailyBudget)}</p>
-                </div>
-              ) : null}
+              </div>
             </div>
 
             {/* Ajuste recomendado / Status OK */}
