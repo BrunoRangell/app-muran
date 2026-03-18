@@ -21,7 +21,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
-  const [considerTaxes, setConsiderTaxes] = useState(false);
+  const [considerTaxes, setConsiderTaxes] = useState(true);
   
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
