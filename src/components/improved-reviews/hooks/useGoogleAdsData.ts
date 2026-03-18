@@ -260,10 +260,10 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             original_budget_amount: account.budget_amount || 0,
             needsAdjustment: needsBudgetAdjustment,
             weightedAverage,
-            isUsingCustomBudget: latestReview?.using_custom_budget || false,
+            isUsingCustomBudget: accountIsUsingCustomBudget,
             budgetCalculation: {
               budgetDifference,
-              remainingDays,
+              remainingDays: accountRemainingDays,
               idealDailyBudget,
               needsBudgetAdjustment,
               needsAdjustmentBasedOnAverage: needsBudgetAdjustment,
