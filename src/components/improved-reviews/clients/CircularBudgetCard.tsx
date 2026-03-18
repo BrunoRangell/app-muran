@@ -659,11 +659,13 @@ export function CircularBudgetCard({
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Orçamento mensal</p>
                   <p className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(effectiveBudget)}</p>
-                  {considerTaxes && (
-                    <p className="text-[10px] text-gray-400 leading-tight mt-0.5">
-                      {formatCurrency(budgetAmount)} − {formatCurrency(taxAmount)} tributos
-                    </p>
-                  )}
+                  <div className="min-h-[16px] mt-0.5">
+                    {considerTaxes && platform === "meta" ? (
+                      <p className="text-[10px] text-gray-400 leading-tight">
+                        {formatCurrency(budgetAmount)} − {formatCurrency(taxAmount)} tributos
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Gasto atual <span className="text-gray-400">(até ontem)</span></p>

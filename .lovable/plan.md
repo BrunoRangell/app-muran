@@ -1,38 +1,57 @@
 
 
-# Corrigir dias restantes no Google Ads + Alinhar layout dos cards
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Problema 1: Dias restantes divergentes
+## Problema
 
-**Causa raiz**: No `useGoogleAdsData.ts` (linha 213), os dias restantes são sempre calculados como `daysInMonth - currentDay + 1` (até fim do mês), ignorando completamente orçamentos personalizados. Já o Meta usa `calculateRemainingDays()` que considera datas customizadas.
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
-**Correção** em `src/components/improved-reviews/hooks/useGoogleAdsData.ts`:
-- Importar `calculateRemainingDays` e `calculateIdealDailyBudget` de `@/utils/budgetCalculations`
-- Dentro do loop de accounts (linha ~220-260), verificar se o review tem `using_custom_budget` e datas customizadas
-- Se sim, usar `calculateRemainingDays(customEndDate, customStartDate)` em vez do cálculo fixo mensal
-- Recalcular `idealDailyBudget` usando a mesma função utilitária
+## Causa raiz
 
-Linhas afetadas: ~210-260.
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
-## Problema 2: Desalinhamento vertical entre cards
+## Solução
 
-**Causa**: Cards de Meta com tributos ativos exibem uma linha extra (breakdown de tributos) que empurra "Dias restantes" e "Diário" para baixo. Cards Google não têm essa linha, ficando desalinhados visualmente.
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-**Recomendação**: Reservar espaço fixo para a área de tributos — quando não há tributos (Google ou Meta sem toggle), renderizar um placeholder invisível com a mesma altura (`min-h-[16px]` ou similar). Isso mantém "Dias restantes" e "Diário" sempre na mesma posição vertical em todos os cards.
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-**Correção** em `src/components/improved-reviews/clients/CircularBudgetCard.tsx` (linhas ~660-666):
-- Trocar o `{considerTaxes && (...)}` condicional por um bloco que sempre ocupa espaço:
-```tsx
-<div className="min-h-[16px]">
-  {considerTaxes && platform === "meta" ? (
-    <p className="text-[10px] text-gray-400 leading-tight">
-      {formatCurrency(budgetAmount)} − {formatCurrency(taxAmount)} tributos
-    </p>
-  ) : null}
-</div>
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
 ```
 
-## Arquivos editados
-1. `src/components/improved-reviews/hooks/useGoogleAdsData.ts` — usar `calculateRemainingDays` com datas do orçamento personalizado
-2. `src/components/improved-reviews/clients/CircularBudgetCard.tsx` — placeholder de altura fixa para tributos
+### 2. `src/workers/metaReviews.worker.ts`
+
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 

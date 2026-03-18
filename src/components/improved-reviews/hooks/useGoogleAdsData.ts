@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getDaysInMonth } from "date-fns";
 import { logger } from "@/lib/logger";
+import { calculateRemainingDays } from "@/utils/budgetCalculations";
 
 interface CampaignDetail {
   id: string;
@@ -157,7 +158,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
         .eq('status', 'active'),
       supabase
         .from('budget_reviews')
-        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date, campaign_budgets')
+        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, custom_budget_start_date, custom_budget_end_date, using_custom_budget, warning_ignored_today, review_date, campaign_budgets')
         .in('client_id', clientIds)
         .eq('platform', 'google')
         .order('review_date', { ascending: false }),
@@ -224,14 +225,22 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
 
           const totalSpent = latestReview?.total_spent || 0;
           const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
+          
+          // Usar calculateRemainingDays para respeitar orçamentos personalizados
+          const isUsingCustom = latestReview?.using_custom_budget || false;
+          const customStartDate = isUsingCustom ? latestReview?.custom_budget_start_date : undefined;
+          const customEndDate = isUsingCustom ? latestReview?.custom_budget_end_date : undefined;
+          const accountRemainingDays = calculateRemainingDays(customEndDate, customStartDate);
+          
           const remainingBudget = Math.max(budgetAmount - totalSpent, 0);
-          const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+          const idealDailyBudget = accountRemainingDays > 0 ? remainingBudget / accountRemainingDays : 0;
           const weightedAverage = latestReview?.last_five_days_spent || 0;
           const currentDailyBudget = latestReview?.daily_budget_current || 0;
           
           const comparisonValue = budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget;
           const budgetDifference = idealDailyBudget - comparisonValue;
           const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
+          const accountIsUsingCustomBudget = isUsingCustom;
 
           // Calcular status de veiculação
           const veiculationStatus = calculateVeiculationStatus(campaignHealth);
@@ -251,10 +260,10 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             original_budget_amount: account.budget_amount || 0,
             needsAdjustment: needsBudgetAdjustment,
             weightedAverage,
-            isUsingCustomBudget: latestReview?.using_custom_budget || false,
+            isUsingCustomBudget: accountIsUsingCustomBudget,
             budgetCalculation: {
               budgetDifference,
-              remainingDays,
+              remainingDays: accountRemainingDays,
               idealDailyBudget,
               needsBudgetAdjustment,
               needsAdjustmentBasedOnAverage: needsBudgetAdjustment,
