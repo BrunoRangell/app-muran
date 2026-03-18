@@ -18,6 +18,7 @@ type AddSecondaryAccountModalProps = {
   }) => void;
   clientName: string;
   isLoading?: boolean;
+  title?: string;
 };
 
 export const AddSecondaryAccountModal = ({
@@ -25,7 +26,8 @@ export const AddSecondaryAccountModal = ({
   onClose,
   onSave,
   clientName,
-  isLoading = false
+  isLoading = false,
+  title = "Adicionar Conta Secundária"
 }: AddSecondaryAccountModalProps) => {
   const [platform, setPlatform] = useState<'meta' | 'google'>('meta');
   const [accountName, setAccountName] = useState('');
@@ -60,7 +62,7 @@ export const AddSecondaryAccountModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Conta Secundária</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <p className="text-sm text-gray-600">
             Cliente: <span className="font-medium">{clientName}</span>
           </p>
