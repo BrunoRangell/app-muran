@@ -240,6 +240,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
           const comparisonValue = budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget;
           const budgetDifference = idealDailyBudget - comparisonValue;
           const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
+          const accountIsUsingCustomBudget = isUsingCustom;
 
           // Calcular status de veiculação
           const veiculationStatus = calculateVeiculationStatus(campaignHealth);
