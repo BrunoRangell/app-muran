@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getDaysInMonth } from "date-fns";
 import { logger } from "@/lib/logger";
+import { calculateRemainingDays } from "@/utils/budgetCalculations";
 
 interface CampaignDetail {
   id: string;
