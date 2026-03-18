@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BadgeDollarSign,
   Calendar,
+  CheckCircle,
   ChevronRight,
   Loader,
   Loader2,
@@ -274,6 +275,29 @@ export function CircularBudgetCard({
       });
     }
   };
+
+  // Card simplificado para clientes sem conta cadastrada
+  if (!client.hasAccount) {
+    return (
+      <Card className="w-full bg-gray-50 border-gray-200 border-2">
+        <CardContent className="p-4 flex flex-col items-center justify-center text-center py-8">
+          <h3 className="font-semibold text-gray-900 text-sm mb-1">{companyName}</h3>
+          <Badge variant="outline" className={platform === "meta" ? "bg-blue-100 text-blue-800 border-blue-200 text-[10px] px-1.5 py-0" : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0"}>
+            {platform === "meta" ? "Meta" : "Google"}
+          </Badge>
+          <p className="text-xs text-gray-400 mt-3">Nenhuma conta cadastrada</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => window.open(`/clients/${client.id}`, "_blank")}
+          >
+            Cadastrar conta
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -691,19 +715,20 @@ export function CircularBudgetCard({
               ) : null}
             </div>
 
-            {/* Ajuste recomendado compacto */}
-            {needsAdjustment && !warningIgnoredToday && (
-              <div className={`mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium ${
-                budgetDifference > 0 
-                  ? "bg-green-50 text-green-700 border border-dashed border-green-200" 
-                  : "bg-red-50 text-red-700 border border-dashed border-red-200"
-              }`}>
+            {/* Ajuste recomendado / Status OK */}
+            {needsAdjustment && !warningIgnoredToday ? (
+              <div className="mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium bg-red-50 text-red-700 border border-dashed border-red-200">
                 {budgetDifference > 0 
                   ? <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" /> 
                   : <TrendingDown className="h-3.5 w-3.5 flex-shrink-0" />}
                 <span>{budgetDifference > 0 ? "Aumentar" : "Reduzir"} orçamento: {budgetDifference > 0 ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}</span>
               </div>
-            )}
+            ) : !warningIgnoredToday ? (
+              <div className="mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium bg-green-50 text-green-700 border border-dashed border-green-200">
+                <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Orçamento OK</span>
+              </div>
+            ) : null}
           </div>
 
           {/* Botão */}

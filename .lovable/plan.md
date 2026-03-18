@@ -1,57 +1,57 @@
 
 
-# Dois ajustes no CircularBudgetCard
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## 1. Mostrar estado "OK" verde quando não precisa de ajuste
+## Problema
 
-Atualmente, a caixa de ajuste recomendado (linhas 694-706) só aparece quando `needsAdjustment && !warningIgnoredToday`. Quando o orçamento está OK, nada aparece.
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
 
-**Solução**: Trocar a condição para sempre mostrar a caixa:
-- **Precisa ajuste** → vermelho (tanto aumentar quanto reduzir), com ícone TrendingUp/TrendingDown
-- **Sem ajuste necessário** → verde, com ícone CheckCircle e texto "Orçamento OK"
+## Causa raiz
 
-Também ajustar as cores: atualmente quando `budgetDifference > 0` (aumentar) usa verde e reduzir usa vermelho. Pela solicitação, **ambos os casos de ajuste devem ser vermelho** (pois indicam que algo precisa mudar), e **verde = tudo OK**.
-
-```tsx
-// Substituir o bloco linhas 694-706:
-{needsAdjustment && !warningIgnoredToday ? (
-  <div className="mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium bg-red-50 text-red-700 border border-dashed border-red-200">
-    {budgetDifference > 0 ? <TrendingUp /> : <TrendingDown />}
-    <span>{budgetDifference > 0 ? "Aumentar" : "Reduzir"} orçamento: ...</span>
-  </div>
-) : !warningIgnoredToday ? (
-  <div className="mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium bg-green-50 text-green-700 border border-dashed border-green-200">
-    <CheckCircle className="h-3.5 w-3.5" />
-    <span>Orçamento OK</span>
-  </div>
-) : null}
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
 ```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
-## 2. Card simplificado para clientes sem conta
+## Solução
 
-Quando `client.hasAccount === false`, mostrar um card minimalista: apenas nome da empresa, badge da plataforma, e um botão "Cadastrar conta" que leva à página de edição do cliente.
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-**Solução**: No `CircularBudgetCard`, logo no início do return (linha 278), adicionar um early return para clientes sem conta:
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-```tsx
-if (!client.hasAccount) {
-  return (
-    <Card className="w-full bg-gray-50 border-gray-200 border-2">
-      <CardContent className="p-3 flex flex-col items-center justify-center text-center py-8">
-        <h3 className="font-semibold text-gray-900 text-sm">{companyName}</h3>
-        <Badge>Meta/Google</Badge>
-        <p className="text-xs text-gray-400 mt-2">Nenhuma conta cadastrada</p>
-        <Button variant="outline" size="sm" className="mt-3" onClick={...}>
-          Cadastrar conta
-        </Button>
-      </CardContent>
-    </Card>
-  );
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
 }
 ```
 
-O botão abrirá `/clients/{client.id}` (página de edição do cliente) em nova aba.
+### 2. `src/workers/metaReviews.worker.ts`
 
-## Arquivo editado
-- `src/components/improved-reviews/clients/CircularBudgetCard.tsx`
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+
+## Impacto
+
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
