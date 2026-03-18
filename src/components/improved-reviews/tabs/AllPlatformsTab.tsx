@@ -82,16 +82,26 @@ export function AllPlatformsTab() {
       {groups.length === 0 ? (
         <EmptyState title="Nenhum cliente encontrado" description="Tente buscar por outro nome ou altere os filtros" />
       ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-          {groups.map((group) => (
-            <ClientGroupCard
-              key={group.clientId}
-              clientName={group.clientName}
-              accounts={group.accounts}
-              considerTaxes={considerTaxes}
-              budgetCalculationMode={budgetCalculationMode}
-            />
-          ))}
+        <div className="flex flex-wrap gap-4">
+          {groups.map((group) => {
+            const count = group.accounts.length;
+            const sizeClasses =
+              count === 1
+                ? "min-w-[280px] max-w-[350px]"
+                : count === 2
+                  ? "min-w-[500px] max-w-[700px]"
+                  : "min-w-[720px]";
+            return (
+              <div key={group.clientId} className={`flex-1 ${sizeClasses}`}>
+                <ClientGroupCard
+                  clientName={group.clientName}
+                  accounts={group.accounts}
+                  considerTaxes={considerTaxes}
+                  budgetCalculationMode={budgetCalculationMode}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
