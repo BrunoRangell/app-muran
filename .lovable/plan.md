@@ -1,40 +1,57 @@
 
 
-# Ajustes nos Cards da Aba "Todas as Plataformas"
+# Plano: Filtrar orçamento personalizado por conta no frontend
 
-## Problemas identificados
-1. Layout em telas grandes: 2 cards com espaço em branco enorme (grid `lg:grid-cols-2` divide em 2 colunas fixas)
-2. Telas menores: cards preenchem 100% ficando grandes demais
-3. Linhas coloridas laterais (`border-l-2`) desnecessárias
-4. Cards não ordenados por plataforma majoritária
+## Problema
+
+O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+
+## Causa raiz
+
+Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
+```ts
+customBudgetsByClientId.set(budget.client_id, budget);
+```
+Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
 
 ## Solução
 
-### `ClientGroupCard.tsx` — Reescrever o layout
+### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
 
-**Remover separação por seções de plataforma.** Em vez de dividir em 2 colunas (Meta | Google), renderizar todos os cards em um único grid responsivo, ordenados por plataforma (a que tem mais contas primeiro).
+Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
 
-```text
-┌──────────────────────────────────────────────────────────┐
-│  Ford Amazon                                             │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐                  │
-│  │Meta #1   │  │Meta #2   │  │Google #1│                  │
-│  └─────────┘  └─────────┘  └─────────┘                  │
-└──────────────────────────────────────────────────────────┘
+- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
+- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+
+```ts
+// Criar mapa com prioridade: específico da conta > global do cliente
+const specificBudgets = new Map(); // key: client_id_account_id
+const globalBudgets = new Map();   // key: client_id (account_id is null)
+
+activeCustomBudgets.forEach(budget => {
+  if (budget.account_id) {
+    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
+  } else {
+    globalBudgets.set(budget.client_id, budget);
+  }
+});
+
+// Na aplicação (dentro do loop de accounts):
+const specificKey = `${client.id}_${account.id}`;
+const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
+
+if (matchingBudget) {
+  // aplicar orçamento
+}
 ```
 
-Mudanças:
-- **Remover `renderSection`** e as `border-l-2` coloridas
-- **Ordenar contas**: agrupar por plataforma majoritária primeiro (se 2 meta + 1 google → meta primeiro)
-- **Grid único responsivo**: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` — os cards se adaptam ao espaço disponível sem ficarem enormes ou minúsculos
-- **Manter badges de plataforma** dentro de cada card individual (o `CircularBudgetCard` já identifica a plataforma visualmente)
-- Cada card mantém `w-full` mas o grid controla o tamanho
+### 2. `src/workers/metaReviews.worker.ts`
 
-### `CircularBudgetCard.tsx` — Adicionar indicador de plataforma no card
+Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
 
-Adicionar um pequeno badge ou indicador da plataforma (Meta/Google) no header de cada card para que, mesmo sem as seções separadas, o usuário saiba qual é qual.
+## Impacto
 
-## Arquivos editados
-- `src/components/improved-reviews/clients/ClientGroupCard.tsx`
-- `src/components/improved-reviews/clients/CircularBudgetCard.tsx` (badge de plataforma no header)
+- Orçamento vinculado à conta A aparece **apenas** no card da conta A
+- Orçamento global (sem conta específica) continua aparecendo para todas as contas
+- Nenhuma alteração no backend necessária
 
