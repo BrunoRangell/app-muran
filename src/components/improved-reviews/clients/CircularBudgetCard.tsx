@@ -11,6 +11,8 @@ import {
   EyeOff,
   ExternalLink,
   Activity,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
@@ -577,7 +579,7 @@ export function CircularBudgetCard({
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 mb-1">Restante</p>
+                <p className="text-xs text-gray-500 mb-1">Dias restantes</p>
                 <p className="text-sm font-semibold text-gray-700">{remainingDays} dias</p>
               </div>
 
@@ -688,6 +690,20 @@ export function CircularBudgetCard({
                 </div>
               ) : null}
             </div>
+
+            {/* Ajuste recomendado compacto */}
+            {needsAdjustment && !warningIgnoredToday && (
+              <div className={`mt-2 p-1.5 rounded-md flex items-center gap-2 text-xs font-medium ${
+                budgetDifference > 0 
+                  ? "bg-green-50 text-green-700 border border-dashed border-green-200" 
+                  : "bg-red-50 text-red-700 border border-dashed border-red-200"
+              }`}>
+                {budgetDifference > 0 
+                  ? <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" /> 
+                  : <TrendingDown className="h-3.5 w-3.5 flex-shrink-0" />}
+                <span>{budgetDifference > 0 ? "Aumentar" : "Reduzir"} orçamento: {budgetDifference > 0 ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}</span>
+              </div>
+            )}
           </div>
 
           {/* Botão */}
