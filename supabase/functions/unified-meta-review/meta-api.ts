@@ -765,20 +765,21 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    // Se há orçamento personalizado, usar a data de início dele como período de gastos
+    const periodStart = customBudget?.start_date
+      ? new Date(customBudget.start_date + 'T00:00:00')
+      : new Date(today.getFullYear(), today.getMonth(), 1);
     
-    const sinceParam = firstDayOfMonth.toISOString().split('T')[0];
+    const sinceParam = periodStart.toISOString().split('T')[0];
     // Usar ontem para garantir consistência no cálculo do orçamento ideal
     // Isso evita que o gasto parcial de hoje afete a recomendação
     const untilParam = yesterday.toISOString().split('T')[0];
     
-    // Tratamento especial para o primeiro dia do mês
-    // Se ontem pertence ao mês anterior, não há gasto confirmado ainda
+    // Tratamento especial: se ontem é anterior ao início do período, não há gasto confirmado
     let totalSpent = 0;
     
-    if (yesterday < firstDayOfMonth) {
-      // Primeiro dia do mês - gasto confirmado = R$ 0
-      console.log(`📅 [META-API] Primeiro dia do mês - gasto confirmado até ontem = R$ 0`);
+    if (yesterday < periodStart) {
+      console.log(`📅 [META-API] Início do período (${sinceParam}) - gasto confirmado até ontem = R$ 0`);
     } else {
       console.log(`💸 [META-API] Buscando gastos de ${sinceParam} até ${untilParam} (até ontem)...`);
       

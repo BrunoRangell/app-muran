@@ -814,9 +814,11 @@ async function processIndividualGoogleReview(
         resultado: lastFiveDaysSpent
       });
       
-      // Buscar gasto total do mês atual
-      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      const startDate = startOfMonth.toISOString().split('T')[0];
+      // Buscar gasto total do período relevante (orçamento personalizado ou mês atual)
+      const periodStart = customBudget?.start_date
+        ? new Date(customBudget.start_date + 'T00:00:00')
+        : new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const startDate = periodStart.toISOString().split('T')[0];
       const endDate = currentDate.toISOString().split('T')[0];
       
       const monthlyQuery = `
