@@ -1,57 +1,59 @@
 
 
-# Plano: Filtrar orçamento personalizado por conta no frontend
+# Corrigir gasto total para usar período do orçamento personalizado
 
 ## Problema
-
-O mapa `customBudgetsByClientId` indexa orçamentos personalizados apenas por `client_id`. Quando um orçamento é vinculado a uma conta específica (ex: Ford Amazon conta A), o frontend aplica esse orçamento a **todas** as contas do cliente (conta A e conta B). Isso acontece em dois arquivos que processam os dados de revisão.
+Quando um orçamento personalizado está ativo (ex: 17/03 a 20/03), o sistema busca o gasto total desde o dia 1 do mês em vez de buscar apenas o gasto entre as datas do orçamento personalizado. Isso faz o "orçamento diário ideal" ficar errado porque inclui gastos fora do período configurado.
 
 ## Causa raiz
+Ambas as edge functions sempre usam `firstDayOfMonth` como data inicial para buscar gastos:
 
-Em `useUnifiedReviewsData.ts` (linha 53-56) e `metaReviews.worker.ts` (linha 165-168):
-```ts
-customBudgetsByClientId.set(budget.client_id, budget);
-```
-Ignora completamente `budget.account_id`. Na hora de aplicar (linhas 108-115 / 218-225), não verifica se o orçamento pertence à conta específica sendo processada.
+- **Meta** (`supabase/functions/unified-meta-review/meta-api.ts`, linhas 768-770): `const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)` — ignora o `customBudget` recebido como parâmetro.
+- **Google** (`supabase/functions/daily-google-review/index.ts`, linhas 818-819): `const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)` — mesmo problema.
 
-## Solução
+## Correção
 
-### 1. `src/components/improved-reviews/hooks/useUnifiedReviewsData.ts`
+### 1. `supabase/functions/unified-meta-review/meta-api.ts` (linhas 764-773)
+Quando `customBudget` é passado, usar `customBudget.start_date` como data inicial em vez de `firstDayOfMonth`:
 
-Alterar a lógica de lookup do mapa (linhas 53-56 e 108-115):
+```typescript
+const today = new Date();
+const yesterday = new Date(today);
+yesterday.setDate(yesterday.getDate() - 1);
 
-- Indexar budgets por chave composta `client_id + account_id` **e** por `client_id` (para budgets globais com `account_id = null`)
-- Na hora de aplicar, buscar primeiro por conta específica, depois fallback para global
+// Se há orçamento personalizado, usar a data de início dele
+const periodStart = customBudget?.start_date
+  ? new Date(customBudget.start_date + 'T00:00:00')
+  : new Date(today.getFullYear(), today.getMonth(), 1);
 
-```ts
-// Criar mapa com prioridade: específico da conta > global do cliente
-const specificBudgets = new Map(); // key: client_id_account_id
-const globalBudgets = new Map();   // key: client_id (account_id is null)
+const sinceParam = periodStart.toISOString().split('T')[0];
+const untilParam = yesterday.toISOString().split('T')[0];
 
-activeCustomBudgets.forEach(budget => {
-  if (budget.account_id) {
-    specificBudgets.set(`${budget.client_id}_${budget.account_id}`, budget);
-  } else {
-    globalBudgets.set(budget.client_id, budget);
-  }
-});
+let totalSpent = 0;
 
-// Na aplicação (dentro do loop de accounts):
-const specificKey = `${client.id}_${account.id}`;
-const matchingBudget = specificBudgets.get(specificKey) || globalBudgets.get(client.id);
-
-if (matchingBudget) {
-  // aplicar orçamento
+if (yesterday < periodStart) {
+  console.log(`📅 [META-API] Início do período - gasto confirmado até ontem = R$ 0`);
+} else {
+  // fetch insights normalmente
 }
 ```
 
-### 2. `src/workers/metaReviews.worker.ts`
+### 2. `supabase/functions/daily-google-review/index.ts` (linhas 817-820)
+Mesmo ajuste — usar `customBudget.start_date` quando disponível:
 
-Mesma alteração (linhas 165-168 e 218-225): replicar a lógica de prioridade específico > global.
+```typescript
+// Buscar gasto total do período relevante
+const periodStart = customBudget?.start_date
+  ? new Date(customBudget.start_date + 'T00:00:00')
+  : new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
-## Impacto
+const startDate = periodStart.toISOString().split('T')[0];
+const endDate = currentDate.toISOString().split('T')[0];
+```
 
-- Orçamento vinculado à conta A aparece **apenas** no card da conta A
-- Orçamento global (sem conta específica) continua aparecendo para todas as contas
-- Nenhuma alteração no backend necessária
+O `customBudget` já está disponível em ambas as funções no escopo onde a alteração será feita.
+
+## Arquivos editados
+1. `supabase/functions/unified-meta-review/meta-api.ts` — usar `customBudget.start_date` como início do período de gastos
+2. `supabase/functions/daily-google-review/index.ts` — usar `customBudget.start_date` como início do período de gastos
 
