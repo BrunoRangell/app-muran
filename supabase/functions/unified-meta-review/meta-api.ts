@@ -627,7 +627,9 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
     
     const response = await fetch(basicInfoUrl);
     if (!response.ok) {
-      throw new Error(`Meta API error: ${response.status} - ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error(`❌ [META-API] Erro da API Meta (${response.status}) - Body:`, errorBody);
+      throw new Error(`Meta API error: ${response.status} - ${response.statusText} | ${errorBody}`);
     }
     
     const data = await response.json();
