@@ -1,42 +1,46 @@
 
 
-# Diagnóstico: Erro "Meta API error: 400 - Bad Request"
+# Corrigir renovação automática do token Meta
 
-## Problema identificado
-Os logs da edge function mostram que a revisão falha ao chamar a Meta Graph API em `fetchAccountBasicInfo`. A API retorna **400 Bad Request** para as contas:
-- `1278314109870177` (Aracuri Vinhos)
-- `164389748262435` (outro cliente)
+## Diagnóstico completo
 
-## Causa provável
-Um erro 400 da Meta Graph API geralmente significa:
-1. **Token expirado ou inválido** — o token de acesso Meta perdeu validade
-2. **Permissões removidas** — o token não tem mais acesso a essas contas
-3. **Conta desativada/suspensa** no Meta Ads
+Analisei os logs e identifiquei **dois problemas**:
 
-## O que falta no código atual
-Na linha 628-630 do `meta-api.ts`, quando a API retorna erro, o código **não lê o corpo da resposta** — apenas loga o status code. Sem o corpo, não sabemos o erro exato do Meta (ex: `OAuthException`, `Error validating access token`, etc.).
+### Problema 1: Renovação "falsa" — o token não é realmente estendido
+Os logs mostram que desde 26/03 às 20h, a função `refresh-meta-token` rodava a cada hora e logava "Token Meta renovado com sucesso" com `expires_in_days: 0`. A API do Meta retornava 200 com um token, mas **com a mesma data de expiração** (27/03 às 20:00).
 
-## Correção proposta
+Isso acontece porque tokens long-lived do Meta **não podem ser renovados infinitamente** via `fb_exchange_token`. Quando o token já está nos últimos 1-2 dias, a API retorna um token com a mesma validade — não estende. A função atual não verifica se a nova expiração é realmente maior que a anterior, então loga "sucesso" quando na verdade nada mudou.
 
-### Arquivo: `supabase/functions/unified-meta-review/meta-api.ts` (linhas 628-631)
-Adicionar leitura do corpo do erro antes de lançar a exceção:
+### Problema 2: Loop de triggers em cascata
+Quando `refresh-meta-token` atualiza o token em `api_tokens`, o trigger `trigger_convert_meta_token` dispara `convert-meta-token`, que também tenta fazer `fb_exchange_token`, atualizando `api_tokens` de novo → trigger de novo → loop. Os logs de 27/03 mostram dezenas de triggers disparados em sequência a cada 3 segundos.
 
-```typescript
-const response = await fetch(basicInfoUrl);
-if (!response.ok) {
-  const errorBody = await response.text();
-  console.error(`❌ [META-API] Erro 400 da API Meta - Body:`, errorBody);
-  throw new Error(`Meta API error: ${response.status} - ${response.statusText} | ${errorBody}`);
-}
+## Solução
+
+### 1. `supabase/functions/refresh-meta-token/index.ts`
+- Após receber o novo token da API, **comparar a nova expiração com a anterior**
+- Se a nova expiração não for pelo menos 7 dias maior que agora, marcar como `renewal_ineffective` em vez de `success`
+- Inserir log claro em `system_logs` com evento `meta_token_renewal_ineffective` para alertar que é necessário gerar um novo token manualmente
+- Não atualizar o `api_tokens` se a renovação não for efetiva (evita disparar o trigger loop desnecessariamente)
+
+### 2. `supabase/functions/convert-meta-token/index.ts`
+- Adicionar verificação: se o token já é long-lived e expira em mais de 7 dias, **não tentar converter novamente** (já faz isso parcialmente, mas o threshold precisa ser consistente)
+- Evitar atualizar `api_tokens` se o token resultante for o mesmo ou com mesma expiração
+
+### 3. Resumo das mudanças de lógica em `refresh-meta-token`
+
+```text
+ANTES:
+  Chama fb_exchange_token → recebe token → salva em api_tokens → loga "sucesso"
+  (mesmo que expiração não mude)
+
+DEPOIS:
+  Chama fb_exchange_token → recebe token → VERIFICA se nova expiração > agora + 7 dias
+    SIM → salva token, loga "sucesso real"
+    NÃO → NÃO salva token, loga "renovação ineficaz, token precisa ser gerado manualmente"
+          → marca status como 'needs_manual_renewal' na metadata
 ```
 
-Isso vai nos permitir ver nos logs **exatamente** o que a Meta está retornando (token expirado, permissão negada, conta inválida, etc.) e tomar a ação correta.
-
-## Próximos passos após o deploy
-1. Rodar a revisão novamente para o cliente com erro
-2. Verificar os logs da edge function para ver o corpo do erro da Meta
-3. Com base no erro específico, corrigir (renovar token, reautorizar conta, etc.)
-
-## Arquivo editado
-- `supabase/functions/unified-meta-review/meta-api.ts` — adicionar log do corpo do erro da API Meta
+## Arquivos editados
+- `supabase/functions/refresh-meta-token/index.ts`
+- `supabase/functions/convert-meta-token/index.ts`
 
