@@ -1,27 +1,42 @@
 
 
-# Corrigir erro ao excluir orçamento personalizado
+# Diagnóstico: Erro "Meta API error: 400 - Bad Request"
 
-## Problema
-A tabela `budget_reviews` possui uma foreign key (`budget_reviews_custom_budget_id_fkey`) que referencia `custom_budgets(id)`. Quando um orçamento personalizado já foi usado em alguma revisão diária, a exclusão falha por violação de integridade referencial.
+## Problema identificado
+Os logs da edge function mostram que a revisão falha ao chamar a Meta Graph API em `fetchAccountBasicInfo`. A API retorna **400 Bad Request** para as contas:
+- `1278314109870177` (Aracuri Vinhos)
+- `164389748262435` (outro cliente)
 
-## Solução
-Alterar a foreign key para usar `ON DELETE SET NULL`, permitindo que a exclusão do orçamento personalizado apenas limpe a referência nas revisões existentes (setando `custom_budget_id` para `NULL`). Isso é seguro porque as revisões já possuem os campos `custom_budget_amount`, `custom_budget_start_date` e `custom_budget_end_date` salvos diretamente, então não perdem informação.
+## Causa provável
+Um erro 400 da Meta Graph API geralmente significa:
+1. **Token expirado ou inválido** — o token de acesso Meta perdeu validade
+2. **Permissões removidas** — o token não tem mais acesso a essas contas
+3. **Conta desativada/suspensa** no Meta Ads
 
-## Mudança
-Uma migration SQL:
+## O que falta no código atual
+Na linha 628-630 do `meta-api.ts`, quando a API retorna erro, o código **não lê o corpo da resposta** — apenas loga o status code. Sem o corpo, não sabemos o erro exato do Meta (ex: `OAuthException`, `Error validating access token`, etc.).
 
-```sql
-ALTER TABLE budget_reviews 
-  DROP CONSTRAINT budget_reviews_custom_budget_id_fkey;
+## Correção proposta
 
-ALTER TABLE budget_reviews 
-  ADD CONSTRAINT budget_reviews_custom_budget_id_fkey 
-  FOREIGN KEY (custom_budget_id) 
-  REFERENCES custom_budgets(id) 
-  ON DELETE SET NULL;
+### Arquivo: `supabase/functions/unified-meta-review/meta-api.ts` (linhas 628-631)
+Adicionar leitura do corpo do erro antes de lançar a exceção:
+
+```typescript
+const response = await fetch(basicInfoUrl);
+if (!response.ok) {
+  const errorBody = await response.text();
+  console.error(`❌ [META-API] Erro 400 da API Meta - Body:`, errorBody);
+  throw new Error(`Meta API error: ${response.status} - ${response.statusText} | ${errorBody}`);
+}
 ```
 
+Isso vai nos permitir ver nos logs **exatamente** o que a Meta está retornando (token expirado, permissão negada, conta inválida, etc.) e tomar a ação correta.
+
+## Próximos passos após o deploy
+1. Rodar a revisão novamente para o cliente com erro
+2. Verificar os logs da edge function para ver o corpo do erro da Meta
+3. Com base no erro específico, corrigir (renovar token, reautorizar conta, etc.)
+
 ## Arquivo editado
-- Nenhum arquivo de código precisa mudar. Apenas a migration no banco.
+- `supabase/functions/unified-meta-review/meta-api.ts` — adicionar log do corpo do erro da API Meta
 
