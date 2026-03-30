@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MIN_ACCEPTABLE_DAYS = 7;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -16,12 +18,11 @@ Deno.serve(async (req) => {
   );
 
   const APP_ID = '383063434848211';
-  const DAYS_THRESHOLD = 7; // Só renova se faltar 7 dias ou menos
+  const DAYS_THRESHOLD = 7;
 
   try {
     console.log('🔄 Verificando token Meta...');
 
-    // Buscar o token atual do banco
     const { data: tokenData, error: tokenError } = await supabaseClient
       .from('api_tokens')
       .select('value')
@@ -35,14 +36,12 @@ Deno.serve(async (req) => {
     const currentToken = tokenData.value;
     console.log('✅ Token atual encontrado');
 
-    // Buscar metadata
     const { data: metadataData } = await supabaseClient
       .from('meta_token_metadata')
       .select('*')
       .eq('token_type', 'access_token')
       .single();
 
-    // Buscar APP_SECRET
     const appSecret = Deno.env.get('META_APP_SECRET');
     if (!appSecret) {
       throw new Error('META_APP_SECRET não configurado nas variáveis de ambiente');
@@ -61,7 +60,7 @@ Deno.serve(async (req) => {
 
     const tokenInfo = debugData.data;
     const isValid = tokenInfo.is_valid;
-    const expiresAtTimestamp = tokenInfo.expires_at; // Unix timestamp (segundos)
+    const expiresAtTimestamp = tokenInfo.expires_at;
     const scopes = tokenInfo.scopes || [];
 
     console.log(`📊 Token válido: ${isValid}, Scopes: ${scopes.join(', ')}`);
@@ -86,7 +85,6 @@ Deno.serve(async (req) => {
         })
         .eq('token_type', 'access_token');
 
-      // Log
       await supabaseClient.from('cron_execution_logs').insert({
         job_name: 'meta-token-renewal',
         status: 'skipped',
@@ -130,7 +128,7 @@ Deno.serve(async (req) => {
 
     // Se faltar mais de DAYS_THRESHOLD dias, não renova
     if (daysRemaining > DAYS_THRESHOLD) {
-      console.log(`✅ Token ainda válido por ${daysRemaining} dias. Renovação não necessária (threshold: ${DAYS_THRESHOLD} dias).`);
+      console.log(`✅ Token ainda válido por ${daysRemaining} dias. Renovação não necessária.`);
       
       await supabaseClient.from('cron_execution_logs').insert({
         job_name: 'meta-token-renewal',
@@ -188,9 +186,78 @@ Deno.serve(async (req) => {
       throw new Error('Novo token não retornado pela API');
     }
 
-    console.log(`✅ Novo token recebido (expira em ${Math.floor(expiresIn / 86400)} dias)`);
+    // Calcular nova data de expiração
+    const newExpiryDate = new Date(Date.now() + (expiresIn * 1000));
+    const newDaysRemaining = Math.floor((newExpiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Atualizar token no banco
+    console.log(`📊 Novo token recebido. Expira em ${newDaysRemaining} dias (${newExpiryDate.toISOString()})`);
+
+    // ========== VERIFICAÇÃO: A renovação foi realmente efetiva? ==========
+    if (newDaysRemaining < MIN_ACCEPTABLE_DAYS) {
+      console.warn(`⚠️ Renovação INEFICAZ! Novo token expira em apenas ${newDaysRemaining} dias. Mínimo aceitável: ${MIN_ACCEPTABLE_DAYS} dias.`);
+      console.warn('⚠️ O token atingiu o limite máximo de extensão do Meta. É necessário gerar um novo token manualmente.');
+
+      // NÃO salvar o token no api_tokens (evita trigger loop desnecessário)
+      // Apenas atualizar metadata com status de alerta
+      await supabaseClient
+        .from('meta_token_metadata')
+        .update({
+          status: 'needs_manual_renewal',
+          last_checked: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(), // manter a expiração do token atual
+          updated_at: new Date().toISOString(),
+          details: {
+            ...(metadataData?.details || {}),
+            scopes,
+            is_valid: true,
+            days_remaining: daysRemaining,
+            renewal_ineffective: true,
+            renewal_attempted_at: new Date().toISOString(),
+            new_token_would_expire_in_days: newDaysRemaining,
+            reason: 'Token atingiu limite máximo de extensão. Necessário gerar novo token manualmente.'
+          }
+        })
+        .eq('token_type', 'access_token');
+
+      // Log claro
+      await supabaseClient.from('system_logs').insert({
+        event_type: 'meta_token_renewal_ineffective',
+        message: 'Renovação do token Meta foi ineficaz - token precisa ser gerado manualmente',
+        details: {
+          current_expires_at: expiresAt.toISOString(),
+          new_would_expire_at: newExpiryDate.toISOString(),
+          new_days_remaining: newDaysRemaining,
+          min_acceptable_days: MIN_ACCEPTABLE_DAYS,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      await supabaseClient.from('cron_execution_logs').insert({
+        job_name: 'meta-token-renewal',
+        status: 'ineffective',
+        details: {
+          reason: `Renovação ineficaz - novo token expiraria em ${newDaysRemaining} dias (mínimo: ${MIN_ACCEPTABLE_DAYS})`,
+          current_expires_at: expiresAt.toISOString(),
+          action_required: 'Gerar novo token manualmente'
+        }
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Renovação ineficaz. Token precisa ser gerado manualmente.',
+          current_days_remaining: daysRemaining,
+          new_would_expire_in_days: newDaysRemaining,
+          renewed: false,
+          action_required: 'manual_renewal'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== RENOVAÇÃO EFETIVA - SALVAR ==========
+    console.log(`✅ Renovação efetiva! Novo token expira em ${newDaysRemaining} dias.`);
+
     const { error: updateError } = await supabaseClient
       .from('api_tokens')
       .update({ 
@@ -202,9 +269,6 @@ Deno.serve(async (req) => {
     if (updateError) {
       throw new Error(`Erro ao atualizar token: ${updateError.message}`);
     }
-
-    // Calcular nova data de expiração
-    const newExpiryDate = new Date(Date.now() + (expiresIn * 1000));
 
     // Atualizar metadata
     await supabaseClient
@@ -222,20 +286,20 @@ Deno.serve(async (req) => {
           last_renewal_success: true,
           last_renewal_date: new Date().toISOString(),
           last_renewal_error: null,
+          renewal_ineffective: false,
           expires_in_seconds: expiresIn,
-          expires_in_days: Math.floor(expiresIn / 86400)
+          expires_in_days: newDaysRemaining
         }
       })
       .eq('token_type', 'access_token');
 
-    // Log de sucesso
     await supabaseClient.from('system_logs').insert({
       event_type: 'meta_token_renewal',
       message: 'Token Meta renovado com sucesso',
       details: {
         renewed_at: new Date().toISOString(),
         expires_at: newExpiryDate.toISOString(),
-        expires_in_days: Math.floor(expiresIn / 86400)
+        expires_in_days: newDaysRemaining
       }
     });
 
@@ -245,7 +309,7 @@ Deno.serve(async (req) => {
       details: {
         renewed_at: new Date().toISOString(),
         new_expiry: newExpiryDate.toISOString(),
-        expires_in_days: Math.floor(expiresIn / 86400)
+        expires_in_days: newDaysRemaining
       }
     });
 
@@ -256,7 +320,7 @@ Deno.serve(async (req) => {
         success: true,
         message: 'Token renovado com sucesso',
         expires_at: newExpiryDate.toISOString(),
-        expires_in_days: Math.floor(expiresIn / 86400),
+        expires_in_days: newDaysRemaining,
         renewed: true
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

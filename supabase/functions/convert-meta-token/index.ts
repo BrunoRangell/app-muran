@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MIN_DAYS_TO_SKIP = 7;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -65,14 +67,15 @@ Deno.serve(async (req) => {
     const expiresAt = tokenInfo.expires_at ? new Date(tokenInfo.expires_at * 1000) : null;
     const now = new Date();
 
-    // Verificar se já é um token de longa duração (expira em mais de 24 horas)
+    // Verificar se já é um token de longa duração (expira em mais de MIN_DAYS_TO_SKIP dias)
     if (expiresAt) {
       const hoursUntilExpiry = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const daysUntilExpiry = hoursUntilExpiry / 24;
       
-      if (hoursUntilExpiry > 24) {
-        console.log('Token já é de longa duração. Expira em:', expiresAt.toISOString());
+      if (daysUntilExpiry > MIN_DAYS_TO_SKIP) {
+        console.log(`Token já é de longa duração. Expira em ${Math.floor(daysUntilExpiry)} dias (${expiresAt.toISOString()}). Nenhuma ação necessária.`);
         
-        // Atualizar metadata
+        // Atualizar metadata sem tocar em api_tokens (evita trigger loop)
         await supabase
           .from('meta_token_metadata')
           .update({
@@ -89,7 +92,7 @@ Deno.serve(async (req) => {
             success: true, 
             message: 'Token já é de longa duração',
             expires_at: expiresAt.toISOString(),
-            days_until_expiry: Math.floor(hoursUntilExpiry / 24)
+            days_until_expiry: Math.floor(daysUntilExpiry)
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -132,21 +135,43 @@ Deno.serve(async (req) => {
     const longLivedToken = exchangeData.access_token;
     const expiresIn = exchangeData.expires_in;
 
-    // Validar novo token
-    const newDebugUrl = `https://graph.facebook.com/debug_token?input_token=${longLivedToken}&access_token=${longLivedToken}`;
-    const newDebugResponse = await fetch(newDebugUrl);
-    const newDebugData = await newDebugResponse.json();
-
+    // Calcular nova expiração
     let newExpiresAt: Date;
-    if (newDebugData.data?.expires_at) {
-      newExpiresAt = new Date(newDebugData.data.expires_at * 1000);
-    } else if (expiresIn) {
+    if (expiresIn) {
       newExpiresAt = new Date(Date.now() + expiresIn * 1000);
     } else {
       newExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
     }
 
-    // Salvar token longo
+    const newDaysUntilExpiry = Math.floor((newExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Verificar se a conversão foi efetiva
+    if (newDaysUntilExpiry < MIN_DAYS_TO_SKIP) {
+      console.warn(`⚠️ Conversão ineficaz! Novo token expira em ${newDaysUntilExpiry} dias. Não salvando para evitar trigger loop.`);
+
+      await supabase.from('system_logs').insert({
+        event_type: 'meta_token_conversion_ineffective',
+        message: 'Conversão de token ineficaz - novo token não tem validade suficiente',
+        details: { 
+          new_expires_at: newExpiresAt.toISOString(), 
+          new_days_until_expiry: newDaysUntilExpiry,
+          min_required: MIN_DAYS_TO_SKIP
+        }
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Conversão ineficaz - token resultante não tem validade suficiente',
+          new_days_until_expiry: newDaysUntilExpiry
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Conversão efetiva - salvar token longo
+    console.log(`✅ Conversão efetiva! Novo token expira em ${newDaysUntilExpiry} dias.`);
+
     await supabase
       .from('api_tokens')
       .update({ value: longLivedToken, updated_at: new Date().toISOString() })
@@ -161,7 +186,7 @@ Deno.serve(async (req) => {
         last_checked: now.toISOString(),
         last_renewed: now.toISOString(),
         updated_at: now.toISOString(),
-        details: { token_type: 'long_lived', converted_at: now.toISOString(), scopes: newDebugData.data?.scopes }
+        details: { token_type: 'long_lived', converted_at: now.toISOString(), scopes: tokenInfo.scopes }
       })
       .eq('token_type', 'access_token');
 
@@ -169,7 +194,7 @@ Deno.serve(async (req) => {
     await supabase.from('system_logs').insert({
       event_type: 'meta_token_converted',
       message: 'Token curto convertido para longa duração',
-      details: { expires_at: newExpiresAt.toISOString(), days_until_expiry: Math.floor((newExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) }
+      details: { expires_at: newExpiresAt.toISOString(), days_until_expiry: newDaysUntilExpiry }
     });
 
     console.log('Token convertido com sucesso! Expira em:', newExpiresAt.toISOString());
@@ -179,7 +204,7 @@ Deno.serve(async (req) => {
         success: true,
         message: 'Token convertido para longa duração',
         expires_at: newExpiresAt.toISOString(),
-        days_until_expiry: Math.floor((newExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        days_until_expiry: newDaysUntilExpiry
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
