@@ -13,9 +13,16 @@ function parseMetaBalance(
   amountSpent?: number | string | null
 ): number | null {
   if (displayString) {
-    const match = displayString.match(/R\$\s*([\d.,]+)/);
+    // Tenta capturar número APÓS R$ (ex: "R$ 310,29" ou "R$310,29")
+    let match = displayString.match(/R\$\s*([\d.,\s]+)/);
+    // Se não encontrou, tenta capturar número ANTES de R$ (ex: "40 943,86 R$")
+    if (!match) {
+      match = displayString.match(/([\d.,\s]+)\s*R\$/);
+    }
     if (match && match[1]) {
-      const numeric = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+      // Remove espaços (separador de milhares), pontos e converte vírgula para ponto decimal
+      const cleaned = match[1].trim().replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+      const numeric = parseFloat(cleaned);
       if (!isNaN(numeric)) {
         return numeric;
       }
