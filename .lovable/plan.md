@@ -1,46 +1,42 @@
 
 
-# Corrigir renovação automática do token Meta
+# Corrigir parsing do saldo Meta — regex não reconhece formato da API
 
-## Diagnóstico completo
+## Problema
+A API Meta retorna o `display_string` no formato `"Saldo disponível (40 943,86 R$ (BRL))"`, onde:
+- O número vem **antes** de `R$` (não depois)
+- Usa **espaços** como separador de milhares (ex: `40 943,86`)
 
-Analisei os logs e identifiquei **dois problemas**:
-
-### Problema 1: Renovação "falsa" — o token não é realmente estendido
-Os logs mostram que desde 26/03 às 20h, a função `refresh-meta-token` rodava a cada hora e logava "Token Meta renovado com sucesso" com `expires_in_days: 0`. A API do Meta retornava 200 com um token, mas **com a mesma data de expiração** (27/03 às 20:00).
-
-Isso acontece porque tokens long-lived do Meta **não podem ser renovados infinitamente** via `fb_exchange_token`. Quando o token já está nos últimos 1-2 dias, a API retorna um token com a mesma validade — não estende. A função atual não verifica se a nova expiração é realmente maior que a anterior, então loga "sucesso" quando na verdade nada mudou.
-
-### Problema 2: Loop de triggers em cascata
-Quando `refresh-meta-token` atualiza o token em `api_tokens`, o trigger `trigger_convert_meta_token` dispara `convert-meta-token`, que também tenta fazer `fb_exchange_token`, atualizando `api_tokens` de novo → trigger de novo → loop. Os logs de 27/03 mostram dezenas de triggers disparados em sequência a cada 3 segundos.
+A regex atual `R\$\s*([\d.,]+)` só captura números **após** `R$`, então falha e retorna `null`. O sistema cai no fallback do campo `balance` (que é um valor diferente e instável), gerando valores errados a cada revisão.
 
 ## Solução
 
-### 1. `supabase/functions/refresh-meta-token/index.ts`
-- Após receber o novo token da API, **comparar a nova expiração com a anterior**
-- Se a nova expiração não for pelo menos 7 dias maior que agora, marcar como `renewal_ineffective` em vez de `success`
-- Inserir log claro em `system_logs` com evento `meta_token_renewal_ineffective` para alertar que é necessário gerar um novo token manualmente
-- Não atualizar o `api_tokens` se a renovação não for efetiva (evita disparar o trigger loop desnecessariamente)
+### Arquivo: `supabase/functions/unified-meta-review/meta-api.ts` (função `parseMetaBalance`, linhas 10-23)
 
-### 2. `supabase/functions/convert-meta-token/index.ts`
-- Adicionar verificação: se o token já é long-lived e expira em mais de 7 dias, **não tentar converter novamente** (já faz isso parcialmente, mas o threshold precisa ser consistente)
-- Evitar atualizar `api_tokens` se o token resultante for o mesmo ou com mesma expiração
-
-### 3. Resumo das mudanças de lógica em `refresh-meta-token`
+Atualizar a regex para capturar o número em **ambos os formatos**:
+1. `R$ 310,29` (número após R$) — formato antigo
+2. `40 943,86 R$` (número antes de R$) — formato atual
 
 ```text
 ANTES:
-  Chama fb_exchange_token → recebe token → salva em api_tokens → loga "sucesso"
-  (mesmo que expiração não mude)
+  Regex: R\$\s*([\d.,]+)
+  Captura: só "R$ NÚMERO"
 
 DEPOIS:
-  Chama fb_exchange_token → recebe token → VERIFICA se nova expiração > agora + 7 dias
-    SIM → salva token, loga "sucesso real"
-    NÃO → NÃO salva token, loga "renovação ineficaz, token precisa ser gerado manualmente"
-          → marca status como 'needs_manual_renewal' na metadata
+  Tentar duas regex em sequência:
+  1. R\$\s*([\d.,\s]+) — número após R$ (com espaços)
+  2. ([\d.,\s]+)\s*R\$ — número antes de R$ (formato atual)
+  
+  Em ambos os casos, remover espaços, pontos e converter vírgula para ponto decimal.
 ```
 
+### Arquivo: `src/utils/metaBalance.ts` (mesma função no frontend)
+Aplicar a mesma correção de regex para manter consistência.
+
+### Deploy
+Reimplantar a edge function `unified-meta-review`.
+
 ## Arquivos editados
-- `supabase/functions/refresh-meta-token/index.ts`
-- `supabase/functions/convert-meta-token/index.ts`
+- `supabase/functions/unified-meta-review/meta-api.ts` — corrigir regex do `parseMetaBalance`
+- `src/utils/metaBalance.ts` — mesma correção no frontend
 
