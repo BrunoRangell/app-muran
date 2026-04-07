@@ -1,42 +1,32 @@
 
 
-# Corrigir parsing do saldo Meta — regex não reconhece formato da API
+# Corrigir cadastro de membro da equipe
 
 ## Problema
-A API Meta retorna o `display_string` no formato `"Saldo disponível (40 943,86 R$ (BRL))"`, onde:
-- O número vem **antes** de `R$` (não depois)
-- Usa **espaços** como separador de milhares (ex: `40 943,86`)
+O formulário usa `supabase.auth.signUp()` do lado do cliente para criar o usuário. Isso causa dois problemas:
 
-A regex atual `R\$\s*([\d.,]+)` só captura números **após** `R$`, então falha e retorna `null`. O sistema cai no fallback do campo `balance` (que é um valor diferente e instável), gerando valores errados a cada revisão.
+1. **"User already registered"**: Se o email já existe no Supabase Auth (como `gabriel@muranmarketing.com.br`), o signUp falha com erro 422 e o cadastro é abortado.
+2. **Desconecta o admin**: `signUp()` no client-side faz login automático com o novo usuário, deslogando o admin que está cadastrando.
 
 ## Solução
+Criar uma edge function `create-team-member` que usa `supabase.auth.admin.createUser()` com a service role key. Isso permite:
+- Criar usuários sem afetar a sessão do admin
+- Tratar o caso de usuário já existente (buscar o ID existente e só criar o registro em `team_members`)
+- Atribuir a role `member` em `user_roles` automaticamente
 
-### Arquivo: `supabase/functions/unified-meta-review/meta-api.ts` (função `parseMetaBalance`, linhas 10-23)
+### 1. Nova edge function: `supabase/functions/create-team-member/index.ts`
+- Recebe `{ name, email, role, password }`
+- Verifica se o chamador é admin (via token JWT)
+- Tenta `auth.admin.createUser()`. Se retornar "user already exists", busca o user existente via `auth.admin.listUsers()` filtrado por email
+- Insere registro em `team_members` com o `manager_id` = ID do auth user
+- Insere role `member` em `user_roles`
+- Retorna sucesso ou erro específico
 
-Atualizar a regex para capturar o número em **ambos os formatos**:
-1. `R$ 310,29` (número após R$) — formato antigo
-2. `40 943,86 R$` (número antes de R$) — formato atual
+### 2. Atualizar `src/components/admin/TeamMemberForm.tsx`
+- Substituir a lógica de `signUp` + insert manual por uma chamada `supabase.functions.invoke('create-team-member', { body: data })`
+- Melhorar mensagens de erro para casos específicos (email já cadastrado na equipe vs apenas no auth)
 
-```text
-ANTES:
-  Regex: R\$\s*([\d.,]+)
-  Captura: só "R$ NÚMERO"
-
-DEPOIS:
-  Tentar duas regex em sequência:
-  1. R\$\s*([\d.,\s]+) — número após R$ (com espaços)
-  2. ([\d.,\s]+)\s*R\$ — número antes de R$ (formato atual)
-  
-  Em ambos os casos, remover espaços, pontos e converter vírgula para ponto decimal.
-```
-
-### Arquivo: `src/utils/metaBalance.ts` (mesma função no frontend)
-Aplicar a mesma correção de regex para manter consistência.
-
-### Deploy
-Reimplantar a edge function `unified-meta-review`.
-
-## Arquivos editados
-- `supabase/functions/unified-meta-review/meta-api.ts` — corrigir regex do `parseMetaBalance`
-- `src/utils/metaBalance.ts` — mesma correção no frontend
+## Arquivos
+- **Novo**: `supabase/functions/create-team-member/index.ts`
+- **Editado**: `src/components/admin/TeamMemberForm.tsx`
 
