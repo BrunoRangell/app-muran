@@ -46,52 +46,25 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
     try {
       setIsLoading(true);
 
-      // Primeiro, criar o usuário no Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            name: data.name,
-            role: data.role,
-          }
-        }
+      const { data: result, error } = await supabase.functions.invoke('create-team-member', {
+        body: {
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          password: data.password,
+        },
       });
 
-      if (authError) {
-        console.error("Erro ao criar usuário autenticado:", authError);
-        throw authError;
+      if (error) {
+        console.error("Erro ao chamar edge function:", error);
+        throw new Error(error.message || "Erro ao cadastrar membro");
       }
 
-      if (!authData.user?.id) {
-        throw new Error("Não foi possível criar o usuário");
+      if (!result?.success) {
+        throw new Error(result?.error || "Erro desconhecido ao cadastrar membro");
       }
 
-      console.log("Usuário autenticado criado com sucesso:", authData);
-
-      // Depois, criar o registro na tabela team_members
-      const { data: memberData, error: memberError } = await supabase
-        .from('team_members')
-        .insert([
-          {
-            name: data.name,
-            email: data.email,
-            role: data.role,
-            permission: 'member',
-            manager_id: authData.user.id, // Usando o ID do usuário como manager_id
-          }
-        ])
-        .select()
-        .single();
-
-      if (memberError) {
-        // Se houver erro na criação do membro, remove o usuário autenticado
-        await supabase.auth.admin.deleteUser(authData.user.id);
-        console.error("Erro ao criar registro na tabela team_members:", memberError);
-        throw memberError;
-      }
-
-      console.log("Registro na tabela team_members criado com sucesso:", memberData);
+      console.log("Membro cadastrado com sucesso:", result);
 
       toast({
         title: "Sucesso!",
@@ -103,14 +76,10 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
     } catch (error: any) {
       console.error("Erro ao cadastrar membro:", error);
       
-      let errorMessage = "Não foi possível cadastrar o membro da equipe.";
+      let errorMessage = error.message || "Não foi possível cadastrar o membro da equipe.";
       
-      if (error.message?.includes("duplicate key")) {
-        errorMessage = "Este email já está cadastrado.";
-      } else if (error.message?.includes("manager_id")) {
-        errorMessage = "Erro ao vincular o usuário como membro da equipe.";
-      } else if (error.message?.includes("invalid email")) {
-        errorMessage = "O email fornecido é inválido.";
+      if (errorMessage.includes("já está cadastrado na equipe")) {
+        errorMessage = "Este email já está cadastrado na equipe.";
       }
       
       toast({
@@ -189,4 +158,3 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
     </Form>
   );
 };
-
