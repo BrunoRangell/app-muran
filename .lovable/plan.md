@@ -1,58 +1,66 @@
 
+# Resolver falha de login após reinício do roteador
 
-# Investigar erro de login — possivelmente bloqueio do Preview Lovable
+## O que identifiquei
+- O componente `SecurityHeaders.tsx` não está sendo usado em lugar nenhum, então a CSP não explica este erro atual.
+- O fallback de `nativeFetch` já existe em `index.html` e `src/integrations/supabase/client.ts`.
+- Os logs anexados mostram falha no Preview do Lovable, mas vocês relataram falha no domínio próprio. Então o log atual não prova o erro no domínio próprio.
+- Como o problema começou logo após reiniciar o roteador e afetou todo mundo da empresa ao mesmo tempo, o cenário mais provável hoje é: **bloqueio/regras/DNS da rede da empresa impedindo acesso ao Supabase**.
+- Mesmo assim, o app hoje piora o problema porque fica tentando `refreshSession` várias vezes no carregamento e no foco da página.
 
-## Diagnóstico
+## Do I know what the issue is?
+Sim: o mais provável é um problema de rede/DNS/firewall no ambiente da empresa, não uma mudança no código. Mas o frontend também precisa ser endurecido para não entrar em loop de refresh e para diagnosticar corretamente o domínio real em uso.
 
-Os logs mostram um padrão muito específico:
+## Plano de correção
 
-```
-Origin: https://02114261-002e-44ce-93fa-c4c883dceaed.lovableproject.com
-TypeError: Failed to fetch
-    at Xl.window.fetch (https://cdn.gpteng.co/lovable.js:8:76615)
-```
+### 1. Instrumentar o login com diagnóstico real
+Editar `src/pages/Login.tsx` para:
+- mostrar/logar o `window.location.origin` real
+- distinguir erro de credenciais vs erro de rede
+- detectar quando o problema acontece no domínio próprio, publicado ou preview
+- oferecer ação de “limpar sessão local e tentar novamente”
 
-Todas as requisições estão saindo do **Preview do Lovable** (`*.lovableproject.com`), e o stack trace mostra que o erro ocorre **dentro do `lovable.js`** — o script que o Lovable injeta para fazer hot-reload e proxy de fetch. Esse script está interceptando o `window.fetch` e falhando antes mesmo de a request sair do navegador.
+### 2. Parar o loop agressivo de autenticação
+Editar `src/hooks/useUnifiedAuth.ts` para:
+- não rodar revalidação em foco quando o usuário não está autenticado
+- não tratar falha de `getSession()` como se fosse logout definitivo logo na tela de login
+- evitar múltiplas tentativas automáticas de refresh enquanto a rede/auth estiver indisponível
 
-A documentação interna do Lovable confirma exatamente esse cenário:
-> The Lovable Preview environment injects a fetch proxy that intercepts and breaks Supabase authentication POST requests to `/auth/v1/token`. This results in "Failed to fetch" errors with a status of 0.
+### 3. Tornar o cliente Supabase mais defensivo
+Editar `src/integrations/supabase/client.ts` para:
+- registrar claramente se a falha veio do fetch nativo ou do fetch padrão
+- impedir tempestade de tentativas de `refresh_token`
+- limpar apenas a chave `muran-auth-token` em fluxos de recuperação, sem usar `localStorage.clear()`
 
-**Isso explica perfeitamente:**
-- Por que `app-muran.lovable.app` (publicado) e `app.muranmarketing.com.br` (domínio próprio) **não têm o `lovable.js` injetado** → não devem estar com esse problema.
-- Por que apenas o Preview falha hoje: o proxy de fetch teve uma regressão.
-- Por que o reset do roteador foi coincidência: o problema é do proxy, não da rede.
-- Por que o GET de health-check às vezes passa mas o POST de `/token` não: o proxy bloqueia POSTs específicos com headers de auth.
+### 4. Adicionar recuperação segura na tela de login
+Em `src/pages/Login.tsx`:
+- se houver erro de rede/auth quebrada, limpar somente a sessão local do Supabase
+- tentar login “limpo”, sem reaproveitar refresh token corrompido
+- mostrar mensagem objetiva:
+  - “credenciais inválidas” quando for 400/401
+  - “não foi possível alcançar o servidor de autenticação” quando for rede/DNS/firewall
 
-## Pergunta crítica antes de qualquer código
+### 5. Validar contra o cenário real
+Após implementar:
+- testar em `https://app.muranmarketing.com.br/login`
+- comparar com `https://app-muran.lovable.app/login`
+- se o publicado funcionar e o domínio próprio falhar, investigar domínio/proxy
+- se ambos falharem apenas na rede da empresa, confirmar causa externa (DNS/firewall/roteador)
 
-Preciso confirmar **em qual URL** a equipe está acessando o app. Se estiverem usando o link do Preview (`02114261-002e-44ce-93fa-c4c883dceaed.lovableproject.com`), a correção é simplesmente **trocar o link** que estão usando — não há bug no código.
+## Arquivos a editar
+- `src/pages/Login.tsx`
+- `src/hooks/useUnifiedAuth.ts`
+- `src/integrations/supabase/client.ts`
 
-## Plano
+## Detalhes técnicos
+- O problema mais suspeito hoje não é o banco nem o formulário.
+- O ponto comum entre “ontem funcionava” e “parou depois que o roteador reiniciou” é a rede da empresa.
+- O frontend atual faz muitas tentativas automáticas com `refresh_token`, o que mascara o erro principal e atrapalha o diagnóstico.
+- A correção precisa atacar os dois lados:
+  1. melhorar o app para não entrar em loop nem mostrar mensagens erradas
+  2. isolar rapidamente se a rede da empresa está bloqueando `https://socrnutfpqtcjmetskta.supabase.co`
 
-### Passo 1 — Confirmar com o usuário (essencial)
-
-Perguntar exatamente em qual URL a equipe está tentando logar. As 3 possibilidades são:
-- **Preview Lovable**: `https://...lovableproject.com` ou `https://id-preview--....lovable.app` → bug do Lovable, não do app
-- **Publicado Lovable**: `https://app-muran.lovable.app` → deve funcionar normal
-- **Domínio próprio**: `https://app.muranmarketing.com.br` → deve funcionar normal
-
-### Passo 2A — Se estiverem no Preview
-**Solução imediata**: instruir a equipe a usar o domínio próprio (`app.muranmarketing.com.br`) ou o publicado (`app-muran.lovable.app`). Esses dois **não carregam o `lovable.js`** e não têm esse problema.
-
-Compartilhar com a equipe a URL correta e adicionar aos favoritos. Esse link de Preview nunca deveria ter sido usado em produção — ele é só para desenvolvimento.
-
-### Passo 2B — Se estiverem no domínio próprio e mesmo assim falhar
-Aí é outro problema (provavelmente CSP ou bloqueio de rede). Vou:
-1. Inspecionar o stack trace nesse cenário (deve ser diferente — não passar mais por `lovable.js`).
-2. Investigar se a CSP está sendo aplicada corretamente no domínio próprio.
-3. Considerar remover/relaxar a CSP do `SecurityHeaders.tsx` se ela estiver bloqueando algo.
-
-### Passo 3 — Defesa adicional (independente do cenário)
-Adicionar fallback defensivo no `client.ts`: caso o `lovable.js` proxy esteja interferindo no fetch e detectarmos `Failed to fetch` 3+ vezes seguidas, fazer **bypass** chamando o `fetch` original (`window.fetch.bind(window)` capturado **antes** de qualquer script externo carregar). Isso protege contra futuras regressões do proxy.
-
-## Arquivos potencialmente afetados (Passo 2B / Passo 3)
-- `src/integrations/supabase/client.ts` — capturar fetch original antes do proxy
-- `src/components/auth/SecurityHeaders.tsx` — eventualmente remover CSP via meta (CSP via meta tem várias limitações; o ideal é via header HTTP, fora do nosso alcance no Lovable)
-
-## Pergunta para o usuário
-
+## Resultado esperado
+- login volta a funcionar quando a rede estiver alcançando o Supabase
+- a tela de login deixa de entrar em falso “erro genérico”
+- fica claro se o problema é do app, do domínio ou da rede da empresa
