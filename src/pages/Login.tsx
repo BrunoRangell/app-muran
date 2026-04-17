@@ -40,14 +40,23 @@ const Login = () => {
           });
           sessionStorage.removeItem('auth_message');
         }
-        
+
+        // Auto-limpeza: se há token armazenado e getSession falha por rede,
+        // limpa para evitar o loop de refresh_token inválido.
+        const hasStoredToken = !!localStorage.getItem('muran-auth-token');
+
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error("Erro ao verificar sessão:", error);
+          const msg = (error.message || '').toLowerCase();
+          if (hasStoredToken && (msg.includes('failed to fetch') || msg.includes('refresh') || msg.includes('invalid'))) {
+            console.warn('[Login] Token armazenado parece corrompido. Auto-limpando sessão local.');
+            clearSupabaseLocalSession();
+          }
           return;
         }
-        
+
         if (session) {
           console.log("Sessão válida encontrada, redirecionando para:", returnTo);
           navigate(returnTo);
@@ -56,18 +65,28 @@ const Login = () => {
         console.error("Erro ao verificar sessão:", error);
       }
     };
-    
+
     checkSession();
   }, [navigate, returnTo, toast]);
 
-  const handleResetSession = () => {
+  const handleResetSession = async () => {
+    try {
+      // Para loops de refresh em memória ANTES de limpar storage
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    } catch {
+      // ignora — pode falhar se já não há sessão
+    }
     clearSupabaseLocalSession();
     setShowError(false);
     setErrorKind(null);
     toast({
       title: "Sessão local limpa",
-      description: "Tente fazer login novamente.",
+      description: "Recarregando para começar do zero...",
     });
+    // Reload para reinstanciar o cliente Supabase sem listeners antigos
+    setTimeout(() => {
+      window.location.reload();
+    }, 400);
   };
 
   const handleLogin = async (e: React.FormEvent) => {

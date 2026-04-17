@@ -14,8 +14,8 @@ const nativeFetch: typeof fetch =
   (typeof window !== 'undefined' && (window as any).__nativeFetch) ||
   (typeof window !== 'undefined' ? window.fetch.bind(window) : fetch);
 
-let proxyFailureCount = 0;
 let lastNetworkErrorAt = 0;
+let invalidRefreshTokenDetected = false;
 
 /**
  * Helper público: limpa apenas a sessão local do Supabase, sem zerar
@@ -33,24 +33,55 @@ export const clearSupabaseLocalSession = () => {
         sessionStorage.removeItem(k);
       }
     });
-    proxyFailureCount = 0;
     lastNetworkErrorAt = 0;
+    invalidRefreshTokenDetected = false;
   } catch (e) {
     logger.error('Falha ao limpar sessão local do Supabase:', e);
   }
 };
 
 export const getLastSupabaseNetworkErrorAt = () => lastNetworkErrorAt;
+export const wasInvalidRefreshTokenDetected = () => invalidRefreshTokenDetected;
 
+/**
+ * Fetch para Supabase:
+ * - Para QUALQUER request de /auth/v1/, usa SEMPRE nativeFetch (bypass do proxy lovable.js).
+ *   Isso elimina a regressão conhecida do Preview que quebra POSTs de auth.
+ * - Detecta respostas com refresh_token inválido e auto-limpa a sessão local
+ *   para impedir loops infinitos de retry.
+ */
 const fetchWithDiagnostics: typeof fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : (input as Request).url;
   const isSupabaseAuth = typeof url === 'string' && url.includes('/auth/v1/');
+  const isRefreshToken = typeof url === 'string' && url.includes('/auth/v1/token');
 
-  // Após detectar 1 falha em /auth/v1/, vai direto pelo fetch nativo
-  // para fugir do proxy do lovable.js (regressão conhecida no Preview).
-  if (isSupabaseAuth && proxyFailureCount >= 1) {
+  if (isSupabaseAuth) {
+    // SEMPRE usa nativeFetch para auth — não confia no fetch do escopo (pode estar proxado).
     try {
       const res = await nativeFetch(input, init);
+
+      // Detecta refresh_token inválido → limpa sessão para parar o loop
+      if (isRefreshToken && (res.status === 400 || res.status === 401)) {
+        try {
+          const cloned = res.clone();
+          const body = await cloned.json();
+          const code = body?.error_code || body?.error || body?.code || '';
+          const msg = (body?.error_description || body?.msg || '').toLowerCase();
+          if (
+            code === 'refresh_token_not_found' ||
+            code === 'invalid_grant' ||
+            msg.includes('refresh token') ||
+            msg.includes('invalid grant')
+          ) {
+            invalidRefreshTokenDetected = true;
+            logger.warn('🧹 Refresh token inválido detectado, limpando sessão local para parar loop.');
+            clearSupabaseLocalSession();
+          }
+        } catch {
+          // body não-JSON, ignora
+        }
+      }
+
       return res;
     } catch (err) {
       lastNetworkErrorAt = Date.now();
@@ -59,20 +90,10 @@ const fetchWithDiagnostics: typeof fetch = async (input, init) => {
     }
   }
 
+  // Demais requests (REST, edge functions etc.) seguem com fetch padrão
   try {
     return await fetch(input, init);
   } catch (err) {
-    if (isSupabaseAuth) {
-      proxyFailureCount += 1;
-      logger.warn('⚠️ Fetch padrão falhou em request de auth, tentando fetch nativo...', { url });
-      try {
-        return await nativeFetch(input, init);
-      } catch (nativeErr) {
-        lastNetworkErrorAt = Date.now();
-        logger.error('🚫 Supabase auth inacessível (proxy e nativo falharam):', { url });
-        throw nativeErr;
-      }
-    }
     throw err;
   }
 };
