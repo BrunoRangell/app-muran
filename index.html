@@ -7,7 +7,19 @@
     <title>Muran Marketing</title>
     <meta name="description" content="Sistema de gestão para agência de marketing digital - Muran">
     <meta name="author" content="Muran" />
-    
+
+    <!-- Capture native fetch BEFORE any external script (lovable.js, etc.) can proxy it.
+         This protects Supabase auth from proxy regressions in the preview environment. -->
+    <script>
+      (function () {
+        try {
+          window.__nativeFetch = window.fetch.bind(window);
+        } catch (e) {
+          // ignore
+        }
+      })();
+    </script>
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     
