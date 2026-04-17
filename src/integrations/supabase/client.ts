@@ -10,17 +10,48 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Custom fetch wrapper to give clearer logs when network requests are blocked
-// (ad-blockers, firewalls, DNS issues) before they ever reach Supabase.
+// Native fetch captured in index.html BEFORE any external script (lovable.js)
+// could proxy window.fetch. We use it as a fallback when the proxied fetch fails
+// with "Failed to fetch" — a known regression in the Lovable preview environment.
+const nativeFetch: typeof fetch =
+  (typeof window !== 'undefined' && (window as any).__nativeFetch) ||
+  (typeof window !== 'undefined' ? window.fetch.bind(window) : fetch);
+
+let proxyFailureCount = 0;
+
 const fetchWithDiagnostics: typeof fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : (input as Request).url;
+  const isSupabaseAuth = typeof url === 'string' && url.includes('/auth/v1/');
+
+  // For Supabase auth requests, bypass the proxy entirely after we've seen failures
+  // (or always, if we already know the proxy is broken in this session).
+  if (isSupabaseAuth && proxyFailureCount >= 1) {
+    try {
+      return await nativeFetch(input, init);
+    } catch (err) {
+      logger.error('🚫 Falha de REDE (nativeFetch) ao chamar Supabase:', { url, error: err });
+      throw err;
+    }
+  }
+
   try {
     return await fetch(input, init);
   } catch (err) {
-    const url = typeof input === 'string' ? input : (input as Request).url;
-    logger.error(
-      '🚫 Falha de REDE ao chamar Supabase (provavelmente bloqueador de anúncios, firewall ou problema de DNS):',
-      { url, error: err }
-    );
+    // If the proxied fetch failed, try the native one as a fallback before giving up.
+    if (isSupabaseAuth) {
+      proxyFailureCount += 1;
+      logger.warn('⚠️ Fetch proxy falhou em request de auth, tentando fetch nativo...', { url });
+      try {
+        return await nativeFetch(input, init);
+      } catch (nativeErr) {
+        logger.error(
+          '🚫 Falha de REDE ao chamar Supabase (proxy e nativo falharam):',
+          { url, proxyError: err, nativeError: nativeErr }
+        );
+        throw nativeErr;
+      }
+    }
+    logger.error('🚫 Falha de REDE ao chamar Supabase:', { url, error: err });
     throw err;
   }
 };
