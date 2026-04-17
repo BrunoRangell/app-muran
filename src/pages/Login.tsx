@@ -218,8 +218,18 @@ const Login = () => {
           {showError && (
             <Alert className="bg-[#ff6e00]/10 border border-[#ff6e00]/20 text-[#0f0f0f] backdrop-blur-sm">
               <Info className="h-5 w-5 text-[#ff6e00]" />
-              <AlertDescription className="ml-2 text-sm font-medium">
-                {errorMessage}
+              <AlertDescription className="ml-2 text-sm font-medium space-y-2">
+                <div>{errorMessage}</div>
+                {errorKind === 'network' && (
+                  <button
+                    type="button"
+                    onClick={handleResetSession}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#ff6e00] hover:underline"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Limpar sessão local e tentar novamente
+                  </button>
+                )}
               </AlertDescription>
             </Alert>
           )}
