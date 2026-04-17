@@ -10,6 +10,21 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Custom fetch wrapper to give clearer logs when network requests are blocked
+// (ad-blockers, firewalls, DNS issues) before they ever reach Supabase.
+const fetchWithDiagnostics: typeof fetch = async (input, init) => {
+  try {
+    return await fetch(input, init);
+  } catch (err) {
+    const url = typeof input === 'string' ? input : (input as Request).url;
+    logger.error(
+      '🚫 Falha de REDE ao chamar Supabase (provavelmente bloqueador de anúncios, firewall ou problema de DNS):',
+      { url, error: err }
+    );
+    throw err;
+  }
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -45,7 +60,20 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       },
     },
   },
+  global: {
+    fetch: fetchWithDiagnostics,
+  },
 });
+
+// Tenta remover service workers antigos que possam estar interceptando requests de auth
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      logger.warn('🧹 Removendo service worker antigo:', reg.scope);
+      reg.unregister();
+    });
+  }).catch(() => {});
+}
 
 // Função centralizada para verificar o estado da sessão
 export const checkSession = async () => {
