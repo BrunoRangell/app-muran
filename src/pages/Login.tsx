@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Key, Info, Loader2, WifiOff } from "lucide-react";
+import { Mail, Key, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-const SUPABASE_HEALTH_URL = "https://socrnutfpqtcjmetskta.supabase.co/auth/v1/health";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,7 +13,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("Verifique suas credenciais e tente novamente");
-  const [networkBlocked, setNetworkBlocked] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/';
@@ -60,21 +57,6 @@ const Login = () => {
     };
     
     checkSession();
-
-    // Health-check: detecta bloqueio de rede ao Supabase antes de o usuário tentar logar
-    const checkConnectivity = async () => {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        await fetch(SUPABASE_HEALTH_URL, { signal: controller.signal });
-        clearTimeout(timeout);
-        setNetworkBlocked(false);
-      } catch (err) {
-        console.error('🚫 Conectividade ao Supabase bloqueada:', err);
-        setNetworkBlocked(true);
-      }
-    };
-    checkConnectivity();
   }, [navigate, returnTo, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -135,13 +117,12 @@ const Login = () => {
 
       if (isNetworkError) {
         setShowError(true);
-        setNetworkBlocked(true);
         setErrorMessage(
-          "Não foi possível conectar ao servidor de autenticação. Desative bloqueadores de anúncios (uBlock, AdBlock, Brave Shields), tente em uma aba anônima ou em outra rede."
+          "Não foi possível conectar ao servidor. Tente novamente em alguns segundos."
         );
         toast({
-          title: "Conexão bloqueada",
-          description: "O navegador não conseguiu acessar o servidor de login. Verifique extensões/firewall.",
+          title: "Erro de conexão",
+          description: "Não foi possível conectar ao servidor. Tente novamente.",
           variant: "destructive",
         });
       } else {
@@ -223,15 +204,6 @@ const Login = () => {
               </p>
             </div>
           </div>
-          {networkBlocked && !showError && (
-            <Alert className="bg-red-500/10 border border-red-500/30 text-[#0f0f0f] backdrop-blur-sm">
-              <WifiOff className="h-5 w-5 text-red-600" />
-              <AlertDescription className="ml-2 text-sm font-medium">
-                Detectamos que o servidor de autenticação está inacessível a partir desta rede/navegador.
-                Desative bloqueadores de anúncios (uBlock, Brave Shields), tente em aba anônima ou em outra rede (ex: 4G do celular).
-              </AlertDescription>
-            </Alert>
-          )}
           {showError && (
             <Alert className="bg-[#ff6e00]/10 border border-[#ff6e00]/20 text-[#0f0f0f] backdrop-blur-sm">
               <Info className="h-5 w-5 text-[#ff6e00]" />

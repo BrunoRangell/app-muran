@@ -10,7 +10,7 @@ export const SecurityHeaders = () => {
       { httpEquiv: "X-Frame-Options", content: "DENY" },
       { httpEquiv: "X-XSS-Protection", content: "1; mode=block" },
       { httpEquiv: "Strict-Transport-Security", content: "max-age=31536000; includeSubDomains" },
-      { httpEquiv: "Content-Security-Policy", content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co;" }
+      { httpEquiv: "Content-Security-Policy", content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co https://*.supabase.co wss://*.supabase.co https://*.lovableproject.com https://*.lovable.app https://cdn.gpteng.co https://graph.facebook.com https://googleads.googleapis.com https://*.googleapis.com; frame-src 'self' https://*.supabase.co;" }
     ];
 
     metaTags.forEach(tag => {
