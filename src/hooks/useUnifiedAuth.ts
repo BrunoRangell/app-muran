@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, clearSupabaseLocalSession } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
+
+let sessionCheckDebounce: NodeJS.Timeout;
 
 export const useUnifiedAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -11,64 +13,96 @@ export const useUnifiedAuth = () => {
   const [isRevalidating, setIsRevalidating] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
-  const refreshInFlight = useRef(false);
-  const lastFocusCheck = useRef(0);
 
+  // Otimized session check with debounce
   const checkSession = useCallback(async (isBackgroundCheck = false) => {
-    try {
-      if (isBackgroundCheck) setIsRevalidating(true);
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-
-      if (error) {
-        // Em verificação background NÃO derruba estado de auth
-        // (evita loop de logout quando a rede falha temporariamente).
-        if (!isBackgroundCheck) {
+    // Função interna para realizar a verificação
+    const performCheck = async () => {
+      try {
+        // Se for verificação em segundo plano, usar isRevalidating
+        if (isBackgroundCheck && !isLoading) {
+          setIsRevalidating(true);
+        }
+        
+        console.log('🔍 Verificando sessão...', isBackgroundCheck ? '(background)' : '(initial)');
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Erro ao verificar sessão:', error);
           setSession(null);
           setUser(null);
           setIsAuthenticated(false);
+        } else {
+          console.log('✅ Sessão verificada:', currentSession ? 'Ativa' : 'Inativa');
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          setIsAuthenticated(!!currentSession);
         }
-        return;
-      }
-
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setIsAuthenticated(!!currentSession);
-    } catch {
-      if (!isBackgroundCheck) {
+      } catch (error) {
+        console.error('💥 Erro inesperado na verificação:', error);
         setSession(null);
         setUser(null);
         setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+        setIsRevalidating(false);
       }
-    } finally {
-      setIsLoading(false);
-      setIsRevalidating(false);
-    }
-  }, []);
+    };
 
+    // Se for verificação inicial, executar imediatamente sem debounce
+    if (!isBackgroundCheck) {
+      await performCheck();
+      return;
+    }
+
+    // Se for verificação em segundo plano, usar debounce
+    if (sessionCheckDebounce) clearTimeout(sessionCheckDebounce);
+    
+    sessionCheckDebounce = setTimeout(async () => {
+      await performCheck();
+    }, 100);
+  }, [isLoading]);
+
+  // Session refresh mechanism
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    if (refreshInFlight.current) return false;
-    refreshInFlight.current = true;
     try {
+      console.log('🔄 Atualizando sessão...');
       const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
-      if (error || !refreshedSession) return false;
-      setSession(refreshedSession);
-      setUser(refreshedSession.user);
-      setIsAuthenticated(true);
-      return true;
-    } catch {
+      
+      if (error) {
+        console.error('❌ Erro ao atualizar sessão:', error);
+        return false;
+      }
+      
+      if (refreshedSession) {
+        setSession(refreshedSession);
+        setUser(refreshedSession.user);
+        setIsAuthenticated(true);
+        console.log('✅ Sessão atualizada com sucesso');
+        return true;
+      }
+      
       return false;
-    } finally {
-      refreshInFlight.current = false;
+    } catch (error) {
+      console.error('💥 Erro inesperado ao atualizar sessão:', error);
+      return false;
     }
   }, []);
 
+  // Logout function
   const logout = useCallback(async () => {
     try {
+      console.log('🚪 Fazendo logout...');
       await supabase.auth.signOut();
-      clearSupabaseLocalSession();
+      
+      // Clear storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
       setSession(null);
       setUser(null);
       setIsAuthenticated(false);
+      
       toast.success('Logout realizado com sucesso');
       navigate('/login');
     } catch (error) {
@@ -78,40 +112,48 @@ export const useUnifiedAuth = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const loadingTimeout = setTimeout(() => setIsLoading(false), 10000);
+    console.log('🚀 Inicializando autenticação unificada');
+    
+    // Loading timeout - máximo 10 segundos
+    const loadingTimeout = setTimeout(() => {
+      console.log('⏰ Timeout de loading atingido');
+      setIsLoading(false);
+    }, 10000);
 
-    // PRIMEIRO o listener, depois a checagem inicial
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setIsAuthenticated(!!newSession);
+      (event, session) => {
+        console.log(`🔔 Auth event: ${event}`, session ? 'com sessão' : 'sem sessão');
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsAuthenticated(!!session);
         setIsLoading(false);
+        
         clearTimeout(loadingTimeout);
       }
     );
 
+    // Initial session check
     checkSession();
 
     return () => {
       subscription.unsubscribe();
       clearTimeout(loadingTimeout);
+      if (sessionCheckDebounce) clearTimeout(sessionCheckDebounce);
     };
   }, [checkSession]);
 
-  // Revalidação em foco: SOMENTE se já estiver autenticado e com throttle de 60s.
-  // Evita tempestade de refresh_token quando a rede está caída na tela de login.
+  // Page focus handler
   useEffect(() => {
     const handleFocus = () => {
-      if (!isAuthenticated) return;
-      const now = Date.now();
-      if (now - lastFocusCheck.current < 60_000) return;
-      lastFocusCheck.current = now;
-      checkSession(true);
+      console.log('👀 Página em foco - verificando sessão');
+      checkSession(true); // true = background check
     };
+
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [checkSession, isAuthenticated]);
+  }, [checkSession]);
 
   return {
     user,
@@ -121,6 +163,6 @@ export const useUnifiedAuth = () => {
     isAuthenticated,
     logout,
     refreshSession,
-    checkSession,
+    checkSession
   };
 };
