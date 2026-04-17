@@ -1,77 +1,58 @@
 
 
-# Corrigir bloqueio de login causado pela CSP do app
+# Investigar erro de login — possivelmente bloqueio do Preview Lovable
 
-## Diagnóstico (causa raiz confirmada)
+## Diagnóstico
 
-O componente `src/components/auth/SecurityHeaders.tsx` injeta esta meta tag no `<head>`:
-
-```
-Content-Security-Policy:
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval';
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' data: https:;
-  connect-src 'self' https://socrnutfpqtcjmetskta.supabase.co;
-```
-
-Problemas dessa CSP:
-
-1. **Faltam `wss://*.supabase.co` e `https://*.supabase.co`** (realtime, edge functions e o próprio auth em alguns navegadores estritos são bloqueados).
-2. **Falta o domínio do Lovable Preview** (`https://*.lovableproject.com`, `https://*.lovable.app`, `wss:`) — por isso ninguém consegue logar nem no Preview nem no domínio próprio.
-3. **Falta `frame-ancestors`** — irrelevante aqui, mas alguns navegadores recentes começam a aplicar CSP de forma mais estrita quando ela é incompleta.
-4. Já existe registro na memória do projeto (`bugs/csp-blocking-supabase-functions`) de que essa mesma CSP já bloqueou edge functions antes — agora, com `lovable.js` injetando um proxy de fetch e o navegador validando `connect-src` em redirecionamentos, ela passou a quebrar até o `/auth/v1/token`.
-
-Os erros `Failed to fetch` / `status: 0` que aparecem nos logs **não são ad-blocker** — são a CSP da própria aplicação rejeitando a request antes de sair. O alerta laranja "Desative bloqueadores..." é falso positivo do health-check (também bloqueado pela CSP).
-
-Confirmações:
-- Endpoint `/auth/v1/health` responde normalmente quando consultado fora do navegador.
-- Não há logs de auth recebendo nenhuma tentativa.
-- O erro acontece no Preview (`02114261-002e-44ce-93fa-c4c883dceaed.lovableproject.com`) e provavelmente também no domínio próprio (`app.muranmarketing.com.br`).
-- A CSP é injetada via JS após o app montar — por isso o problema "apareceu do nada" sem mudança recente: a cada release, a ordem de injeção e o comportamento do `lovable.js` mudam levemente, e agora a CSP atual é incompatível.
-
-## Plano de correção
-
-### Passo 1 — Corrigir a CSP (`src/components/auth/SecurityHeaders.tsx`)
-
-Substituir o `connect-src` por uma versão completa que inclui:
+Os logs mostram um padrão muito específico:
 
 ```
-connect-src 'self'
-  https://socrnutfpqtcjmetskta.supabase.co
-  https://*.supabase.co
-  wss://*.supabase.co
-  https://*.lovableproject.com
-  https://*.lovable.app
-  https://graph.facebook.com
-  https://googleads.googleapis.com
-  https://*.googleapis.com;
+Origin: https://02114261-002e-44ce-93fa-c4c883dceaed.lovableproject.com
+TypeError: Failed to fetch
+    at Xl.window.fetch (https://cdn.gpteng.co/lovable.js:8:76615)
 ```
 
-(Os domínios Meta/Google já são usados pelas integrações da agência — também precisam estar liberados.)
+Todas as requisições estão saindo do **Preview do Lovable** (`*.lovableproject.com`), e o stack trace mostra que o erro ocorre **dentro do `lovable.js`** — o script que o Lovable injeta para fazer hot-reload e proxy de fetch. Esse script está interceptando o `window.fetch` e falhando antes mesmo de a request sair do navegador.
 
-Também vou adicionar `frame-src 'self' https://*.supabase.co` para evitar bloqueios futuros.
+A documentação interna do Lovable confirma exatamente esse cenário:
+> The Lovable Preview environment injects a fetch proxy that intercepts and breaks Supabase authentication POST requests to `/auth/v1/token`. This results in "Failed to fetch" errors with a status of 0.
 
-### Passo 2 — Remover o health-check enganoso do `Login.tsx`
+**Isso explica perfeitamente:**
+- Por que `app-muran.lovable.app` (publicado) e `app.muranmarketing.com.br` (domínio próprio) **não têm o `lovable.js` injetado** → não devem estar com esse problema.
+- Por que apenas o Preview falha hoje: o proxy de fetch teve uma regressão.
+- Por que o reset do roteador foi coincidência: o problema é do proxy, não da rede.
+- Por que o GET de health-check às vezes passa mas o POST de `/token` não: o proxy bloqueia POSTs específicos com headers de auth.
 
-O `checkConnectivity()` que faz `fetch('/auth/v1/health')` está gerando o falso "rede bloqueada" mesmo quando o problema é outro. Vou:
-- Remover esse health-check preventivo.
-- Manter apenas o tratamento do erro real no submit (`Failed to fetch`), com mensagem mais neutra: "Não foi possível conectar ao servidor. Tente novamente em alguns segundos."
-- Remover o `Alert` vermelho fixo de `networkBlocked`.
+## Pergunta crítica antes de qualquer código
 
-### Passo 3 — Validar
+Preciso confirmar **em qual URL** a equipe está acessando o app. Se estiverem usando o link do Preview (`02114261-002e-44ce-93fa-c4c883dceaed.lovableproject.com`), a correção é simplesmente **trocar o link** que estão usando — não há bug no código.
 
-Após o deploy do código corrigido:
-1. Recarregar o app com **Ctrl+Shift+R** (hard refresh, para descartar a CSP antiga em cache).
-2. Tentar o login. Deve funcionar tanto no Preview quanto em `app.muranmarketing.com.br`.
+## Plano
 
-## Arquivos editados
-- `src/components/auth/SecurityHeaders.tsx` — CSP corrigida (connect-src completo)
-- `src/pages/Login.tsx` — remover health-check e alerta de rede bloqueada
+### Passo 1 — Confirmar com o usuário (essencial)
 
-## O que NÃO é o problema
-- ❌ Não é o WiFi da empresa (a CSP é da própria aplicação, viaja com o usuário em qualquer rede)
-- ❌ Não é ad-blocker (o falso positivo veio do health-check que também era bloqueado pela CSP)
-- ❌ Não é o Supabase (o servidor está saudável e nunca recebeu as requests)
-- ❌ Não é o cadastro de membros nem o token Meta
+Perguntar exatamente em qual URL a equipe está tentando logar. As 3 possibilidades são:
+- **Preview Lovable**: `https://...lovableproject.com` ou `https://id-preview--....lovable.app` → bug do Lovable, não do app
+- **Publicado Lovable**: `https://app-muran.lovable.app` → deve funcionar normal
+- **Domínio próprio**: `https://app.muranmarketing.com.br` → deve funcionar normal
+
+### Passo 2A — Se estiverem no Preview
+**Solução imediata**: instruir a equipe a usar o domínio próprio (`app.muranmarketing.com.br`) ou o publicado (`app-muran.lovable.app`). Esses dois **não carregam o `lovable.js`** e não têm esse problema.
+
+Compartilhar com a equipe a URL correta e adicionar aos favoritos. Esse link de Preview nunca deveria ter sido usado em produção — ele é só para desenvolvimento.
+
+### Passo 2B — Se estiverem no domínio próprio e mesmo assim falhar
+Aí é outro problema (provavelmente CSP ou bloqueio de rede). Vou:
+1. Inspecionar o stack trace nesse cenário (deve ser diferente — não passar mais por `lovable.js`).
+2. Investigar se a CSP está sendo aplicada corretamente no domínio próprio.
+3. Considerar remover/relaxar a CSP do `SecurityHeaders.tsx` se ela estiver bloqueando algo.
+
+### Passo 3 — Defesa adicional (independente do cenário)
+Adicionar fallback defensivo no `client.ts`: caso o `lovable.js` proxy esteja interferindo no fetch e detectarmos `Failed to fetch` 3+ vezes seguidas, fazer **bypass** chamando o `fetch` original (`window.fetch.bind(window)` capturado **antes** de qualquer script externo carregar). Isso protege contra futuras regressões do proxy.
+
+## Arquivos potencialmente afetados (Passo 2B / Passo 3)
+- `src/integrations/supabase/client.ts` — capturar fetch original antes do proxy
+- `src/components/auth/SecurityHeaders.tsx` — eventualmente remover CSP via meta (CSP via meta tem várias limitações; o ideal é via header HTTP, fora do nosso alcance no Lovable)
+
+## Pergunta para o usuário
 
