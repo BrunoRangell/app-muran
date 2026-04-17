@@ -60,9 +60,19 @@ const Login = () => {
     checkSession();
   }, [navigate, returnTo, toast]);
 
+  const handleResetSession = () => {
+    clearSupabaseLocalSession();
+    setShowError(false);
+    setErrorKind(null);
+    toast({
+      title: "Sessão local limpa",
+      description: "Tente fazer login novamente.",
+    });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: "Erro de validação",
@@ -74,6 +84,12 @@ const Login = () => {
 
     setIsLoading(true);
     setShowError(false);
+    setErrorKind(null);
+
+    // Diagnóstico: registra em qual URL o login está sendo tentado.
+    const origin = window.location.origin;
+    const isPreview = origin.includes('lovableproject.com') || origin.includes('lovable.app');
+    console.log('[Login] Tentando login em:', origin, isPreview ? '(Preview/Publicado Lovable)' : '(Domínio próprio)');
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -82,56 +98,50 @@ const Login = () => {
       });
 
       if (error) {
-        console.error('Erro de login:', error);
+        console.error('[Login] Erro retornado pelo Supabase:', error);
         setShowError(true);
-        
-        if (error.message.includes('Invalid login')) {
-          setErrorMessage("Credenciais não reconhecidas. Verifique seu e-mail e senha.");
-        } else if (error.message.includes('Email not confirmed')) {
-          setErrorMessage("E-mail não confirmado. Por favor, verifique sua caixa de entrada.");
+
+        const msg = (error.message || '').toLowerCase();
+        const status = (error as any).status;
+
+        if (msg.includes('failed to fetch') || status === 0 || error.name === 'AuthRetryableFetchError') {
+          setErrorKind('network');
+          setErrorMessage(
+            "Não foi possível alcançar o servidor de autenticação. Verifique sua conexão (Wi-Fi/firewall) ou tente em uma rede diferente (ex: 4G)."
+          );
+        } else if (msg.includes('invalid login') || status === 400 || status === 401) {
+          setErrorKind('credentials');
+          setErrorMessage("E-mail ou senha incorretos.");
+        } else if (msg.includes('email not confirmed')) {
+          setErrorKind('other');
+          setErrorMessage("E-mail não confirmado. Verifique sua caixa de entrada.");
         } else {
+          setErrorKind('other');
           setErrorMessage(error.message || "Erro ao fazer login. Tente novamente.");
         }
-        
-        toast({
-          title: "Erro no login",
-          description: "Verifique suas credenciais e tente novamente",
-          variant: "destructive",
-        });
         return;
       }
 
       if (data.session) {
-        console.log('Login bem-sucedido:', data.session);
-        
-        // Pequeno delay para garantir que o estado de autenticação seja propagado
-        setTimeout(() => {
-          navigate(returnTo);
-        }, 100);
+        console.log('[Login] Login bem-sucedido. Redirecionando para:', returnTo);
+        setTimeout(() => navigate(returnTo), 100);
       }
     } catch (error: any) {
-      console.error('Erro inesperado:', error);
+      console.error('[Login] Erro inesperado:', error);
       const isNetworkError =
         error?.message === 'Failed to fetch' ||
         error?.name === 'AuthRetryableFetchError' ||
         error?.status === 0;
 
+      setShowError(true);
       if (isNetworkError) {
-        setShowError(true);
+        setErrorKind('network');
         setErrorMessage(
-          "Não foi possível conectar ao servidor. Tente novamente em alguns segundos."
+          "Não foi possível alcançar o servidor de autenticação. Verifique sua conexão (Wi-Fi/firewall) ou tente em uma rede diferente (ex: 4G)."
         );
-        toast({
-          title: "Erro de conexão",
-          description: "Não foi possível conectar ao servidor. Tente novamente.",
-          variant: "destructive",
-        });
       } else {
-        toast({
-          title: "Erro inesperado",
-          description: "Ocorreu um erro ao tentar fazer login",
-          variant: "destructive",
-        });
+        setErrorKind('other');
+        setErrorMessage("Ocorreu um erro inesperado ao tentar fazer login.");
       }
     } finally {
       setIsLoading(false);
