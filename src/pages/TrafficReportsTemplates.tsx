@@ -180,10 +180,19 @@ const TrafficReportsTemplates = () => {
             </p>
           </div>
         </div>
-        <Button onClick={handleOpenCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Template
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => navigate("/relatorios-trafego/templates/premium/novo")}
+            className="gap-2 bg-gradient-to-r from-[#ff6e00] to-[#ff9248] hover:opacity-90 text-white shadow-lg shadow-[#ff6e00]/20"
+          >
+            <Sparkles className="h-4 w-4" />
+            Novo Premium
+          </Button>
+          <Button onClick={handleOpenCreate} variant="outline" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Template
+          </Button>
+        </div>
       </div>
 
       {/* Premium Templates Section */}

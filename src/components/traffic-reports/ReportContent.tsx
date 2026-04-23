@@ -10,6 +10,8 @@ import { CombinedOverview } from "./CombinedOverview";
 import { ComparativeTrendCharts } from "./ComparativeTrendCharts";
 import { WidgetGridRenderer } from "./WidgetGridRenderer";
 import { DashCortexTemplate } from "./premium-templates/DashCortexTemplate";
+import { PremiumRenderer } from "@/components/premium-builder/PremiumRenderer";
+import { adaptToPremiumV2 } from "@/components/premium-builder/legacyAdapter";
 import { ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -216,6 +218,9 @@ export function ReportContent({
   // Detectar tema premium dark
   const isPremiumDark = (template?.sections as any)?.premiumTheme === 'dark';
 
+  // Premium Builder v2 — engine dedicado (calculado antes de qualquer early return)
+  const premiumV2 = useMemo(() => adaptToPremiumV2(template?.sections), [template]);
+
   // Renderizar usando widgets (novo sistema)
   const renderWidgetView = () => {
     if (!activeData || !templateWidgets) return null;
@@ -328,6 +333,17 @@ export function ReportContent({
   // Sem dados
   if (!insightsData) {
     return null;
+  }
+
+  // Premium Builder v2 — engine dedicado para templates premium editáveis
+  if (premiumV2) {
+    const dataForPremium = platform === 'both' ? insightsData : (activeData || insightsData);
+    return (
+      <PremiumRenderer
+        template={premiumV2}
+        data={dataForPremium}
+      />
+    );
   }
 
   // Template Premium Fixo (DashCortex)
