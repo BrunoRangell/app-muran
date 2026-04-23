@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TemplateWidget, DEFAULT_GRID_CONFIG, MetricKey } from '@/types/template-editor';
+import { TemplateWidget, DEFAULT_GRID_CONFIG, MetricKey, RankingDataSource } from '@/types/template-editor';
+import { cn } from '@/lib/utils';
 import {
   MetricCardWidget,
   ChartWidget,
@@ -53,7 +54,8 @@ export function TemplatePreviewDialog({
   open, 
   onOpenChange, 
   widgets, 
-  templateName 
+  templateName,
+  premiumTheme = false
 }: TemplatePreviewDialogProps) {
   const { cols, rowHeight } = DEFAULT_GRID_CONFIG;
   const marginX = 12;
@@ -213,6 +215,11 @@ export function TemplatePreviewDialog({
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-semibold">
               Preview: {templateName || 'Novo Template'}
+              {premiumTheme && (
+                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gradient-to-r from-[#0B0F1A] to-[#1a1f2e] text-white border border-[#ff6e00]/40">
+                  Premium Dark
+                </span>
+              )}
             </DialogTitle>
             <Button 
               variant="ghost" 
@@ -226,14 +233,20 @@ export function TemplatePreviewDialog({
         </DialogHeader>
         
         <ScrollArea className="flex-1">
-          <div className="p-6">
+          <div 
+            className={cn("p-6", premiumTheme && "p-0")}
+            style={premiumTheme ? { background: '#0B0F1A', minHeight: '100%' } : undefined}
+          >
             {widgets.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
+              <div className={cn(
+                "flex items-center justify-center h-64",
+                premiumTheme ? "text-white/40" : "text-muted-foreground"
+              )}>
                 Adicione widgets ao template para visualizar o preview
               </div>
             ) : (
               <div 
-                className="relative w-full"
+                className={cn("relative w-full", premiumTheme && "px-6 py-6")}
                 style={{ minHeight: containerHeight }}
               >
                 {widgets.map((widget) => (
