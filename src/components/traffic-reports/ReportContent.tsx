@@ -9,6 +9,7 @@ import { PlatformViewSelector } from "./PlatformViewSelector";
 import { CombinedOverview } from "./CombinedOverview";
 import { ComparativeTrendCharts } from "./ComparativeTrendCharts";
 import { WidgetGridRenderer } from "./WidgetGridRenderer";
+import { DashCortexTemplate } from "./premium-templates/DashCortexTemplate";
 import { ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -322,6 +323,20 @@ export function ReportContent({
   // Sem dados
   if (!insightsData) {
     return null;
+  }
+
+  // Template Premium Fixo (DashCortex)
+  const premiumLayout = (template?.sections as any)?.premiumLayout;
+  if (premiumLayout === 'dashcortex') {
+    // Para platform='both' usa dados combinados; caso contrário usa activeData
+    const dataForPremium = platform === 'both' ? insightsData : (activeData || insightsData);
+    return (
+      <DashCortexTemplate
+        data={dataForPremium}
+        clientName={insightsData?.clientName}
+        dateRange={insightsData?.dateRange}
+      />
+    );
   }
 
   return (
