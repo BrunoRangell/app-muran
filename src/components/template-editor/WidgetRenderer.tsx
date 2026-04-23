@@ -18,9 +18,12 @@ import {
   Square,
   Filter,
   GitCompare,
-  LayoutList
+  LayoutList,
+  Sparkles,
+  LayoutPanelTop,
+  BarChartHorizontal
 } from 'lucide-react';
-import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS, DimensionKey } from '@/types/template-editor';
+import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS, DimensionKey, RankingDataSource } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
 import {
   MetricCardWidget,
@@ -36,7 +39,10 @@ import {
   BoxWidget,
   FunnelWidget,
   ComboChartWidget,
-  AdsTableWidget
+  AdsTableWidget,
+  PremiumKpiWidget,
+  PlatformBlockWidget,
+  RankingTableWidget,
 } from '@/components/traffic-reports/widgets';
 import { 
   mockOverview, 
@@ -75,7 +81,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Square,
   Filter,
   GitCompare,
-  LayoutList
+  LayoutList,
+  Sparkles,
+  LayoutPanelTop,
+  BarChartHorizontal,
 };
 
 // Converter mock overview para formato esperado pelos widgets
