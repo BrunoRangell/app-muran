@@ -73,6 +73,7 @@ const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficRep
 const TrafficReportsTemplates = lazyWithTimeout(() => import("@/pages/TrafficReportsTemplates"));
 const TrafficReportsViewer = lazyWithTimeout(() => import("@/pages/TrafficReportsViewer"));
 const TemplateEditorPage = lazyWithTimeout(() => import("@/pages/TemplateEditorPage"));
+const PremiumBuilderPage = lazyWithTimeout(() => import("@/pages/PremiumBuilderPage"));
 
 
 function App() {
@@ -181,6 +182,28 @@ function App() {
             <PrivateRoute>
               <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
                 <TemplateEditorPage />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Premium Builder v2 - Editor premium dedicado */}
+        <Route
+          path="/relatorios-trafego/templates/premium/novo"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0B0F1A] text-white/60">Carregando Premium Builder…</div>}>
+                <PremiumBuilderPage />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/relatorios-trafego/templates/premium/editar/:templateId"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0B0F1A] text-white/60">Carregando Premium Builder…</div>}>
+                <PremiumBuilderPage />
               </Suspense>
             </PrivateRoute>
           }

@@ -10,6 +10,8 @@ import { CombinedOverview } from "./CombinedOverview";
 import { ComparativeTrendCharts } from "./ComparativeTrendCharts";
 import { WidgetGridRenderer } from "./WidgetGridRenderer";
 import { DashCortexTemplate } from "./premium-templates/DashCortexTemplate";
+import { PremiumRenderer } from "@/components/premium-builder/PremiumRenderer";
+import { adaptToPremiumV2 } from "@/components/premium-builder/legacyAdapter";
 import { ReportTemplate } from "@/hooks/useReportTemplates";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
