@@ -565,6 +565,250 @@ export function WidgetProperties({ widget, onUpdateConfig, onClose, onRemove, on
           </div>
         )}
 
+        {/* === WIDGETS PREMIUM (tema escuro) === */}
+
+        {/* Premium KPI */}
+        {widget.type === 'premium-kpi' && (
+          <>
+            <div className="space-y-3">
+              <Label>Métrica</Label>
+              <Select
+                value={widget.config.metrics?.[0] || 'impressions'}
+                onValueChange={(value) => onUpdateConfig({ metrics: [value as MetricKey] })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="kpi-accent">Cor de destaque</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="kpi-accent"
+                  type="color"
+                  className="w-14 h-10 p-1 cursor-pointer"
+                  value={widget.config.accent || '#ff6e00'}
+                  onChange={(e) => onUpdateConfig({ accent: e.target.value })}
+                />
+                <Input
+                  value={widget.config.accent || '#ff6e00'}
+                  onChange={(e) => onUpdateConfig({ accent: e.target.value })}
+                  placeholder="#ff6e00"
+                  className="flex-1 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <Separator />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="kpi-show-comparison">Comparar com período anterior</Label>
+              <Switch
+                id="kpi-show-comparison"
+                checked={widget.config.showComparison !== false}
+                onCheckedChange={(checked) => onUpdateConfig({ showComparison: checked })}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Platform Block */}
+        {widget.type === 'platform-block' && (
+          <>
+            <div className="space-y-3">
+              <Label>Plataforma</Label>
+              <Select
+                value={widget.config.platform || 'meta'}
+                onValueChange={(value) => onUpdateConfig({ 
+                  platform: value as 'meta' | 'google',
+                  // Auto-ajustar accent ao trocar plataforma se ainda for o padrão
+                  accent: value === 'meta' ? '#1877f2' : '#fbbc04'
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meta">Meta Ads</SelectItem>
+                  <SelectItem value="google">Google Ads</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pb-accent">Cor de destaque</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="pb-accent"
+                  type="color"
+                  className="w-14 h-10 p-1 cursor-pointer"
+                  value={widget.config.accent || '#1877f2'}
+                  onChange={(e) => onUpdateConfig({ accent: e.target.value })}
+                />
+                <Input
+                  value={widget.config.accent || '#1877f2'}
+                  onChange={(e) => onUpdateConfig({ accent: e.target.value })}
+                  placeholder="#1877f2"
+                  className="flex-1 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métrica principal (destaque)</Label>
+              <Select
+                value={(widget.config.mainMetric as string) || 'spend'}
+                onValueChange={(value) => onUpdateConfig({ mainMetric: value as MetricKey })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métrica do gráfico</Label>
+              <Select
+                value={(widget.config.chartMetric as string) || 'spend'}
+                onValueChange={(value) => onUpdateConfig({ chartMetric: value as MetricKey })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métricas laterais (até 3)</Label>
+              <p className="text-xs text-muted-foreground">As 3 primeiras selecionadas serão exibidas</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_METRICS.map(metric => {
+                  const sideMetrics = (widget.config.sideMetrics as MetricKey[]) || [];
+                  const isSelected = sideMetrics.includes(metric);
+                  return (
+                    <label
+                      key={metric}
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-md border cursor-pointer",
+                        "hover:bg-accent/50 transition-colors",
+                        isSelected ? "border-primary bg-primary/5" : "border-border"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          const current = sideMetrics;
+                          const newMetrics = checked
+                            ? [...current, metric].slice(0, 3)
+                            : current.filter(m => m !== metric);
+                          onUpdateConfig({ sideMetrics: newMetrics });
+                        }}
+                      />
+                      <span className="text-sm">{METRIC_LABELS[metric]}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Ranking Table */}
+        {widget.type === 'ranking-table' && (
+          <>
+            <div className="space-y-3">
+              <Label>Fonte de dados</Label>
+              <Select
+                value={widget.config.rankingDataSource || 'regions'}
+                onValueChange={(value) => onUpdateConfig({ rankingDataSource: value as any })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regions">Regiões</SelectItem>
+                  <SelectItem value="campaigns">Campanhas</SelectItem>
+                  <SelectItem value="creatives">Criativos</SelectItem>
+                  <SelectItem value="age">Idade</SelectItem>
+                  <SelectItem value="gender">Gênero</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Métrica para ordenação</Label>
+              <Select
+                value={widget.config.metrics?.[0] || 'conversions'}
+                onValueChange={(value) => onUpdateConfig({ metrics: [value as MetricKey] })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_METRICS.map(metric => (
+                    <SelectItem key={metric} value={metric}>
+                      {METRIC_LABELS[metric]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rt-accent">Cor de destaque (barras)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="rt-accent"
+                  type="color"
+                  className="w-14 h-10 p-1 cursor-pointer"
+                  value={widget.config.accent || '#ff6e00'}
+                  onChange={(e) => onUpdateConfig({ accent: e.target.value })}
+                />
+                <Input
+                  value={widget.config.accent || '#ff6e00'}
+                  onChange={(e) => onUpdateConfig({ accent: e.target.value })}
+                  placeholder="#ff6e00"
+                  className="flex-1 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rt-limit">Limite de itens</Label>
+              <Input
+                id="rt-limit"
+                type="number"
+                min={1}
+                max={20}
+                value={widget.config.limit || 8}
+                onChange={(e) => onUpdateConfig({ limit: parseInt(e.target.value) || 8 })}
+              />
+            </div>
+          </>
+        )}
+
         {/* === NOVOS WIDGETS === */}
 
         {/* Funil de Conversão */}
