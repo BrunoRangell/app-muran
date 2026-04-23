@@ -16,6 +16,7 @@ interface TemplateEditorCanvasProps {
   onSelectWidget: (id: string | null) => void;
   onRemoveWidget: (id: string) => void;
   onDuplicateWidget: (id: string) => void;
+  premiumTheme?: boolean;
 }
 
 const ZOOM_LEVELS = [50, 75, 100, 125, 150];
@@ -27,7 +28,8 @@ export function TemplateEditorCanvas({
   onLayoutChange,
   onSelectWidget,
   onRemoveWidget,
-  onDuplicateWidget
+  onDuplicateWidget,
+  premiumTheme = false
 }: TemplateEditorCanvasProps) {
   const [zoom, setZoom] = useState(100);
 

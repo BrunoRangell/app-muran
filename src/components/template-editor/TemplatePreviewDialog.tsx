@@ -34,6 +34,7 @@ interface TemplatePreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   widgets: TemplateWidget[];
   templateName: string;
+  premiumTheme?: boolean;
 }
 
 // Converter mock overview para formato esperado pelos widgets
