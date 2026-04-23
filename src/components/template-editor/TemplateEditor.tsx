@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Save, Eye, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, Eye, RotateCcw, Moon, Sun } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 export function TemplateEditor() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [premiumTheme, setPremiumTheme] = useState(false);
   const navigate = useNavigate();
   const { templateId } = useParams();
   const [searchParams] = useSearchParams();
