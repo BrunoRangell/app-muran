@@ -332,6 +332,18 @@ export function ReportContent({
     return null;
   }
 
+  // Premium Builder v2 — engine dedicado para templates premium editáveis
+  const premiumV2 = useMemo(() => adaptToPremiumV2(template?.sections), [template]);
+  if (premiumV2) {
+    const dataForPremium = platform === 'both' ? insightsData : (activeData || insightsData);
+    return (
+      <PremiumRenderer
+        template={premiumV2}
+        data={dataForPremium}
+      />
+    );
+  }
+
   // Template Premium Fixo (DashCortex)
   const premiumLayout = (template?.sections as any)?.premiumLayout;
   if (premiumLayout === 'dashcortex') {
