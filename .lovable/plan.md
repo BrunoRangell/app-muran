@@ -1,109 +1,77 @@
 
 
-# Tornar o portal do cliente realmente público (estilo Reportei/Windsor)
+# Template Premium "DashCortex" — Layout Fixo Ultra-Refinado
 
-## Você está absolutamente certo no diagnóstico de raiz — mas a causa não é o Meta Developers
+## Conceito
 
-A boa notícia: **nada tem a ver com seu app do Meta estar vinculado ao seu perfil**. O token Meta que usamos é um token de sistema armazenado em `api_tokens`, compartilhado por todas as requisições do servidor. Ele funciona igual para qualquer pessoa.
+Criar um **template fixo, não-editável, com design premium** inspirado no print que você enviou (DashCortex). A ideia é ter um modelo "showcase" com qualidade visual superior aos blocos genéricos do editor — tudo desenhado pixel-a-pixel para impressionar.
 
-## Por que Reportei e Windsor "funcionam" e o nosso não
+A funcionalidade de templates editáveis continua existindo. Este novo template aparece como uma opção extra no seletor — **"DashCortex (Premium)"** — e quando selecionado, renderiza um componente React próprio totalmente desenhado à mão, ignorando o sistema de widgets.
 
-Esses sistemas seguem um padrão chamado **"backend-mediated public access"**:
+## Características visuais do template
 
-```text
-┌─────────────┐         ┌──────────────────┐         ┌──────────┐
-│ Visitante   │────────▶│  Backend valida  │────────▶│ Meta API │
-│ sem login   │ /token  │  o token público │  token  │ Google   │
-└─────────────┘         │  e busca dados   │  master └──────────┘
-                        │  com credencial  │
-                        │  do dono da conta│
-                        └──────────────────┘
-```
+Reproduzindo fielmente a referência:
 
-O visitante **nunca** fala direto com Meta/Google. O backend autentica o link público, valida que está ativo, e usa as credenciais do dono para ir buscar os dados.
+- **Tema escuro profundo** (`#0B0F1A` background, `#131829` cards) com toque de glassmorphism sutil — destaca dos relatórios claros atuais e transmite sofisticação
+- **Header hero** "Overview" com logos coloridos das plataformas (Meta, Google Ads, Analytics) e badges de filtro/exportação no canto superior direito
+- **Linha de 5 KPIs principais** com:
+  - Ícone circular gradiente
+  - Valor grande em destaque
+  - Mini barra de progresso colorida (laranja Muran, azul, verde, amarelo, roxo) mostrando comparativo com período anterior
+  - Percentual de variação
+- **Card lateral de Orçamento** (Meta + Google) com mini-gráfico de distribuição linear
+- **Dois grandes blocos lado a lado**: Meta Ads (gráfico de barras laranja com mini-resumo lateral de Investimento/Compras/Custo) e Google Ads (gráfico de barras verde com mesmo padrão)
+- **Bloco Google Analytics** (acessos por dia, com totais ao lado)
+- **Pizza/donut "Origem dos Acessos"** mostrando fontes de tráfego com legenda lateral
+- **Tabela "Região"** com lista vertical de estados/cidades + valor de acessos e barra de gradiente laranja indicando proporção
+- **Sidebar de navegação fixa à esquerda** (Overview, Meta Ads, Google Ads, Analytics, Mobile) — apenas visual, com Overview ativo destacado
+- **Tipografia**: Space Grotesk (já usada no projeto) com pesos variados para hierarquia
+- **Animações sutis**: fade-in escalonado dos cards, hover com elevação suave, números animando ao carregar
 
-## Como o nosso está hoje (3 problemas bloqueantes)
+## Como será integrado
 
-Identifiquei 3 barreiras que fazem a página ficar vazia para terceiros:
+### Detecção e renderização
+- Adicionar uma flag `isPremiumFixed: true` em metadados de templates específicos
+- Em `ReportContent.tsx`, antes de cair no fluxo de widgets ou sections legadas, verificar se o template é "DashCortex" → renderiza `<DashCortexTemplate data={insightsData} />` direto
+- O componente recebe os mesmos dados que o WidgetGridRenderer recebe hoje (overview, demographics, timeSeries, campaigns, etc.) e os mapeia para os blocos visuais fixos
 
-### 1. A edge function `traffic-insights` exige login (JWT)
-Em `supabase/config.toml`, todas as outras funções públicas (`unified-meta-review`, `refresh-meta-token`, etc.) têm `verify_jwt = false`. A `traffic-insights` está faltando — então ela bloqueia qualquer requisição sem token de usuário logado.
+### Disponibilização
+- Inserir um registro fixo (ou seed) na tabela `report_templates` com:
+  - `name`: "DashCortex (Premium)"
+  - `is_global`: true
+  - `sections`: `{ "premiumLayout": "dashcortex" }` — marcador especial
+- Ele aparece automaticamente no `TemplateSelector` e no seletor do portal do cliente
 
-### 2. RLS bloqueia leitura de `clients` e `client_accounts`
-As políticas atuais exigem `is_team_member()` para qualquer SELECT. Quando o portal carrega:
-- `useClientAccounts(clientId)` falha → não traz as contas Meta/Google
-- Dados do cliente também não carregam
+### Onde testar
+- Selecionar este template no seletor de relatórios → vê o novo layout
+- Funciona também para portal do cliente (link público) → cliente vê o relatório premium
+- Os outros templates editáveis seguem funcionando normalmente
 
-### 3. A edge function não valida o `accessToken` do portal
-Hoje, mesmo se fosse pública, qualquer um poderia chamá-la passando qualquer `clientId`. Falta a verificação: "esse `accessToken` realmente dá direito a ver esse cliente?"
+## Arquivos
 
-## Plano de correção
+**Novos:**
+- `src/components/traffic-reports/premium-templates/DashCortexTemplate.tsx` — componente principal do layout
+- `src/components/traffic-reports/premium-templates/dashcortex/` — subcomponentes:
+  - `KpiCard.tsx` (card de métrica com barra de progresso)
+  - `PlatformBlock.tsx` (bloco grande Meta/Google com gráfico + resumo lateral)
+  - `RegionTable.tsx` (tabela de regiões com barras)
+  - `OriginPieChart.tsx` (donut de origem do tráfego)
+  - `BudgetCard.tsx` (card lateral de orçamento)
+  - `SidebarNav.tsx` (navegação visual lateral)
+- Migração SQL — inserir o template "DashCortex (Premium)" globalmente
 
-### Mudança 1 — Tornar `traffic-insights` pública
-Adicionar em `supabase/config.toml`:
-```toml
-[functions.traffic-insights]
-verify_jwt = false
-```
+**Editados:**
+- `src/components/traffic-reports/ReportContent.tsx` — detectar `sections.premiumLayout === 'dashcortex'` e renderizar `<DashCortexTemplate />` no lugar do fluxo normal
 
-### Mudança 2 — Validar acesso pelo `accessToken` dentro da edge function
-Modificar `supabase/functions/traffic-insights/index.ts` para aceitar um parâmetro opcional `portalAccessToken`:
+## Considerações técnicas
 
-- **Se vier `portalAccessToken`**: validar que existe em `client_portals` com `is_active = true` E que o `client_id` solicitado bate com o do portal. Só então prossegue.
-- **Se não vier**: exigir que a chamada tenha JWT válido de team member (modo interno atual).
-
-Isso mantém segurança: ninguém consegue consultar dados arbitrários, só o cliente cujo link foi compartilhado.
-
-### Mudança 3 — Permitir leitura pública de `clients` e `client_accounts` via portal válido
-Criar uma **função RPC SECURITY DEFINER** que retorna os dados necessários do cliente e suas contas, validando o `accessToken`:
-
-```sql
-CREATE FUNCTION public.get_portal_client_data(_token text)
-RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_portal record;
-  v_result jsonb;
-BEGIN
-  SELECT cp.*, c.id as client_id, c.company_name 
-  INTO v_portal
-  FROM client_portals cp
-  JOIN clients c ON c.id = cp.client_id
-  WHERE cp.access_token = _token AND cp.is_active = true;
-  
-  IF NOT FOUND THEN
-    RETURN jsonb_build_object('error', 'Portal não encontrado');
-  END IF;
-  
-  -- Retorna cliente + contas em uma única chamada
-  SELECT jsonb_build_object(
-    'client', jsonb_build_object('id', v_portal.client_id, 'company_name', v_portal.company_name),
-    'accounts', COALESCE(jsonb_agg(ca.*), '[]'::jsonb)
-  ) INTO v_result
-  FROM client_accounts ca
-  WHERE ca.client_id = v_portal.client_id AND ca.status = 'active';
-  
-  RETURN v_result;
-END;
-$$;
-```
-
-Como é `SECURITY DEFINER`, ela bypassa o RLS de forma controlada — só expõe dados se o token for válido.
-
-### Mudança 4 — Atualizar hooks no frontend para modo portal
-- `useClientAccounts` e `useUnifiedData`: detectar `isPortalMode` e, se sim, usar a nova RPC `get_portal_client_data` em vez das queries diretas que esbarram no RLS.
-- `useTrafficInsights`: passar `portalAccessToken` no body quando estiver em modo portal.
-
-## Arquivos a editar
-- `supabase/config.toml` — adicionar `verify_jwt = false` para `traffic-insights`
-- Migração SQL — criar função `get_portal_client_data`
-- `supabase/functions/traffic-insights/index.ts` — aceitar e validar `portalAccessToken`
-- `src/hooks/useTrafficInsights.ts` — propagar `portalAccessToken`
-- `src/hooks/useClientAccounts.ts` — usar RPC em modo portal
-- `src/pages/TrafficReports.tsx` — passar `accessToken` para os hooks quando em portal mode
+- O template usa apenas dados que já existem em `insightsData` — sem novas chamadas de API
+- Quando uma seção não tem dados (ex.: cliente sem Google Analytics), o bloco é omitido graciosamente em vez de quebrar
+- A sidebar lateral é puramente decorativa nesta primeira versão — clicar nela rola até a respectiva seção (scroll suave). Sem mudança de estado complexa
+- Responsividade: mantém o layout fixo em desktop (≥1280px). Em telas menores, os blocos empilham verticalmente preservando a estética
+- Uso intenso de `recharts` (já no projeto) para gráficos, com cores customizadas para cada plataforma
 
 ## Resultado esperado
-Após essas mudanças, qualquer pessoa com o link `https://app.muranmarketing.com.br/cliente/empresa-x` verá os dados em tempo real — exatamente como Reportei/Windsor — sem login e sem precisar de permissões no Meta Developers. Sua conta Meta segue sendo a única "fonte" dos dados, mas isso é totalmente transparente para o visitante.
+
+Um template **"plug and play"** que você seleciona no dropdown e instantaneamente o relatório vira um dashboard premium estilo DashCortex — sem precisar configurar widgets, mover blocos ou ajustar nada. Ideal para clientes onde você quer apresentar algo "uau" sem trabalho de montagem.
 
