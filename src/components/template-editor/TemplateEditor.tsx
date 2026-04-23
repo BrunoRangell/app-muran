@@ -235,6 +235,18 @@ export function TemplateEditor() {
           
           <div className="flex items-center gap-2">
             <Button
+              variant={premiumTheme ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPremiumTheme(p => !p)}
+              className={cn(
+                premiumTheme && "bg-gradient-to-r from-[#0B0F1A] to-[#1a1f2e] text-white hover:opacity-90 border-[#ff6e00]/50"
+              )}
+              title="Alterna o canvas e a renderização para o tema escuro premium"
+            >
+              {premiumTheme ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+              Tema Premium {premiumTheme ? 'ON' : 'OFF'}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={resetEditor}
