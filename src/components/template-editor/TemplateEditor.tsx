@@ -82,6 +82,7 @@ export function TemplateEditor() {
         const sections = template.sections as any;
         if (sections?.widgets) {
           loadTemplate(sections as TemplateData, template.name, template.is_global);
+          setPremiumTheme(sections?.premiumTheme === 'dark');
         } else {
           // Template antigo - carregar com widgets padrão baseados nas seções
           const legacyWidgets = convertLegacySections(sections);
@@ -90,6 +91,7 @@ export function TemplateEditor() {
             template.name,
             template.is_global
           );
+          setPremiumTheme(false);
         }
       }
     }
