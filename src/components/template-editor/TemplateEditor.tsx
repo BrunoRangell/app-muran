@@ -331,6 +331,7 @@ export function TemplateEditor() {
         onOpenChange={setPreviewOpen}
         widgets={widgets}
         templateName={templateName}
+        premiumTheme={premiumTheme}
       />
       
       {/* Modal de Salvar */}
