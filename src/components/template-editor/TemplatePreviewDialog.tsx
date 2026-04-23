@@ -20,7 +20,10 @@ import {
   ImageBlockWidget,
   DividerWidget,
   SpacerWidget,
-  BoxWidget
+  BoxWidget,
+  PremiumKpiWidget,
+  PlatformBlockWidget,
+  RankingTableWidget
 } from '@/components/traffic-reports/widgets';
 import { 
   mockOverview, 
@@ -195,6 +198,54 @@ export function TemplatePreviewDialog({
             fontSize={widget.config.fontSize as any}
             fontWeight={widget.config.fontWeight}
             textColor={widget.config.textColor}
+          />
+        );
+      }
+
+      // === PREMIUM WIDGETS ===
+      case 'premium-kpi': {
+        const metricKey = (widget.config.metrics?.[0] as MetricKey) || 'impressions';
+        return (
+          <PremiumKpiWidget
+            metric={metricKey}
+            data={mockOverviewData[metricKey]}
+            accent={widget.config.accent}
+            showComparison={widget.config.showComparison !== false}
+            title={widget.config.title}
+          />
+        );
+      }
+
+      case 'platform-block': {
+        const overview: any = {};
+        (Object.keys(mockOverviewData) as MetricKey[]).forEach((k) => {
+          overview[k] = mockOverviewData[k];
+        });
+        return (
+          <PlatformBlockWidget
+            platform={(widget.config.platform || 'meta') as 'meta' | 'google'}
+            accent={widget.config.accent}
+            mainMetric={(widget.config.mainMetric as MetricKey) || 'spend'}
+            sideMetrics={(widget.config.sideMetrics as MetricKey[]) || ['clicks', 'conversions', 'cpa']}
+            chartMetric={(widget.config.chartMetric as MetricKey) || 'spend'}
+            timeSeries={mockTimeSeries.slice(-14)}
+            overview={overview}
+            title={widget.config.title}
+          />
+        );
+      }
+
+      case 'ranking-table': {
+        return (
+          <RankingTableWidget
+            dataSource={(widget.config.rankingDataSource as RankingDataSource) || 'regions'}
+            metric={(widget.config.metrics?.[0] as MetricKey) || 'conversions'}
+            accent={widget.config.accent}
+            limit={widget.config.limit || 8}
+            title={widget.config.title}
+            demographics={mockDemographics}
+            campaigns={mockCampaigns}
+            topAds={mockCreatives}
           />
         );
       }
