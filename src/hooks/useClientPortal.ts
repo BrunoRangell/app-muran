@@ -76,28 +76,58 @@ export function useClientPortalByClient(clientId: string | undefined) {
   });
 }
 
-// Hook para buscar portal por token (usado na página pública)
+// Hook para buscar portal por token (usado na página pública - SEM login)
+// Usa a RPC `get_portal_client_data` (SECURITY DEFINER) para bypassar RLS de forma controlada.
 export function useClientPortalByToken(token: string | undefined) {
   return useQuery({
     queryKey: ['client-portal-token', token],
     queryFn: async () => {
       if (!token) return null;
-      
-      const { data, error } = await supabase
-        .from('client_portals')
-        .select(`
-          *,
-          clients (
-            id,
-            company_name
-          )
-        `)
-        .eq('access_token', token)
-        .eq('is_active', true)
-        .maybeSingle();
-      
+
+      const { data, error } = await supabase.rpc('get_portal_client_data', {
+        _token: token,
+      });
+
       if (error) throw error;
-      return data as PortalWithClient | null;
+
+      const payload = data as {
+        error?: string;
+        client?: { id: string; company_name: string; logo_url: string | null };
+        portal?: {
+          id: string;
+          default_platform: string;
+          default_period: number;
+          allow_period_change: boolean;
+          allow_platform_change: boolean;
+        };
+      } | null;
+
+      if (!payload || payload.error || !payload.client || !payload.portal) {
+        return null;
+      }
+
+      // Mapeia para o formato esperado pelo componente (PortalWithClient)
+      const result: PortalWithClient = {
+        id: payload.portal.id,
+        client_id: payload.client.id,
+        access_token: token,
+        is_active: true,
+        default_platform: payload.portal.default_platform,
+        default_period: payload.portal.default_period,
+        allow_period_change: payload.portal.allow_period_change,
+        allow_platform_change: payload.portal.allow_platform_change,
+        last_accessed_at: null,
+        access_count: 0,
+        created_by: '',
+        created_at: '',
+        updated_at: '',
+        clients: {
+          id: payload.client.id,
+          company_name: payload.client.company_name,
+        },
+      };
+
+      return result;
     },
     enabled: !!token,
   });
