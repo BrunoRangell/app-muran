@@ -151,7 +151,8 @@ const TrafficReports = () => {
       start: effectiveDateRange.start.toISOString().split('T')[0],
       end: effectiveDateRange.end.toISOString().split('T')[0]
     },
-    compareWithPrevious: true
+    compareWithPrevious: true,
+    portalAccessToken: isPortalMode ? accessToken : undefined,
   });
 
   const handleClientChange = (clientId: string) => {
