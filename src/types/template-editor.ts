@@ -27,6 +27,9 @@ export type PresetType =
   | 'trends-full'          // Todos os gráficos de tendência
   | 'demographics-full';   // Demografia completa
 
+// Fonte de dados para tabelas de ranking
+export type RankingDataSource = 'regions' | 'campaigns' | 'creatives' | 'age' | 'gender';
+
 // Tipos de widgets disponíveis (agora todos são editáveis)
 export type WidgetType = 
   // Individuais (todos configuráveis)
@@ -41,6 +44,10 @@ export type WidgetType =
   | 'campaigns-table'      // Tabela de campanhas
   | 'ads-table'            // Tabela de anúncios com thumbnails
   | 'top-creatives'        // Top criativos
+  // Widgets premium (tema escuro)
+  | 'premium-kpi'          // KPI premium com barra de progresso
+  | 'platform-block'       // Bloco grande de plataforma (Meta/Google)
+  | 'ranking-table'        // Tabela de ranking com barras gradiente
   // Widgets de conteúdo
   | 'text-block'           // Bloco de texto (título, parágrafo)
   | 'image-block'          // Imagem com URL ou upload
@@ -103,6 +110,13 @@ export interface WidgetConfig {
   backgroundColor?: string;      // Cor de fundo (box)
   borderColor?: string;          // Cor da borda (box)
   padding?: 'none' | 'sm' | 'md' | 'lg';  // Padding interno (box)
+  // Configurações de widgets premium
+  accent?: string;                       // Cor de destaque (hex) — premium-kpi, platform-block, ranking-table
+  platform?: 'meta' | 'google';          // Plataforma — platform-block
+  mainMetric?: MetricKey;                // Métrica principal — platform-block
+  sideMetrics?: MetricKey[];             // 3 métricas laterais — platform-block
+  chartMetric?: MetricKey;               // Métrica do gráfico — platform-block
+  rankingDataSource?: RankingDataSource; // Fonte do ranking — ranking-table
 }
 
 // Widget completo
@@ -134,7 +148,7 @@ export interface WidgetMetadata {
   name: string;
   description: string;
   icon: string;                  // Nome do ícone Lucide
-  category: 'preset' | 'individual' | 'content';
+  category: 'preset' | 'individual' | 'content' | 'premium';
   defaultLayout: Omit<WidgetLayout, 'x' | 'y'>;
   defaultConfig: WidgetConfig;
 }
@@ -334,6 +348,50 @@ export const WIDGET_CATALOG: WidgetMetadata[] = [
       borderRadius: 'lg',
       padding: 'md',
       text: 'Conteúdo da caixa'
+    }
+  },
+
+  // === Widgets Premium (tema escuro) ===
+  {
+    type: 'premium-kpi',
+    name: 'KPI Premium',
+    description: 'Card de métrica premium com ícone gradiente, valor grande e barra de progresso',
+    icon: 'Sparkles',
+    category: 'premium',
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2 },
+    defaultConfig: {
+      metrics: ['impressions'],
+      accent: '#ff6e00',
+      showComparison: true
+    }
+  },
+  {
+    type: 'platform-block',
+    name: 'Bloco de Plataforma',
+    description: 'Bloco grande com gráfico + 3 métricas laterais (Meta ou Google)',
+    icon: 'LayoutPanelTop',
+    category: 'premium',
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 4 },
+    defaultConfig: {
+      platform: 'meta',
+      accent: '#1877f2',
+      mainMetric: 'spend',
+      sideMetrics: ['clicks', 'conversions', 'cpa'],
+      chartMetric: 'spend'
+    }
+  },
+  {
+    type: 'ranking-table',
+    name: 'Tabela de Ranking',
+    description: 'Lista vertical com barras de gradiente proporcionais',
+    icon: 'BarChartHorizontal',
+    category: 'premium',
+    defaultLayout: { w: 6, h: 5, minW: 4, minH: 3 },
+    defaultConfig: {
+      rankingDataSource: 'regions',
+      metrics: ['conversions'],
+      limit: 8,
+      accent: '#ff6e00'
     }
   }
 ];
