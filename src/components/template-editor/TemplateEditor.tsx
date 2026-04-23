@@ -293,6 +293,7 @@ export function TemplateEditor() {
             onSelectWidget={selectWidget}
             onRemoveWidget={removeWidget}
             onDuplicateWidget={duplicateWidget}
+            premiumTheme={premiumTheme}
           />
         </main>
 
