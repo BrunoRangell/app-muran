@@ -42,7 +42,7 @@ interface TemplatePreviewDialogProps {
 }
 
 // Converter mock overview para formato esperado pelos widgets
-const mockOverviewData = {
+const mockOverviewData: Record<MetricKey, { current: number; previous: number; change: number }> = {
   impressions: { current: mockOverview.impressions, previous: mockOverview.impressions * 0.85, change: 12.5 },
   reach: { current: mockOverview.reach, previous: mockOverview.reach * 0.9, change: 8.3 },
   clicks: { current: mockOverview.clicks, previous: mockOverview.clicks * 0.88, change: 15.2 },
@@ -50,7 +50,11 @@ const mockOverviewData = {
   conversions: { current: mockOverview.conversions, previous: mockOverview.conversions * 0.82, change: 22.4 },
   spend: { current: mockOverview.spend, previous: mockOverview.spend * 0.94, change: 5.8 },
   cpa: { current: mockOverview.cpa, previous: mockOverview.cpa * 1.08, change: -8.7 },
-  cpc: { current: mockOverview.cpc, previous: mockOverview.cpc * 1.04, change: -4.2 }
+  cpc: { current: mockOverview.cpc, previous: mockOverview.cpc * 1.04, change: -4.2 },
+  cpm: { current: mockOverview.cpm ?? 18.5, previous: (mockOverview.cpm ?? 18.5) * 1.02, change: -2 },
+  frequency: { current: mockOverview.frequency ?? 1.8, previous: (mockOverview.frequency ?? 1.8) * 0.95, change: 5 },
+  videoViews: { current: mockOverview.videoViews ?? 45000, previous: (mockOverview.videoViews ?? 45000) * 0.85, change: 17.6 },
+  messages: { current: mockOverview.messages ?? 320, previous: (mockOverview.messages ?? 320) * 0.9, change: 11.1 }
 };
 
 export function TemplatePreviewDialog({ 
