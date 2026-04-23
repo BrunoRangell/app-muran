@@ -1,5 +1,5 @@
 import React from 'react';
-import { TemplateWidget, MetricKey, DEFAULT_GRID_CONFIG } from '@/types/template-editor';
+import { TemplateWidget, MetricKey, RankingDataSource, DEFAULT_GRID_CONFIG } from '@/types/template-editor';
 import { 
   MetricCardWidget, 
   ChartWidget, 
@@ -13,8 +13,12 @@ import {
   BoxWidget,
   FunnelWidget,
   ComboChartWidget,
-  AdsTableWidget
+  AdsTableWidget,
+  PremiumKpiWidget,
+  PlatformBlockWidget,
+  RankingTableWidget,
 } from './widgets';
+import { SidebarNav } from './premium-templates/dashcortex/SidebarNav';
 
 interface InsightsData {
   overview?: {
@@ -41,9 +45,10 @@ interface InsightsData {
 interface WidgetGridRendererProps {
   widgets: TemplateWidget[];
   data: InsightsData;
+  premiumTheme?: boolean;
 }
 
-export function WidgetGridRenderer({ widgets, data }: WidgetGridRendererProps) {
+export function WidgetGridRenderer({ widgets, data, premiumTheme = false }: WidgetGridRendererProps) {
   const { cols, rowHeight } = DEFAULT_GRID_CONFIG;
   const marginX = 12;
   const marginY = 12;
