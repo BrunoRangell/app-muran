@@ -11,12 +11,50 @@ export interface ClientAccount {
   created_at: string;
 }
 
-export const useClientAccounts = (clientId: string, platform?: 'meta' | 'google') => {
+/**
+ * Busca contas de um cliente.
+ * - Modo interno (sem portalAccessToken): usa SELECT direto, protegido por RLS de team member.
+ * - Modo portal (com portalAccessToken): usa RPC `get_portal_client_data`, que valida o token
+ *   no servidor e libera as contas sem exigir login.
+ */
+export const useClientAccounts = (
+  clientId: string,
+  platform?: 'meta' | 'google',
+  portalAccessToken?: string
+) => {
   return useQuery({
-    queryKey: ['client-accounts', clientId, platform],
+    queryKey: ['client-accounts', clientId, platform, portalAccessToken ? 'portal' : 'internal'],
     queryFn: async () => {
-      console.log('🔍 [useClientAccounts] Fetching accounts for client:', clientId);
+      console.log('🔍 [useClientAccounts] Fetching accounts for client:', clientId, {
+        portalMode: !!portalAccessToken,
+      });
 
+      // ===== Modo Portal: usa RPC pública validada por token =====
+      if (portalAccessToken) {
+        const { data, error } = await supabase.rpc('get_portal_client_data', {
+          _token: portalAccessToken,
+        });
+
+        if (error) {
+          console.error('❌ [useClientAccounts] Portal RPC error:', error);
+          throw error;
+        }
+
+        const payload = data as { error?: string; accounts?: ClientAccount[] } | null;
+        if (!payload || payload.error) {
+          throw new Error(payload?.error || 'Portal não disponível');
+        }
+
+        let accounts = (payload.accounts || []) as ClientAccount[];
+        if (platform) {
+          accounts = accounts.filter(a => a.platform === platform);
+        }
+
+        console.log(`✅ [useClientAccounts] (portal) Found ${accounts.length} accounts`);
+        return accounts;
+      }
+
+      // ===== Modo Interno: SELECT direto =====
       let query = supabase
         .from('client_accounts')
         .select('*')
