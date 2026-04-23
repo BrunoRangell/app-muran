@@ -336,7 +336,6 @@ export function ReportContent({
   }
 
   // Premium Builder v2 — engine dedicado para templates premium editáveis
-  const premiumV2 = useMemo(() => adaptToPremiumV2(template?.sections), [template]);
   if (premiumV2) {
     const dataForPremium = platform === 'both' ? insightsData : (activeData || insightsData);
     return (
