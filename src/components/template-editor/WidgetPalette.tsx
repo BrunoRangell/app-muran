@@ -148,6 +148,7 @@ export function WidgetPalette({ onAddWidget }: WidgetPaletteProps) {
   
   const individualWidgets = WIDGET_CATALOG.filter(w => w.category === 'individual');
   const contentWidgets = WIDGET_CATALOG.filter(w => w.category === 'content');
+  const premiumWidgets = WIDGET_CATALOG.filter(w => w.category === 'premium');
 
   const handleAddPreset = (preset: WidgetPreset) => {
     // Pass the preset ID and its widgets to the parent
@@ -227,6 +228,26 @@ export function WidgetPalette({ onAddWidget }: WidgetPaletteProps) {
           </h4>
           <div className="space-y-2">
             {individualWidgets.map(widget => (
+              <WidgetPaletteItem
+                key={widget.type}
+                widget={widget}
+                onAdd={() => onAddWidget(widget.type as WidgetType)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Premium (tema escuro) */}
+        <div>
+          <h4 className="text-xs font-medium uppercase tracking-wider mb-3 flex items-center gap-2 text-[#ff6e00]">
+            <Sparkles className="w-3 h-3" />
+            Premium Dark
+          </h4>
+          <p className="text-[10px] text-muted-foreground/70 mb-3">
+            Widgets refinados para templates com tema escuro premium
+          </p>
+          <div className="space-y-2">
+            {premiumWidgets.map(widget => (
               <WidgetPaletteItem
                 key={widget.type}
                 widget={widget}
