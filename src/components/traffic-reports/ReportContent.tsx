@@ -218,6 +218,9 @@ export function ReportContent({
   // Detectar tema premium dark
   const isPremiumDark = (template?.sections as any)?.premiumTheme === 'dark';
 
+  // Premium Builder v2 — engine dedicado (calculado antes de qualquer early return)
+  const premiumV2 = useMemo(() => adaptToPremiumV2(template?.sections), [template]);
+
   // Renderizar usando widgets (novo sistema)
   const renderWidgetView = () => {
     if (!activeData || !templateWidgets) return null;
