@@ -325,6 +325,20 @@ export function ReportContent({
     return null;
   }
 
+  // Template Premium Fixo (DashCortex)
+  const premiumLayout = (template?.sections as any)?.premiumLayout;
+  if (premiumLayout === 'dashcortex') {
+    // Para platform='both' usa dados combinados; caso contrário usa activeData
+    const dataForPremium = platform === 'both' ? insightsData : (activeData || insightsData);
+    return (
+      <DashCortexTemplate
+        data={dataForPremium}
+        clientName={insightsData?.clientName}
+        dateRange={insightsData?.dateRange}
+      />
+    );
+  }
+
   return (
     <>
       {/* Seletor de View para platform='both' (esconder quando já tem no header) */}
