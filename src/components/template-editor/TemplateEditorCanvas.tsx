@@ -176,7 +176,8 @@ export function TemplateEditorCanvas({
       <div 
         className={cn(
           "flex-1 overflow-auto rounded-lg",
-          "border border-border bg-muted/5"
+          "border",
+          premiumTheme ? "border-white/10 bg-[#0B0F1A]" : "border-border bg-muted/5"
         )}
         onClick={handleCanvasClick}
       >
@@ -190,13 +191,18 @@ export function TemplateEditorCanvas({
         >
           <div
             style={{
-              backgroundImage: `
-                linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
-                linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
-              `,
+              backgroundImage: premiumTheme
+                ? `
+                  linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)
+                `
+                : `
+                  linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
+                  linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
+                `,
               backgroundSize: `${cellWidth}px ${cellHeight}px`,
               backgroundPosition: `${containerPadding[0]}px ${containerPadding[1]}px`,
-              backgroundColor: 'hsl(var(--background))'
+              backgroundColor: premiumTheme ? '#0B0F1A' : 'hsl(var(--background))'
             }}
           >
             <GridLayout
