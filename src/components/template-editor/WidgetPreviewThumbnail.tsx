@@ -9,7 +9,10 @@ import {
   MetricCardPreview,
   ChartPreview,
   PieChartPreview,
-  TablePreview
+  TablePreview,
+  PremiumKpiPreview,
+  PlatformBlockPreview,
+  RankingTablePreview,
 } from './widget-previews';
 
 interface WidgetPreviewThumbnailProps {
@@ -43,6 +46,13 @@ export function WidgetPreviewThumbnail({ type }: WidgetPreviewThumbnailProps) {
         return <PieChartPreview dataSource="demographics" showLegend />;
       case 'simple-table':
         return <TablePreview metrics={['impressions', 'clicks', 'conversions']} limit={5} />;
+      // Premium
+      case 'premium-kpi':
+        return <PremiumKpiPreview />;
+      case 'platform-block':
+        return <PlatformBlockPreview />;
+      case 'ranking-table':
+        return <RankingTablePreview />;
       default:
         return null;
     }
