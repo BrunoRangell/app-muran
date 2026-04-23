@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Save, Eye, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, Eye, RotateCcw, Moon, Sun } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 export function TemplateEditor() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [premiumTheme, setPremiumTheme] = useState(false);
   const navigate = useNavigate();
   const { templateId } = useParams();
   const [searchParams] = useSearchParams();
@@ -81,6 +82,7 @@ export function TemplateEditor() {
         const sections = template.sections as any;
         if (sections?.widgets) {
           loadTemplate(sections as TemplateData, template.name, template.is_global);
+          setPremiumTheme(sections?.premiumTheme === 'dark');
         } else {
           // Template antigo - carregar com widgets padrão baseados nas seções
           const legacyWidgets = convertLegacySections(sections);
@@ -89,6 +91,7 @@ export function TemplateEditor() {
             template.name,
             template.is_global
           );
+          setPremiumTheme(false);
         }
       }
     }
@@ -159,6 +162,11 @@ export function TemplateEditor() {
 
     try {
       const templateData = getTemplateData();
+      // Anexar o flag de tema premium ao JSONB salvo
+      const sectionsPayload: any = {
+        ...templateData,
+        ...(premiumTheme ? { premiumTheme: 'dark' } : {})
+      };
       
       // Atualizar estado local
       setTemplateName(name);
@@ -169,7 +177,7 @@ export function TemplateEditor() {
           id: templateId,
           name: name,
           is_global: global,
-          sections: templateData as any
+          sections: sectionsPayload
         });
         toast.success('Template atualizado com sucesso!');
       } else {
@@ -177,7 +185,7 @@ export function TemplateEditor() {
           name: name,
           is_global: global,
           client_id: null,
-          sections: templateData as any
+          sections: sectionsPayload
         });
         toast.success('Template criado com sucesso!');
         // Atualizar URL para modo edição com o novo ID
@@ -227,6 +235,18 @@ export function TemplateEditor() {
           
           <div className="flex items-center gap-2">
             <Button
+              variant={premiumTheme ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPremiumTheme(p => !p)}
+              className={cn(
+                premiumTheme && "bg-gradient-to-r from-[#0B0F1A] to-[#1a1f2e] text-white hover:opacity-90 border-[#ff6e00]/50"
+              )}
+              title="Alterna o canvas e a renderização para o tema escuro premium"
+            >
+              {premiumTheme ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+              Tema Premium {premiumTheme ? 'ON' : 'OFF'}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={resetEditor}
@@ -273,6 +293,7 @@ export function TemplateEditor() {
             onSelectWidget={selectWidget}
             onRemoveWidget={removeWidget}
             onDuplicateWidget={duplicateWidget}
+            premiumTheme={premiumTheme}
           />
         </main>
 
@@ -310,6 +331,7 @@ export function TemplateEditor() {
         onOpenChange={setPreviewOpen}
         widgets={widgets}
         templateName={templateName}
+        premiumTheme={premiumTheme}
       />
       
       {/* Modal de Salvar */}
