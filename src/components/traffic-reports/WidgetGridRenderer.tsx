@@ -113,7 +113,9 @@ export function WidgetGridRenderer({ widgets, data, premiumTheme = false }: Widg
         
         return (
           <PieChartWidget
-            dataSource={widget.config.dataSource as any || 'gender'}
+            dimension={widget.config.dimension as any}
+            metric={widget.config.metrics?.[0] as any}
+            dataSource={widget.config.dataSource as any}
             demographics={data.demographics}
             showLegend={widget.config.showLegend !== false}
             title={widget.config.title}

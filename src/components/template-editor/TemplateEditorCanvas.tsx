@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
 
 interface TemplateEditorCanvasProps {
   widgets: TemplateWidget[];
