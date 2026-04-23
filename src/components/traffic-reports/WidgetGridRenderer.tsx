@@ -249,6 +249,57 @@ export function WidgetGridRenderer({ widgets, data, premiumTheme = false }: Widg
         );
       }
 
+      // === PREMIUM WIDGETS (dark theme) ===
+      case 'premium-kpi': {
+        const metricKey = (widget.config.metrics?.[0] as MetricKey) || 'impressions';
+        const metricData = data.overview?.[metricKey];
+        return (
+          <PremiumKpiWidget
+            metric={metricKey}
+            data={metricData}
+            accent={widget.config.accent}
+            showComparison={widget.config.showComparison !== false}
+            title={widget.config.title}
+          />
+        );
+      }
+
+      case 'platform-block': {
+        const platform = (widget.config.platform || 'meta') as 'meta' | 'google';
+        const platformData =
+          platform === 'meta'
+            ? (data as any).metaData ?? (data.platform === 'meta' ? data : null)
+            : (data as any).googleData ?? (data.platform === 'google' ? data : null);
+
+        return (
+          <PlatformBlockWidget
+            platform={platform}
+            accent={widget.config.accent}
+            mainMetric={(widget.config.mainMetric as MetricKey) || 'spend'}
+            sideMetrics={(widget.config.sideMetrics as MetricKey[]) || ['clicks', 'conversions', 'cpa']}
+            chartMetric={(widget.config.chartMetric as MetricKey) || 'spend'}
+            title={widget.config.title}
+            timeSeries={platformData?.timeSeries || []}
+            overview={platformData?.overview || data.overview}
+          />
+        );
+      }
+
+      case 'ranking-table': {
+        return (
+          <RankingTableWidget
+            dataSource={(widget.config.rankingDataSource as RankingDataSource) || 'regions'}
+            metric={(widget.config.metrics?.[0] as MetricKey) || 'conversions'}
+            accent={widget.config.accent}
+            limit={widget.config.limit || 8}
+            title={widget.config.title}
+            demographics={data.demographics}
+            campaigns={data.campaigns}
+            topAds={data.topAds}
+          />
+        );
+      }
+
       default:
         return <EmptyState message="Widget não reconhecido" />;
     }
@@ -256,13 +307,13 @@ export function WidgetGridRenderer({ widgets, data, premiumTheme = false }: Widg
 
   if (widgets.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
+      <div className={premiumTheme ? "flex items-center justify-center py-12 text-white/40" : "flex items-center justify-center py-12 text-muted-foreground"}>
         Nenhum widget configurado no template
       </div>
     );
   }
 
-  return (
+  const grid = (
     <div 
       className="relative w-full"
       style={{ minHeight: containerHeight }}
@@ -278,6 +329,29 @@ export function WidgetGridRenderer({ widgets, data, premiumTheme = false }: Widg
       ))}
     </div>
   );
+
+  if (premiumTheme) {
+    return (
+      <div
+        className="dashcortex-root w-full min-h-screen px-4 sm:px-6 lg:px-8 py-6"
+        style={{ background: '#0B0F1A' }}
+      >
+        <style>{`
+          .dashcortex-root { font-family: 'Space Grotesk', -apple-system, sans-serif; }
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+        <div className="flex gap-6 max-w-[1600px] mx-auto">
+          <SidebarNav active="overview" />
+          <div className="flex-1 min-w-0">{grid}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return grid;
 }
 
 // Componente para estados vazios
