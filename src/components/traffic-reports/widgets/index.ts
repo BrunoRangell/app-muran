@@ -13,3 +13,7 @@ export { ImageBlockWidget } from './ImageBlockWidget';
 export { DividerWidget } from './DividerWidget';
 export { SpacerWidget } from './SpacerWidget';
 export { BoxWidget } from './BoxWidget';
+// Premium widgets (dark theme)
+export { PremiumKpiWidget } from './PremiumKpiWidget';
+export { PlatformBlockWidget } from './PlatformBlockWidget';
+export { RankingTableWidget } from './RankingTableWidget';

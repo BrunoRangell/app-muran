@@ -18,9 +18,12 @@ import {
   Square,
   Filter,
   GitCompare,
-  LayoutList
+  LayoutList,
+  Sparkles,
+  LayoutPanelTop,
+  BarChartHorizontal
 } from 'lucide-react';
-import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS, DimensionKey } from '@/types/template-editor';
+import { TemplateWidget, WIDGET_CATALOG, MetricKey, METRIC_LABELS, DimensionKey, RankingDataSource } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
 import {
   MetricCardWidget,
@@ -36,7 +39,10 @@ import {
   BoxWidget,
   FunnelWidget,
   ComboChartWidget,
-  AdsTableWidget
+  AdsTableWidget,
+  PremiumKpiWidget,
+  PlatformBlockWidget,
+  RankingTableWidget,
 } from '@/components/traffic-reports/widgets';
 import { 
   mockOverview, 
@@ -75,7 +81,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Square,
   Filter,
   GitCompare,
-  LayoutList
+  LayoutList,
+  Sparkles,
+  LayoutPanelTop,
+  BarChartHorizontal,
 };
 
 // Converter mock overview para formato esperado pelos widgets
@@ -351,6 +360,52 @@ export function WidgetRenderer({
             showProportionBars={widget.config.showProportionBars}
             proportionMetric={widget.config.proportionMetric as MetricKey}
             title={getTitle()}
+          />
+        );
+      }
+
+      // === PREMIUM WIDGETS ===
+      case 'premium-kpi': {
+        const metricKey = (widget.config.metrics?.[0] as MetricKey) || 'impressions';
+        return (
+          <PremiumKpiWidget
+            metric={metricKey}
+            data={mockOverviewData[metricKey]}
+            accent={widget.config.accent}
+            showComparison={widget.config.showComparison !== false}
+            title={widget.config.title}
+          />
+        );
+      }
+
+      case 'platform-block': {
+        const overview: any = {};
+        (Object.keys(mockOverviewData) as MetricKey[]).forEach(k => { overview[k] = mockOverviewData[k]; });
+        return (
+          <PlatformBlockWidget
+            platform={(widget.config.platform || 'meta') as 'meta' | 'google'}
+            accent={widget.config.accent}
+            mainMetric={(widget.config.mainMetric as MetricKey) || 'spend'}
+            sideMetrics={(widget.config.sideMetrics as MetricKey[]) || ['clicks', 'conversions', 'cpa']}
+            chartMetric={(widget.config.chartMetric as MetricKey) || 'spend'}
+            title={widget.config.title}
+            timeSeries={mockTimeSeries.slice(-14)}
+            overview={overview}
+          />
+        );
+      }
+
+      case 'ranking-table': {
+        return (
+          <RankingTableWidget
+            dataSource={(widget.config.rankingDataSource as RankingDataSource) || 'regions'}
+            metric={(widget.config.metrics?.[0] as MetricKey) || 'conversions'}
+            accent={widget.config.accent}
+            limit={widget.config.limit || 8}
+            title={widget.config.title}
+            demographics={mockDemographics}
+            campaigns={mockCampaigns}
+            topAds={mockCreatives}
           />
         );
       }

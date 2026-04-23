@@ -213,6 +213,9 @@ export function ReportContent({
     }
   };
 
+  // Detectar tema premium dark
+  const isPremiumDark = (template?.sections as any)?.premiumTheme === 'dark';
+
   // Renderizar usando widgets (novo sistema)
   const renderWidgetView = () => {
     if (!activeData || !templateWidgets) return null;
@@ -222,6 +225,7 @@ export function ReportContent({
         <WidgetGridRenderer 
           widgets={templateWidgets} 
           data={activeData}
+          premiumTheme={isPremiumDark}
         />
       </div>
     );
@@ -238,6 +242,7 @@ export function ReportContent({
           <WidgetGridRenderer 
             widgets={templateWidgets} 
             data={insightsData}
+            premiumTheme={isPremiumDark}
           />
         </div>
       );

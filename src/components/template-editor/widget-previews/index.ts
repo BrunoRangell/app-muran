@@ -7,3 +7,6 @@ export { DemographicsPreview } from './DemographicsPreview';
 export { TrendsPreview } from './TrendsPreview';
 export { TopCreativesPreview } from './TopCreativesPreview';
 export { CampaignsTablePreview } from './CampaignsTablePreview';
+export { PremiumKpiPreview } from './PremiumKpiPreview';
+export { PlatformBlockPreview } from './PlatformBlockPreview';
+export { RankingTablePreview } from './RankingTablePreview';

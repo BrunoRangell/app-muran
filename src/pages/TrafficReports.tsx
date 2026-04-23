@@ -212,6 +212,11 @@ const TrafficReports = () => {
     );
   }
 
+  // Detectar template premium para layout fullscreen
+  const isPremiumTemplate =
+    (effectiveTemplate?.sections as any)?.premiumLayout === 'dashcortex' ||
+    (effectiveTemplate?.sections as any)?.premiumTheme === 'dark';
+
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       {/* Banner de modo preview */}
@@ -245,7 +250,7 @@ const TrafficReports = () => {
         </div>
       )}
 
-      <div className="flex-1 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 w-full">
+      <div className={isPremiumTemplate && hasSelection ? "flex-1 w-full" : "flex-1 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 w-full"}>
         {/* Header do modo interno */}
         {!showPortalElements && (
           <div className="flex items-center justify-between">
