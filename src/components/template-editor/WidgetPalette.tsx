@@ -19,7 +19,12 @@ import {
   ImageIcon,
   Minus,
   Space,
-  Square
+  Square,
+  LayoutPanelTop,
+  BarChartHorizontal,
+  Filter,
+  GitCompare,
+  LayoutList
 } from 'lucide-react';
 import { WIDGET_CATALOG, WidgetType, WidgetMetadata, TemplateWidget } from '@/types/template-editor';
 import { cn } from '@/lib/utils';
@@ -55,7 +60,13 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   ImageIcon,
   Minus,
   Space,
-  Square
+  Square,
+  Sparkles,
+  LayoutPanelTop,
+  BarChartHorizontal,
+  Filter,
+  GitCompare,
+  LayoutList
 };
 
 function WidgetPaletteItem({ 
