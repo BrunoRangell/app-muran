@@ -92,10 +92,11 @@ const TrafficReports = () => {
   // Buscar clientes (apenas modo interno)
   const { data: clientsData, isLoading: isLoadingClients } = useUnifiedData();
 
-  // Buscar contas do cliente
+  // Buscar contas do cliente (em modo portal, propaga o accessToken para usar a RPC pública)
   const { data: accountsData, isLoading: isLoadingAccounts } = useClientAccounts(
     effectiveClientId,
-    effectivePlatform === 'both' ? undefined : effectivePlatform
+    effectivePlatform === 'both' ? undefined : effectivePlatform,
+    isPortalMode ? accessToken : undefined
   );
 
   // Auto-selecionar contas em modo portal
@@ -150,7 +151,8 @@ const TrafficReports = () => {
       start: effectiveDateRange.start.toISOString().split('T')[0],
       end: effectiveDateRange.end.toISOString().split('T')[0]
     },
-    compareWithPrevious: true
+    compareWithPrevious: true,
+    portalAccessToken: isPortalMode ? accessToken : undefined,
   });
 
   const handleClientChange = (clientId: string) => {

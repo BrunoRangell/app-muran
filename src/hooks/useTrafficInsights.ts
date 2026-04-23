@@ -10,13 +10,18 @@ export interface TrafficInsightsParams {
     end: string;
   };
   compareWithPrevious?: boolean;
+  /** Quando presente, autoriza chamadas públicas via portal do cliente */
+  portalAccessToken?: string;
 }
 
 export const useTrafficInsights = (params: TrafficInsightsParams) => {
   return useQuery({
     queryKey: ['traffic-insights', params],
     queryFn: async () => {
-      console.log('🔍 [useTrafficInsights] Fetching data:', params);
+      console.log('🔍 [useTrafficInsights] Fetching data:', {
+        ...params,
+        portalAccessToken: params.portalAccessToken ? '[present]' : undefined,
+      });
 
       const { data, error } = await supabase.functions.invoke('traffic-insights', {
         body: params

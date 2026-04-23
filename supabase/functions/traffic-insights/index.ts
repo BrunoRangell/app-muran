@@ -17,17 +17,103 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { clientId, accountIds, platform, dateRange, compareWithPrevious } = await req.json() as TrafficInsightsRequest;
+    const body = await req.json() as TrafficInsightsRequest & { portalAccessToken?: string };
+    const { clientId, accountIds, platform, dateRange, compareWithPrevious, portalAccessToken } = body;
 
-    console.log(`🔍 [TRAFFIC-INSIGHTS] Request:`, { clientId, accountIds, platform, dateRange });
+    console.log(`🔍 [TRAFFIC-INSIGHTS] Request:`, { clientId, accountIds, platform, dateRange, hasPortalToken: !!portalAccessToken });
 
-    // Validações
+    // Validações de parâmetros básicos
     if (!clientId || !accountIds || accountIds.length === 0 || !platform || !dateRange) {
       return new Response(
         JSON.stringify({ success: false, error: 'Parâmetros obrigatórios: clientId, accountIds (array), platform, dateRange' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // ====== AUTORIZAÇÃO ======
+    // Modo 1: Portal público — validar accessToken contra client_portals
+    // Modo 2: Interno — exigir JWT válido de team member
+    if (portalAccessToken) {
+      const { data: portal, error: portalError } = await supabase
+        .from('client_portals')
+        .select('id, client_id, is_active')
+        .eq('access_token', portalAccessToken)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (portalError || !portal) {
+        console.error('❌ [TRAFFIC-INSIGHTS] Invalid portal token');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Token de portal inválido ou inativo' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (portal.client_id !== clientId) {
+        console.error('❌ [TRAFFIC-INSIGHTS] Portal token does not match clientId');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Token de portal não autoriza acesso a este cliente' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validar que as accountIds pertencem ao cliente do portal
+      const { data: validAccounts } = await supabase
+        .from('client_accounts')
+        .select('id')
+        .eq('client_id', portal.client_id)
+        .in('id', accountIds);
+
+      const validIds = new Set((validAccounts || []).map(a => a.id));
+      const allValid = accountIds.every(id => validIds.has(id));
+      if (!allValid) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Uma ou mais contas não pertencem a este cliente' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`✅ [TRAFFIC-INSIGHTS] Portal access authorized for client ${clientId}`);
+    } else {
+      // Modo interno: validar JWT de team member
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Não autorizado' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const anonClient = createClient(
+        supabaseUrl,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Não autorizado' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const userId = claimsData.claims.sub as string;
+      const { data: roleRows } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      const isTeam = (roleRows || []).some(r => r.role === 'admin' || r.role === 'member');
+      if (!isTeam) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Acesso restrito à equipe' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
 
     let result: TrafficInsightsResponse;
 
