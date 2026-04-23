@@ -162,6 +162,11 @@ export function TemplateEditor() {
 
     try {
       const templateData = getTemplateData();
+      // Anexar o flag de tema premium ao JSONB salvo
+      const sectionsPayload: any = {
+        ...templateData,
+        ...(premiumTheme ? { premiumTheme: 'dark' } : {})
+      };
       
       // Atualizar estado local
       setTemplateName(name);
@@ -172,7 +177,7 @@ export function TemplateEditor() {
           id: templateId,
           name: name,
           is_global: global,
-          sections: templateData as any
+          sections: sectionsPayload
         });
         toast.success('Template atualizado com sucesso!');
       } else {
@@ -180,7 +185,7 @@ export function TemplateEditor() {
           name: name,
           is_global: global,
           client_id: null,
-          sections: templateData as any
+          sections: sectionsPayload
         });
         toast.success('Template criado com sucesso!');
         // Atualizar URL para modo edição com o novo ID
