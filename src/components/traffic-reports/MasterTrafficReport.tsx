@@ -310,13 +310,13 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <KpiCard title="CPC" value={fmtCurrency(overview.cpc?.current || 0)}
               previousValue={fmtCurrency(overview.cpc?.previous || 0)}
-              change={overview.cpc?.change || 0} icon={MousePointer} accent={C.blue} delay={0} invertChange />
+              change={overview.cpc?.change || 0} icon={MousePointer} accent={C.blue} delay={0} />
             <KpiCard title="CPA" value={fmtCurrency(overview.cpa?.current || 0)}
               previousValue={fmtCurrency(overview.cpa?.previous || 0)}
-              change={overview.cpa?.change || 0} icon={Target} accent={C.green} delay={60} invertChange />
+              change={overview.cpa?.change || 0} icon={Target} accent={C.green} delay={60} />
             <KpiCard title="CPM" value={fmtCurrency(overview.cpm?.current || 0)}
               previousValue={fmtCurrency(overview.cpm?.previous || 0)}
-              change={overview.cpm?.change || 0} icon={Layers} accent={C.amber} delay={120} invertChange />
+              change={overview.cpm?.change || 0} icon={Layers} accent={C.amber} delay={120} />
             <KpiCard
               title="Frequência"
               value={fmtDecimal(overview.frequency?.current || metaData?.overview?.frequency?.current || 0, 2)}
