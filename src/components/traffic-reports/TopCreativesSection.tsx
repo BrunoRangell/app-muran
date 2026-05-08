@@ -36,6 +36,7 @@ type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
 
 export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionProps) {
   const [sortBy, setSortBy] = useState<SortOption>('impressions');
+  const [failedThumbs, setFailedThumbs] = useState<Record<string, boolean>>({});
 
   const sortedAds = [...topAds].sort((a, b) => {
     switch (sortBy) {
@@ -123,18 +124,17 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
                 )}
 
                 {/* Creative Preview */}
-                <div className="relative h-48 bg-gradient-to-br from-muran-primary/10 to-muran-primary/5">
-                  {ad.creative.thumbnail ? (
-                    <img 
-                      src={ad.creative.thumbnail} 
+                <div className="relative h-48 bg-[#0B0F1A] flex items-center justify-center overflow-hidden">
+                  {ad.creative.thumbnail && !failedThumbs[ad.id] ? (
+                    <img
+                      src={ad.creative.thumbnail}
                       alt={ad.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
+                      loading="lazy"
+                      className="max-w-full max-h-full object-contain"
+                      onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muran-primary/10 to-muran-primary/5">
                       <div className="text-center p-4">
                         <Target className="h-12 w-12 text-muran-primary mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">
