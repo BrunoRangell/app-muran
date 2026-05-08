@@ -1,231 +1,178 @@
 
-# Novo modelo de edição Premium — separado do editor genérico
+# Limpeza total + Master Report único (DashCortex evoluído)
 
-## Direção
+## Objetivo
 
-Sim: faz sentido criar um **modo de edição premium novo**, em vez de continuar acoplando o premium ao editor atual.
+Eliminar **todo** o sistema editável de relatórios de tráfego (templates, presets, premium builder, editor, widgets configuráveis) e deixar **um único modelo fixo, super elaborado**, evoluindo o **DashCortex** atual com a visão de gestor de tráfego top + design Power BI.
 
-O problema não é só visual. Hoje o premium está “espalhado” entre:
-- `WIDGET_CATALOG`
-- `WidgetRenderer`
-- `TemplatePreviewDialog`
-- `WidgetGridRenderer`
-- migrações/templates salvos no banco
-
-Isso cria vários pontos de divergência e explica por que um widget pode existir em um lugar e cair em “Widget não reconhecido” em outro.
-
-A proposta é transformar o premium em um **sistema próprio, com engine própria**, mantendo:
-- o template fixo atual
-- o editor padrão atual para templates normais
-- um **novo editor premium** para templates premium editáveis
+O fluxo dos clientes (seleção + portal público) continua igual. Muda só **o que é renderizado dentro do relatório**: sempre o Master Report, sem escolha de template, sem editor.
 
 ---
 
-## O que será construído
+## 1. O que será REMOVIDO
 
-### 1) Novo “Premium Builder”
-Criar um editor dedicado, fullscreen, tema escuro fixo, com layout pensado para dashboards premium.
+### Páginas e rotas
+- `src/pages/TemplateEditorPage.tsx`
+- `src/pages/PremiumBuilderPage.tsx`
+- `src/pages/TrafficReportsTemplates.tsx`
+- `src/pages/TrafficReportsViewer.tsx`
+- Rotas em `App.tsx`:
+  - `/relatorios-trafego/templates`
+  - `/relatorios-trafego/templates/novo`
+  - `/relatorios-trafego/templates/editar/:templateId`
+  - `/relatorios-trafego/templates/premium/novo`
+  - `/relatorios-trafego/templates/premium/editar/:templateId`
+  - `/relatorios-trafego/visualizar`
 
-#### Características
-- rota própria, separada do editor atual
-- preview ao vivo no mesmo layout do relatório final
-- sidebar premium sempre visível
-- canvas premium sem depender da lógica antiga de widgets genéricos
-- experiência WYSIWYG real
+### Pastas inteiras
+- `src/components/template-editor/` (todo o editor)
+- `src/components/premium-builder/` (todo o premium builder v2)
+- `src/components/traffic-reports/widgets/` (widgets configuráveis)
+- `src/data/premiumTemplates.ts`
 
-Exemplo de estrutura:
+### Componentes em `src/components/traffic-reports/`
+- `TemplateSelector.tsx`
+- `TemplateCustomizer.tsx`
+- `WidgetGridRenderer.tsx`
+
+### Hooks e tipos
+- `src/hooks/useReportTemplates.ts`
+- `src/hooks/useWidgetPresets.ts`
+- `src/types/template-editor.ts`
+- `src/types/premium-v2.ts`
+
+### Banco de dados (migration única)
+```sql
+DROP TABLE IF EXISTS public.report_templates CASCADE;
+DROP TABLE IF EXISTS public.widget_presets CASCADE;
+```
+
+### Botões/UI no dashboard interno
+- Botão "Templates" / "Novo Premium" / "Criar Template" em `TrafficReportsDashboard.tsx` e `TrafficReportsTemplates.tsx` (a página inteira sai)
+- Item "Templates" na sidebar (se existir)
+
+---
+
+## 2. O que será MANTIDO
+
+- `src/pages/TrafficReports.tsx` — página principal de visualização (interno + portal `/cliente/:accessToken`)
+- `src/pages/TrafficReportsDashboard.tsx` — lista de clientes + gestão de portais
+- Filtros internos: cliente, contas, **plataforma (Meta/Google/Ambos)** e **período (7/15/30/60/90 dias)** — confirmado
+- Toda a camada de dados: `useTrafficInsights`, `useUnifiedData`, `useClientAccounts`, `useClientPortal`, edge function `traffic-insights`
+- Componentes "burros" de visualização que serão reaproveitados pelo Master Report:
+  - `PlatformViewSelector`, `PortalHeader`, `TrafficReportFilters`, `TrafficReportHeader`, `ClientPortalButton`, `ClientLogoUpload`
+  - Charts e tabelas: `InsightsOverview`, `CombinedOverview`, `CampaignsInsightsTable`, `InsightsConversionFunnel`, `TrendCharts`, `ComparativeTrendCharts`, `DemographicsCharts`, `TopCreativesSection`, `LeadsChart`, `ChartCard`, `OverviewCards`, `DetailedTabs`
+- Pasta `premium-templates/dashcortex/` (KpiCard, PlatformBlock, RegionTable, OriginPieChart, BudgetCard, SidebarNav) — base do novo Master Report
+
+---
+
+## 3. O Master Report (DashCortex evoluído)
+
+Substitui o `DashCortexTemplate.tsx` por uma versão expandida em **`src/components/traffic-reports/MasterTrafficReport.tsx`**, organizado em seções verticais densas estilo Power BI/Looker, com sidebar lateral de navegação por âncora.
+
+### Estrutura proposta
+
 ```text
-[ Biblioteca Premium ] [ Canvas Premium 60% ] [ Preview Real 40% ]
-                       [ Painel inferior: Conteúdo | Dados | Estilo ]
+┌─ Sidebar (sticky) ─┬─────────── Conteúdo ──────────────┐
+│  Visão Geral       │  [Hero] Cliente, período, KPIs    │
+│  Performance       │   gerais (Investimento, Impr.,    │
+│  Plataformas       │   Cliques, CTR, CPC, Conversões,  │
+│  Criativos         │   CPA, ROAS, Frequência, CPM)     │
+│  Audiência         │                                   │
+│  Funil             │  [Performance ao longo do tempo]  │
+│  Campanhas         │   Combo chart investimento+conv.  │
+│  Conclusões        │   + comparativo período anterior  │
+│                    │                                   │
+│                    │  [Plataformas lado a lado]        │
+│                    │   Bloco Meta + Bloco Google com   │
+│                    │   share, KPIs, mini-trend          │
+│                    │                                   │
+│                    │  [Top Criativos] grid 3x2 com     │
+│                    │   thumb + métricas + ranking       │
+│                    │                                   │
+│                    │  [Audiência] 3 colunas:           │
+│                    │   Idade (barras), Gênero (donut), │
+│                    │   Região (heatmap/tabela)         │
+│                    │                                   │
+│                    │  [Funil de Conversão] 4 estágios  │
+│                    │                                   │
+│                    │  [Tabela de Campanhas] paginada   │
+│                    │                                   │
+│                    │  [Insights automáticos] cards com │
+│                    │   destaques, alertas e variação    │
+└────────────────────┴───────────────────────────────────┘
 ```
 
+### Diretrizes de visual
+- Dark glass premium (#0B0F1A base), cartões `bg-white/5 backdrop-blur border border-white/10 rounded-2xl`
+- Acentos da marca Muran: laranja `#ff6e00` para destaques positivos, gradientes laranja→roxo `#321e32`
+- Tipografia Space Grotesk; hierarquia clara (KPI 36-44px, títulos 18px, labels 11px uppercase tracking)
+- Microinterações: hover sutil, badges de variação ▲/▼ coloridos, sparklines em todo KPI
+- Responsivo: 12-col em desktop; colapsa em mobile; sidebar vira top nav
+
+### Comportamento por plataforma
+- `platform = 'both'` → blocos lado a lado Meta vs Google + agregado
+- `platform = 'meta'` ou `'google'` → blocos focados, esconde comparativo cross-platform
+- Período controla janelas dos charts e a base do "vs período anterior"
+
+### Insights automáticos (seção nova)
+Cards gerados a partir dos dados (sem IA externa):
+- Maior queda/alta de CPA vs período anterior
+- Campanha campeã em ROAS
+- Criativo com melhor CTR
+- Plataforma mais eficiente em CPC
+- Alerta se frequência > 3 ou CTR < 0.5%
+
 ---
 
-### 2) Engine premium v2
-Em vez de reaproveitar o formato híbrido atual, criar um schema premium explícito dentro de `sections`.
+## 4. Mudanças em `ReportContent.tsx` e `TrafficReports.tsx`
 
-Exemplo conceitual:
-```json
-{
-  "engine": "premium-v2",
-  "theme": "dark",
-  "sidebar": true,
-  "layout": {
-    "blocks": [...]
-  }
-}
+### `ReportContent.tsx`
+Reduzir drasticamente: remove toda lógica de `template`, `widgets`, `premium-v2`, `legacyAdapter`, seções dinâmicas, `WidgetGridRenderer`. Vira só:
+```tsx
+return <MasterTrafficReport data={activeData} platform={platform} ... />;
 ```
+(Mantém o `PlatformViewSelector` no topo se `hideViewSelector=false`.)
 
-Cada bloco premium terá:
-- `id`
-- `type`
-- `layout`
-- `dataBinding`
-- `styleVariant`
-- `content`
+### `TrafficReports.tsx`
+- Remove imports e estado de `selectedTemplate`, `customizerOpen`, `TemplateSelector`, `TemplateCustomizer`, `useReportTemplates`
+- Remove props `template` que vão pra `ReportContent`
+- Mantém todos os filtros e o resto do fluxo
 
-Isso evita depender de múltiplos switches manuais espalhados.
+### `TrafficReportsDashboard.tsx`
+- Remove qualquer referência a templates, contagens de templates e botões "Templates"/"Novo Premium"
+- Mantém: lista de clientes, criar/excluir portal, "Ver Relatório"
 
----
+### `App.tsx`
+- Remove os `lazyWithTimeout` de `TrafficReportsTemplates`, `TrafficReportsViewer`, `TemplateEditorPage`, `PremiumBuilderPage`
+- Remove as 6 rotas de templates/editor/premium
 
-### 3) Registro único de blocos premium
-Criar um **registry central** para os blocos premium.
-
-Cada bloco premium define em um único lugar:
-- tipo
-- nome
-- descrição
-- preview
-- configurações padrão
-- renderer do editor
-- renderer do preview/portal
-- painel de propriedades
-
-Exemplo de blocos iniciais:
-- KPI Premium
-- Bloco de Plataforma
-- Ranking Gradiente
-- Donut/Pie Premium
-- Tendência Premium
-- Header/Hero Premium
-- Texto/Comentário Premium
-- Divider premium
-- Top Criativos premium
-- Tabela premium de campanhas
-
-Resultado: quando um bloco novo entra, ele entra uma vez só no registry, e não em 4 arquivos diferentes.
+### Sidebar
+- Verificar `src/components/layout/Sidebar.tsx` e remover item "Templates" se houver
 
 ---
 
-### 4) Biblioteca premium curada
-Em vez de um repertório “solto”, montar uma biblioteca premium com blocos pensados para trabalhar juntos.
+## 5. Memória do projeto
 
-#### Primeira leva
-- KPI Premium com comparativo
-- KPI inline compacto
-- Bloco Meta
-- Bloco Google
-- Ranking por regiões
-- Ranking por campanhas
-- Ranking por criativos
-- Donut demográfico
-- Linha de tendência
-- Comparativo Meta x Google
-- Texto estratégico / insights
-- Box de destaque
-- Cabeçalho premium
-
-#### Regras visuais
-- tema escuro fixo
-- tipografia e espaçamentos consistentes
-- tokens visuais centralizados
-- sem estilos arbitrários quebrando o padrão do premium
+Após a limpeza, atualizar `mem://index.md` removendo as ~30 entradas de template editor / premium builder / widgets, e adicionar:
+- `mem://features/traffic-reports/master-report` — descrição do modelo único fixo (DashCortex evoluído)
 
 ---
 
-### 5) Painel de propriedades melhor
-Substituir a edição atual baseada em campos dispersos por um painel contextual com abas:
+## 6. Ordem de execução
 
-- **Conteúdo**: título, texto, rótulos
-- **Dados**: métrica, dimensão, fonte, período, limite
-- **Estilo**: variante, intensidade, alinhamento, destaque
-
-Para premium, o ideal é usar:
-- variantes controladas
-- presets visuais
-- menos liberdade “caótica”
-- mais consistência de design
-
----
-
-### 6) Compatibilidade e transição
-O sistema novo coexistirá com o que já existe.
-
-#### Manter
-- `DashCortex Premium` fixo
-- editor atual para templates normais
-
-#### Descontinuar gradualmente
-- template premium editável atual baseado no editor genérico
-
-#### Compatibilidade
-Criar um adaptador para templates premium antigos:
-- se encontrar `premium-kpi`, `platform-block`, `ranking-table` no formato antigo, converter para blocos `premium-v2`
-- se não for possível converter 100%, exibir fallback de compatibilidade claro, nunca “Widget não reconhecido”
-
----
-
-### 7) Resolver a causa estrutural do erro atual
-Além do novo builder, incluir uma camada temporária de robustez no sistema atual para parar de quebrar até a migração:
-
-- normalizador de tipos ao carregar template
-- validação do JSON salvo no `report_templates`
-- fallback com diagnóstico legível
-- mapeamento legacy → premium-v2
-
-Exemplo:
-```text
-premium-kpi        -> premium.metric.kpi
-platform-block     -> premium.platform.summary
-ranking-table      -> premium.ranking.gradient
-```
-
----
-
-## Arquitetura técnica
-
-### Novos pilares
-- `premium block registry`
-- `premium template schema v2`
-- `premium editor route`
-- `premium renderer`
-- `premium preview shell`
-- `legacy premium adapter`
-
-### Arquivos principais
-- novo editor premium em rota separada
-- novo registry de blocos premium
-- novo renderer premium compartilhado entre editor e relatório
-- novo painel de propriedades premium
-- migração SQL para semear template premium v2
-- adaptador para templates premium antigos
-
-### Ajustes necessários
-- parar de duplicar renderização entre editor, preview modal e portal
-- usar o mesmo renderer premium nos 3 contextos
-- tipar `report_templates.sections` para aceitar `engine: "premium-v2"`
-- manter compatibilidade com templates legados e widget-based atuais
-
----
-
-## Etapas de implementação
-
-1. Criar o schema `premium-v2` e o registry central
-2. Criar a rota e shell do novo Premium Builder
-3. Implementar os primeiros blocos premium no novo registry
-4. Construir painel de propriedades contextual
-5. Reutilizar o mesmo renderer no editor e no relatório final
-6. Criar adaptador para templates premium antigos
-7. Inserir um novo template global “Premium Editável v2”
-8. Marcar o premium editável atual como legado
-9. Validar fullscreen, preview fiel e compatibilidade
-
----
+1. **Migration**: drop das duas tabelas → pedir aprovação
+2. **App.tsx**: remover rotas e lazy imports
+3. **Apagar arquivos/pastas** listados em §1
+4. **Construir** `MasterTrafficReport.tsx` (e subcomponentes em `premium-templates/dashcortex/` expandidos com novas seções)
+5. **Refatorar** `ReportContent.tsx` e `TrafficReports.tsx` (simplificação)
+6. **Limpar** `TrafficReportsDashboard.tsx` e Sidebar
+7. **QA**: abrir `/relatorios-trafego`, selecionar cliente real, validar Meta/Google/Ambos e cada período; abrir um portal `/cliente/:token` e validar
+8. **Atualizar memória**
 
 ## Resultado esperado
 
-- o premium deixa de ser um “anexo” do editor antigo
-- some a classe de erro “Widget não reconhecido” por divergência entre arquivos
-- passa a existir um **editor premium realmente melhor**, mais consistente e mais escalável
-- templates normais continuam no editor atual
-- premium fixo continua existindo
-- premium editável vira um produto próprio, com base sólida para crescer
-
-## Decisão recomendada
-
-Seguir com:
-- **editor atual** para templates normais
-- **template fixo** para showcase instantâneo
-- **novo Premium Builder v2** como solução oficial para premium editável
-
-Essa é a opção mais limpa, mais robusta e mais alinhada com tudo que o projeto já aprendeu até aqui.
+- Codebase muito mais enxuto (estimativa: ~40 arquivos a menos)
+- Zero risco de "Widget não reconhecido" — não há mais widget engine
+- Um único relatório premium, sempre consistente, com camadas ricas de visualização e insights
+- Fluxo do gestor e do cliente final intactos
