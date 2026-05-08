@@ -74,13 +74,15 @@ export function ReportContent({
 
   if (!insightsData) return null;
 
-  // Sempre o Master Report único — para platform='both' usa o agregado completo
-  const dataForReport = platform === 'both' ? insightsData : (activeData || insightsData);
+  // Master Report — respeita viewMode (combined/meta/google) quando platform='both'
+  const dataForReport = activeData || insightsData;
+  const effectivePlatform: 'meta' | 'google' | 'both' =
+    platform === 'both' && viewMode !== 'combined' ? viewMode : platform;
 
   return (
     <MasterTrafficReport
       data={dataForReport}
-      platform={platform}
+      platform={effectivePlatform}
       viewMode={viewMode}
       clientName={clientName}
       dateRange={dateRange}
