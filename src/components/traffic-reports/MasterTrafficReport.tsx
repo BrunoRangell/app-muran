@@ -179,7 +179,7 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
 
   return (
     <div
-      className="dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-4 sm:px-6 lg:px-8 py-6 min-h-screen"
+      className="dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen"
       style={{ background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" }}
     >
       <style>{`
