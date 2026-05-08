@@ -822,44 +822,6 @@ export type Database = {
           },
         ]
       }
-      report_templates: {
-        Row: {
-          client_id: string | null
-          created_at: string | null
-          id: string
-          is_global: boolean | null
-          name: string
-          sections: Json
-          updated_at: string | null
-        }
-        Insert: {
-          client_id?: string | null
-          created_at?: string | null
-          id?: string
-          is_global?: boolean | null
-          name: string
-          sections?: Json
-          updated_at?: string | null
-        }
-        Update: {
-          client_id?: string | null
-          created_at?: string | null
-          id?: string
-          is_global?: boolean | null
-          name?: string
-          sections?: Json
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_templates_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       role_audit_log: {
         Row: {
           action: string
@@ -1013,39 +975,6 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-        }
-        Relationships: []
-      }
-      widget_presets: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          icon: string | null
-          id: string
-          is_system: boolean | null
-          name: string
-          updated_at: string | null
-          widgets: Json
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          icon?: string | null
-          id?: string
-          is_system?: boolean | null
-          name: string
-          updated_at?: string | null
-          widgets?: Json
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          icon?: string | null
-          id?: string
-          is_system?: boolean | null
-          name?: string
-          updated_at?: string | null
-          widgets?: Json
         }
         Relationships: []
       }
