@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+
 import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +55,7 @@ interface ConfirmDialogState {
 }
 
 const TrafficReportsDashboard = () => {
-  const navigate = useNavigate();
+  
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [creatingPortal, setCreatingPortal] = useState<string | null>(null);
