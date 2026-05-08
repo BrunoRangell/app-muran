@@ -12,6 +12,7 @@ import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClient
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar, Lock, Eye, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
