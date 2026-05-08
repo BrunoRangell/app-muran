@@ -147,7 +147,7 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
   const {
     overview, metaData, googleData, metaSeries, googleSeries, combinedSeries,
     byAge, byGender, byLocation, metaSpend, googleSpend, originData,
-    topAds, campaigns, insights,
+    topAds, campaigns,
   } = normalized;
 
   const periodLabel = dateRange
@@ -260,32 +260,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
               change={overview.frequency?.change || 0} icon={Repeat} accent={C.pink} delay={180}
             />
           </div>
-
-          {/* ============ INSIGHTS AUTOMÁTICOS ============ */}
-          <GlassCard id={SECTION_ID('insights')}>
-            <SectionTitle icon={Zap} label="Insights & Alertas" hint="Análise automática" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {insights.map((ins, i) => {
-                const tone =
-                  ins.tone === 'positive' ? { ring: 'ring-emerald-500/20', bg: 'bg-emerald-500/5', icon: 'text-emerald-400' } :
-                  ins.tone === 'negative' ? { ring: 'ring-red-500/20', bg: 'bg-red-500/5', icon: 'text-red-400' } :
-                  ins.tone === 'warning'  ? { ring: 'ring-amber-500/20', bg: 'bg-amber-500/5', icon: 'text-amber-400' } :
-                                            { ring: 'ring-blue-500/20', bg: 'bg-blue-500/5', icon: 'text-blue-400' };
-                const Icon = ins.icon;
-                return (
-                  <div key={i} className={`rounded-xl ${tone.bg} ring-1 ${tone.ring} p-4 flex gap-3`}>
-                    <div className={`h-9 w-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0 ${tone.icon}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{ins.title}</p>
-                      <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{ins.detail}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </GlassCard>
 
           {/* ============ PERFORMANCE TEMPORAL ============ */}
           {(mergedSeries.length > 0) && (
@@ -468,12 +442,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
               </div>
             </GlassCard>
           )}
-
-          {/* ============ ORIGEM DOS ACESSOS / REGIÃO DETALHADA ============ */}
-          <div id={SECTION_ID('analytics')} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {originData.length > 0 && <OriginPieChart data={originData} />}
-            {byLocation.length > 0 && <RegionTable regions={byLocation.map(r => ({ label: r.label, value: r.value }))} />}
-          </div>
 
           {/* ============ TOP CRIATIVOS ============ */}
           {topAds && topAds.length > 0 && (
