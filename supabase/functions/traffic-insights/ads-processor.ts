@@ -61,7 +61,8 @@ export async function fetchMetaTopAds(
 
         // Extract creative info
         const creative = ad.creative || {};
-        const thumbnail = creative.thumbnail_url || creative.image_url || undefined;
+        // Prefer image_url (higher resolution) over thumbnail_url
+        const thumbnail = creative.image_url || creative.thumbnail_url || undefined;
 
         ads.push({
           id: ad.id,

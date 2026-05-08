@@ -1,178 +1,51 @@
+## Ajustes no Master Traffic Report
 
-# Limpeza total + Master Report único (DashCortex evoluído)
+Cinco correções pontuais no relatório atual, mantendo todo o resto do layout dark intacto.
 
-## Objetivo
+### 1. Remover seção "Insights & Alertas"
+Em `src/components/traffic-reports/MasterTrafficReport.tsx`:
+- Apagar o bloco `<GlassCard id={SECTION_ID('insights')}>` (linhas ~328-352).
+- Apagar toda a lógica de geração de `insights` no `useMemo` (linhas ~129-188) e a referência `insights` no retorno/destructure.
+- Remover o item "insights" da `SidebarNav` (em `premium-templates/dashcortex/SidebarNav.tsx`).
 
-Eliminar **todo** o sistema editável de relatórios de tráfego (templates, presets, premium builder, editor, widgets configuráveis) e deixar **um único modelo fixo, super elaborado**, evoluindo o **DashCortex** atual com a visão de gestor de tráfego top + design Power BI.
+### 2. Remover seção "Analytics" (Origem + Região detalhada)
+- Apagar o bloco `<div id={SECTION_ID('analytics')}>` que renderiza `OriginPieChart` + `RegionTable` (linhas ~536-540).
+- Remover importações não usadas (`OriginPieChart`, `RegionTable`).
+- Remover item "analytics" da `SidebarNav`.
+- A seção "Audiência" (idade/gênero/região com barras) é mantida — região continua visível ali.
 
-O fluxo dos clientes (seleção + portal público) continua igual. Muda só **o que é renderizado dentro do relatório**: sempre o Master Report, sem escolha de template, sem editor.
+### 3. Corrigir barra branca no topo (PortalHeader fora de tema)
+O `PortalHeader` foi desenhado com fundo claro (gradient cinza/branco), o que destoa do Master Report dark. Em modo portal/preview ele aparece grudado no topo do relatório dark, criando a "barra branca desformatada".
 
----
+Solução: criar uma versão dark integrada do header, embutida no próprio Master Report quando em portal/preview, ou reskinar `PortalHeader` para tema dark (fundo `#0B0F1A`/translúcido, texto branco, tabs com a mesma estética glassmorphism do report). Optaremos por **reskinar o `PortalHeader` para dark** — mais simples e consistente:
+- Trocar `bg-gradient-to-b from-gray-50...` por gradiente escuro alinhado ao Master (`from-[#1a1030] to-[#0B0F1A]`).
+- Texto: `text-white` / `text-white/60` em vez de `text-gray-900`/`text-gray-500`.
+- Container do logo: `bg-white/[0.04] border-white/[0.06]`.
+- Tabs: `bg-white/[0.03] backdrop-blur` com aba ativa em gradiente Muran (já é) e inativas em `text-white/60`.
+- Separador, "Ao vivo" e branding Muran ajustados para tons claros sobre dark.
 
-## 1. O que será REMOVIDO
+### 4. Mobile — nada acontece
+A `SidebarNav` é fixa lateral (`flex gap-6` com sidebar) e provavelmente bloqueia ou some no mobile, deixando o layout quebrado. Plano:
+- Em `MasterTrafficReport.tsx`, esconder a `SidebarNav` em telas `<lg` (`hidden lg:block`) e remover o `flex gap-6` no mobile (`flex flex-col lg:flex-row`).
+- Garantir que todos os grids já têm `grid-cols-1` no mobile (a maioria tem; revisar KPIs secundários e blocos de plataforma).
+- Reduzir padding do root no mobile (`px-3 sm:px-6`).
+- Verificar que o header do relatório (`flex-wrap`) e os badges Meta/Google empilham bem.
 
-### Páginas e rotas
-- `src/pages/TemplateEditorPage.tsx`
-- `src/pages/PremiumBuilderPage.tsx`
-- `src/pages/TrafficReportsTemplates.tsx`
-- `src/pages/TrafficReportsViewer.tsx`
-- Rotas em `App.tsx`:
-  - `/relatorios-trafego/templates`
-  - `/relatorios-trafego/templates/novo`
-  - `/relatorios-trafego/templates/editar/:templateId`
-  - `/relatorios-trafego/templates/premium/novo`
-  - `/relatorios-trafego/templates/premium/editar/:templateId`
-  - `/relatorios-trafego/visualizar`
+### 5. Preview dos criativos desfocado / esticado
+Em `src/components/traffic-reports/TopCreativesSection.tsx`:
+- Trocar `object-cover` por `object-contain` no `<img>` (linha 131) — evita esticar thumbnails pequenas do Meta.
+- Adicionar fundo neutro ao container (`bg-black/40` em vez do gradient laranja claro) para criativos com transparência ou tamanhos variados.
+- Adicionar `loading="lazy"` e fallback robusto: ao `onError`, em vez de `display: none` (que deixa um buraco), trocar para o placeholder "Preview não disponível" via state.
+- Para thumbs Meta de baixa resolução (geralmente `~64x64`/`~100x100`), tentar substituir por `image_url` quando disponível no payload do criativo. Verificar em `supabase/functions/traffic-insights/ads-processor.ts` se existe um campo de imagem maior (`image_url`, `picture`, `permalink_url`) que possa ser priorizado sobre `thumbnail_url`. Se sim, expor no objeto `creative` e priorizar no front. **Se não existir**, manter só o `object-contain` + fundo dark (sem mudar o backend).
 
-### Pastas inteiras
-- `src/components/template-editor/` (todo o editor)
-- `src/components/premium-builder/` (todo o premium builder v2)
-- `src/components/traffic-reports/widgets/` (widgets configuráveis)
-- `src/data/premiumTemplates.ts`
+### Ordem de execução
+1. Apagar seções Insights e Analytics + limpar imports e itens da SidebarNav.
+2. Reskinar `PortalHeader` para tema dark.
+3. Tornar `MasterTrafficReport` responsivo (sidebar oculta no mobile, paddings).
+4. Ajustar preview de criativos (object-contain, fundo dark, fallback).
+5. (Opcional) Verificar `ads-processor.ts` para imagem de maior resolução.
+6. QA visual em desktop e mobile (375px e 1366px).
 
-### Componentes em `src/components/traffic-reports/`
-- `TemplateSelector.tsx`
-- `TemplateCustomizer.tsx`
-- `WidgetGridRenderer.tsx`
-
-### Hooks e tipos
-- `src/hooks/useReportTemplates.ts`
-- `src/hooks/useWidgetPresets.ts`
-- `src/types/template-editor.ts`
-- `src/types/premium-v2.ts`
-
-### Banco de dados (migration única)
-```sql
-DROP TABLE IF EXISTS public.report_templates CASCADE;
-DROP TABLE IF EXISTS public.widget_presets CASCADE;
-```
-
-### Botões/UI no dashboard interno
-- Botão "Templates" / "Novo Premium" / "Criar Template" em `TrafficReportsDashboard.tsx` e `TrafficReportsTemplates.tsx` (a página inteira sai)
-- Item "Templates" na sidebar (se existir)
-
----
-
-## 2. O que será MANTIDO
-
-- `src/pages/TrafficReports.tsx` — página principal de visualização (interno + portal `/cliente/:accessToken`)
-- `src/pages/TrafficReportsDashboard.tsx` — lista de clientes + gestão de portais
-- Filtros internos: cliente, contas, **plataforma (Meta/Google/Ambos)** e **período (7/15/30/60/90 dias)** — confirmado
-- Toda a camada de dados: `useTrafficInsights`, `useUnifiedData`, `useClientAccounts`, `useClientPortal`, edge function `traffic-insights`
-- Componentes "burros" de visualização que serão reaproveitados pelo Master Report:
-  - `PlatformViewSelector`, `PortalHeader`, `TrafficReportFilters`, `TrafficReportHeader`, `ClientPortalButton`, `ClientLogoUpload`
-  - Charts e tabelas: `InsightsOverview`, `CombinedOverview`, `CampaignsInsightsTable`, `InsightsConversionFunnel`, `TrendCharts`, `ComparativeTrendCharts`, `DemographicsCharts`, `TopCreativesSection`, `LeadsChart`, `ChartCard`, `OverviewCards`, `DetailedTabs`
-- Pasta `premium-templates/dashcortex/` (KpiCard, PlatformBlock, RegionTable, OriginPieChart, BudgetCard, SidebarNav) — base do novo Master Report
-
----
-
-## 3. O Master Report (DashCortex evoluído)
-
-Substitui o `DashCortexTemplate.tsx` por uma versão expandida em **`src/components/traffic-reports/MasterTrafficReport.tsx`**, organizado em seções verticais densas estilo Power BI/Looker, com sidebar lateral de navegação por âncora.
-
-### Estrutura proposta
-
-```text
-┌─ Sidebar (sticky) ─┬─────────── Conteúdo ──────────────┐
-│  Visão Geral       │  [Hero] Cliente, período, KPIs    │
-│  Performance       │   gerais (Investimento, Impr.,    │
-│  Plataformas       │   Cliques, CTR, CPC, Conversões,  │
-│  Criativos         │   CPA, ROAS, Frequência, CPM)     │
-│  Audiência         │                                   │
-│  Funil             │  [Performance ao longo do tempo]  │
-│  Campanhas         │   Combo chart investimento+conv.  │
-│  Conclusões        │   + comparativo período anterior  │
-│                    │                                   │
-│                    │  [Plataformas lado a lado]        │
-│                    │   Bloco Meta + Bloco Google com   │
-│                    │   share, KPIs, mini-trend          │
-│                    │                                   │
-│                    │  [Top Criativos] grid 3x2 com     │
-│                    │   thumb + métricas + ranking       │
-│                    │                                   │
-│                    │  [Audiência] 3 colunas:           │
-│                    │   Idade (barras), Gênero (donut), │
-│                    │   Região (heatmap/tabela)         │
-│                    │                                   │
-│                    │  [Funil de Conversão] 4 estágios  │
-│                    │                                   │
-│                    │  [Tabela de Campanhas] paginada   │
-│                    │                                   │
-│                    │  [Insights automáticos] cards com │
-│                    │   destaques, alertas e variação    │
-└────────────────────┴───────────────────────────────────┘
-```
-
-### Diretrizes de visual
-- Dark glass premium (#0B0F1A base), cartões `bg-white/5 backdrop-blur border border-white/10 rounded-2xl`
-- Acentos da marca Muran: laranja `#ff6e00` para destaques positivos, gradientes laranja→roxo `#321e32`
-- Tipografia Space Grotesk; hierarquia clara (KPI 36-44px, títulos 18px, labels 11px uppercase tracking)
-- Microinterações: hover sutil, badges de variação ▲/▼ coloridos, sparklines em todo KPI
-- Responsivo: 12-col em desktop; colapsa em mobile; sidebar vira top nav
-
-### Comportamento por plataforma
-- `platform = 'both'` → blocos lado a lado Meta vs Google + agregado
-- `platform = 'meta'` ou `'google'` → blocos focados, esconde comparativo cross-platform
-- Período controla janelas dos charts e a base do "vs período anterior"
-
-### Insights automáticos (seção nova)
-Cards gerados a partir dos dados (sem IA externa):
-- Maior queda/alta de CPA vs período anterior
-- Campanha campeã em ROAS
-- Criativo com melhor CTR
-- Plataforma mais eficiente em CPC
-- Alerta se frequência > 3 ou CTR < 0.5%
-
----
-
-## 4. Mudanças em `ReportContent.tsx` e `TrafficReports.tsx`
-
-### `ReportContent.tsx`
-Reduzir drasticamente: remove toda lógica de `template`, `widgets`, `premium-v2`, `legacyAdapter`, seções dinâmicas, `WidgetGridRenderer`. Vira só:
-```tsx
-return <MasterTrafficReport data={activeData} platform={platform} ... />;
-```
-(Mantém o `PlatformViewSelector` no topo se `hideViewSelector=false`.)
-
-### `TrafficReports.tsx`
-- Remove imports e estado de `selectedTemplate`, `customizerOpen`, `TemplateSelector`, `TemplateCustomizer`, `useReportTemplates`
-- Remove props `template` que vão pra `ReportContent`
-- Mantém todos os filtros e o resto do fluxo
-
-### `TrafficReportsDashboard.tsx`
-- Remove qualquer referência a templates, contagens de templates e botões "Templates"/"Novo Premium"
-- Mantém: lista de clientes, criar/excluir portal, "Ver Relatório"
-
-### `App.tsx`
-- Remove os `lazyWithTimeout` de `TrafficReportsTemplates`, `TrafficReportsViewer`, `TemplateEditorPage`, `PremiumBuilderPage`
-- Remove as 6 rotas de templates/editor/premium
-
-### Sidebar
-- Verificar `src/components/layout/Sidebar.tsx` e remover item "Templates" se houver
-
----
-
-## 5. Memória do projeto
-
-Após a limpeza, atualizar `mem://index.md` removendo as ~30 entradas de template editor / premium builder / widgets, e adicionar:
-- `mem://features/traffic-reports/master-report` — descrição do modelo único fixo (DashCortex evoluído)
-
----
-
-## 6. Ordem de execução
-
-1. **Migration**: drop das duas tabelas → pedir aprovação
-2. **App.tsx**: remover rotas e lazy imports
-3. **Apagar arquivos/pastas** listados em §1
-4. **Construir** `MasterTrafficReport.tsx` (e subcomponentes em `premium-templates/dashcortex/` expandidos com novas seções)
-5. **Refatorar** `ReportContent.tsx` e `TrafficReports.tsx` (simplificação)
-6. **Limpar** `TrafficReportsDashboard.tsx` e Sidebar
-7. **QA**: abrir `/relatorios-trafego`, selecionar cliente real, validar Meta/Google/Ambos e cada período; abrir um portal `/cliente/:token` e validar
-8. **Atualizar memória**
-
-## Resultado esperado
-
-- Codebase muito mais enxuto (estimativa: ~40 arquivos a menos)
-- Zero risco de "Widget não reconhecido" — não há mais widget engine
-- Um único relatório premium, sempre consistente, com camadas ricas de visualização e insights
-- Fluxo do gestor e do cliente final intactos
+### Não muda
+- Estrutura geral, KPIs, performance temporal, plataformas lado a lado, funil, audiência, top criativos, tabela de campanhas, footer.
+- Lógica de dados, filtros, edge functions.

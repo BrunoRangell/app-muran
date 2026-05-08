@@ -12,6 +12,7 @@ import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClient
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar, Lock, Eye, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -179,7 +180,7 @@ const TrafficReports = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
+    <div className={cn("min-h-screen flex flex-col", showPortalElements ? "bg-[#0B0F1A]" : "bg-muted/30")}>
       {/* Banner de modo preview */}
       {previewMode && !isPortalMode && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-muran-primary text-white py-2 px-4 flex items-center justify-center gap-3 shadow-lg">

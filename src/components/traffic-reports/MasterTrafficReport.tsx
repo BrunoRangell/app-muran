@@ -1,20 +1,18 @@
 import { useMemo } from "react";
 import {
   Eye, MousePointer, Target, TrendingUp, DollarSign,
-  Facebook, Search, BarChart3, Filter, Download,
-  Repeat, Zap, Layers, Award, AlertTriangle, CheckCircle2,
+  Facebook, Search, BarChart3, Filter,
+  Repeat, Layers, Award,
   Users as UsersIcon, MapPin, PieChart as PieIcon,
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ComposedChart,
 } from "recharts";
 import { SidebarNav } from "./premium-templates/dashcortex/SidebarNav";
 import { KpiCard } from "./premium-templates/dashcortex/KpiCard";
 import { PlatformBlock } from "./premium-templates/dashcortex/PlatformBlock";
-import { RegionTable } from "./premium-templates/dashcortex/RegionTable";
-import { OriginPieChart } from "./premium-templates/dashcortex/OriginPieChart";
 import { TopCreativesSection } from "./TopCreativesSection";
 import { CampaignsInsightsTable } from "./CampaignsInsightsTable";
 
@@ -126,67 +124,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
     const topAds = data.topAds || metaData?.topAds || googleData?.topAds || [];
     const campaigns = data.campaigns || [];
 
-    // Insights automáticos
-    const insights: { tone: 'positive' | 'negative' | 'warning' | 'info'; title: string; detail: string; icon: any }[] = [];
-    const cpaChange = overview.cpa?.change || 0;
-    if (Math.abs(cpaChange) > 5) {
-      insights.push({
-        tone: cpaChange < 0 ? 'positive' : 'negative',
-        title: cpaChange < 0 ? `CPA caiu ${Math.abs(cpaChange).toFixed(1)}%` : `CPA subiu ${cpaChange.toFixed(1)}%`,
-        detail: `De ${fmtCurrency(overview.cpa?.previous || 0)} para ${fmtCurrency(overview.cpa?.current || 0)} vs período anterior`,
-        icon: cpaChange < 0 ? CheckCircle2 : AlertTriangle,
-      });
-    }
-    const ctrCurrent = overview.ctr?.current || 0;
-    if (ctrCurrent > 0 && ctrCurrent < 0.5) {
-      insights.push({
-        tone: 'warning',
-        title: `CTR baixo (${fmtPct(ctrCurrent)})`,
-        detail: 'Considere revisar criativos e segmentação para aumentar a relevância',
-        icon: AlertTriangle,
-      });
-    }
-    const freqCurrent = overview.frequency?.current || metaData?.overview?.frequency?.current || 0;
-    if (freqCurrent > 3) {
-      insights.push({
-        tone: 'warning',
-        title: `Frequência alta (${fmtDecimal(freqCurrent, 2)})`,
-        detail: 'Audiência sendo impactada várias vezes — risco de fadiga criativa',
-        icon: Repeat,
-      });
-    }
-    const bestCampaign = [...campaigns].sort((a: any, b: any) => (b.conversions || 0) - (a.conversions || 0))[0];
-    if (bestCampaign) {
-      insights.push({
-        tone: 'positive',
-        title: `Campanha destaque: ${bestCampaign.name?.slice(0, 40)}`,
-        detail: `${fmtNum(bestCampaign.conversions)} conversões · CPA ${fmtCurrency(bestCampaign.cpa || 0)}`,
-        icon: Award,
-      });
-    }
-    if (platform === 'both' && metaSpend > 0 && googleSpend > 0) {
-      const metaCpa = metaData?.overview?.cpa?.current || 0;
-      const googleCpa = googleData?.overview?.cpa?.current || 0;
-      if (metaCpa > 0 && googleCpa > 0) {
-        const winner = metaCpa < googleCpa ? 'Meta' : 'Google';
-        const diff = Math.abs(metaCpa - googleCpa) / Math.max(metaCpa, googleCpa) * 100;
-        insights.push({
-          tone: 'info',
-          title: `${winner} mais eficiente em CPA`,
-          detail: `Meta ${fmtCurrency(metaCpa)} · Google ${fmtCurrency(googleCpa)} (${diff.toFixed(0)}% de diferença)`,
-          icon: Zap,
-        });
-      }
-    }
-    if (insights.length === 0) {
-      insights.push({
-        tone: 'info',
-        title: 'Performance estável',
-        detail: 'Sem variações significativas no período. Continue monitorando.',
-        icon: TrendingUp,
-      });
-    }
-
     return {
       overview,
       metaData,
@@ -202,7 +139,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
       originData,
       topAds,
       campaigns,
-      insights,
     };
   }, [data, platform]);
 
@@ -211,7 +147,7 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
   const {
     overview, metaData, googleData, metaSeries, googleSeries, combinedSeries,
     byAge, byGender, byLocation, metaSpend, googleSpend, originData,
-    topAds, campaigns, insights,
+    topAds, campaigns,
   } = normalized;
 
   const periodLabel = dateRange
@@ -243,7 +179,7 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
 
   return (
     <div
-      className="dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-4 sm:px-6 lg:px-8 py-6 min-h-screen"
+      className="dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen"
       style={{ background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" }}
     >
       <style>{`
@@ -324,32 +260,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
               change={overview.frequency?.change || 0} icon={Repeat} accent={C.pink} delay={180}
             />
           </div>
-
-          {/* ============ INSIGHTS AUTOMÁTICOS ============ */}
-          <GlassCard id={SECTION_ID('insights')}>
-            <SectionTitle icon={Zap} label="Insights & Alertas" hint="Análise automática" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {insights.map((ins, i) => {
-                const tone =
-                  ins.tone === 'positive' ? { ring: 'ring-emerald-500/20', bg: 'bg-emerald-500/5', icon: 'text-emerald-400' } :
-                  ins.tone === 'negative' ? { ring: 'ring-red-500/20', bg: 'bg-red-500/5', icon: 'text-red-400' } :
-                  ins.tone === 'warning'  ? { ring: 'ring-amber-500/20', bg: 'bg-amber-500/5', icon: 'text-amber-400' } :
-                                            { ring: 'ring-blue-500/20', bg: 'bg-blue-500/5', icon: 'text-blue-400' };
-                const Icon = ins.icon;
-                return (
-                  <div key={i} className={`rounded-xl ${tone.bg} ring-1 ${tone.ring} p-4 flex gap-3`}>
-                    <div className={`h-9 w-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0 ${tone.icon}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{ins.title}</p>
-                      <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{ins.detail}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </GlassCard>
 
           {/* ============ PERFORMANCE TEMPORAL ============ */}
           {(mergedSeries.length > 0) && (
@@ -532,12 +442,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
               </div>
             </GlassCard>
           )}
-
-          {/* ============ ORIGEM DOS ACESSOS / REGIÃO DETALHADA ============ */}
-          <div id={SECTION_ID('analytics')} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {originData.length > 0 && <OriginPieChart data={originData} />}
-            {byLocation.length > 0 && <RegionTable regions={byLocation.map(r => ({ label: r.label, value: r.value }))} />}
-          </div>
 
           {/* ============ TOP CRIATIVOS ============ */}
           {topAds && topAds.length > 0 && (

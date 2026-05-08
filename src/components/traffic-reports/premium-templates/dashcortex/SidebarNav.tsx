@@ -1,12 +1,15 @@
-import { LayoutGrid, Facebook, Search, BarChart3, Smartphone } from "lucide-react";
+import { LayoutGrid, Facebook, Search, Users, Award, Filter, BarChart3, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { id: "overview", label: "Overview", icon: LayoutGrid },
+  { id: "performance", label: "Performance", icon: BarChart3 },
   { id: "meta-ads", label: "Meta Ads", icon: Facebook },
   { id: "google-ads", label: "Google Ads", icon: Search },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "mobile", label: "Mobile", icon: Smartphone },
+  { id: "funnel", label: "Funil", icon: Target },
+  { id: "audience", label: "Audiência", icon: Users },
+  { id: "creatives", label: "Criativos", icon: Award },
+  { id: "campaigns", label: "Campanhas", icon: Filter },
 ];
 
 export function SidebarNav({ active = "overview" }: { active?: string }) {
