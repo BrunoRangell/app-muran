@@ -1,8 +1,7 @@
-
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import Login from "@/pages/Login";
@@ -14,31 +13,26 @@ const Index = lazy(() => {
       if (retriesLeft > 0) {
         return new Promise(resolve => setTimeout(resolve, 1000)).then(() => loadWithRetry(retriesLeft - 1));
       }
-      // Último recurso: recarregar a página para obter chunks atualizados
       window.location.reload();
       throw err;
     });
   };
   const page = loadWithRetry();
-  // Pré-carregar outras páginas após a página inicial carregar
   page.then(() => {
     Promise.all([
       import("@/pages/Clients"),
       import("@/pages/Managers")
-    ]).catch(() => {
-      // Silencioso em produção
-    });
+    ]).catch(() => {});
   });
   return page;
 });
 
-// Lazy load otimizado com timeout reduzido
 const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 5000) => {
   return lazy(() => {
     const loadWithRetry = (retriesLeft = retries): Promise<any> => {
       return Promise.race([
         importFn(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Tempo limite excedido')), timeout)
         )
       ]).catch(error => {
@@ -51,7 +45,6 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 50
         throw error;
       });
     };
-
     return loadWithRetry();
   });
 };
@@ -70,19 +63,14 @@ const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
-const TrafficReportsTemplates = lazyWithTimeout(() => import("@/pages/TrafficReportsTemplates"));
-const TrafficReportsViewer = lazyWithTimeout(() => import("@/pages/TrafficReportsViewer"));
-const TemplateEditorPage = lazyWithTimeout(() => import("@/pages/TemplateEditorPage"));
-const PremiumBuilderPage = lazyWithTimeout(() => import("@/pages/PremiumBuilderPage"));
-
 
 function App() {
   return (
     <TooltipProvider>
       <Routes>
-        {/* Rota pública do portal do cliente - usa mesma página TrafficReports */}
+        {/* Rota pública do portal do cliente */}
         <Route path="/cliente/:accessToken" element={<TrafficReports />} />
-        
+
         <Route path="/login" element={<Login />} />
 
         <Route
@@ -119,14 +107,14 @@ function App() {
               </PrivateRoute>
             }
           />
-        <Route
-          path="/audience-creator"
-          element={
-            <PrivateRoute>
-              <AudienceCreator />
-            </PrivateRoute>
-          }
-        />
+          <Route
+            path="/audience-creator"
+            element={
+              <PrivateRoute>
+                <AudienceCreator />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/clientes/relatorio"
             element={
@@ -151,66 +139,19 @@ function App() {
               </PrivateRoute>
             }
           />
-          {/* Página principal de revisão diária */}
-            <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
-          
-          {/* Relatórios de Tráfego */}
+          <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
+
+          {/* Relatórios de Tráfego — modelo único, sem editor */}
           <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
-          <Route path="/relatorios-trafego/templates" element={<TrafficReportsTemplates />} />
-          <Route path="/relatorios-trafego/visualizar" element={<TrafficReportsViewer />} />
-          
-          {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
+          <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
+
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
-          
-            <Route path="*" element={<NotFound />} />
-          </Route>
 
-        {/* Editor de Templates - Fullscreen sem sidebar (DEPOIS das rotas com Layout) */}
-        <Route
-          path="/relatorios-trafego/templates/novo"
-          element={
-            <PrivateRoute>
-              <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
-                <TemplateEditorPage />
-              </Suspense>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/relatorios-trafego/templates/editar/:templateId"
-          element={
-            <PrivateRoute>
-              <Suspense fallback={<div className="flex items-center justify-center h-screen">Carregando...</div>}>
-                <TemplateEditorPage />
-              </Suspense>
-            </PrivateRoute>
-          }
-        />
-
-        {/* Premium Builder v2 - Editor premium dedicado */}
-        <Route
-          path="/relatorios-trafego/templates/premium/novo"
-          element={
-            <PrivateRoute>
-              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0B0F1A] text-white/60">Carregando Premium Builder…</div>}>
-                <PremiumBuilderPage />
-              </Suspense>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/relatorios-trafego/templates/premium/editar/:templateId"
-          element={
-            <PrivateRoute>
-              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0B0F1A] text-white/60">Carregando Premium Builder…</div>}>
-                <PremiumBuilderPage />
-              </Suspense>
-            </PrivateRoute>
-          }
-        />
-        </Routes>
-        <Toaster />
-      </TooltipProvider>
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+      <Toaster />
+    </TooltipProvider>
   );
 }
 
