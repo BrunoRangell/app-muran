@@ -124,67 +124,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
     const topAds = data.topAds || metaData?.topAds || googleData?.topAds || [];
     const campaigns = data.campaigns || [];
 
-    // Insights automáticos
-    const insights: { tone: 'positive' | 'negative' | 'warning' | 'info'; title: string; detail: string; icon: any }[] = [];
-    const cpaChange = overview.cpa?.change || 0;
-    if (Math.abs(cpaChange) > 5) {
-      insights.push({
-        tone: cpaChange < 0 ? 'positive' : 'negative',
-        title: cpaChange < 0 ? `CPA caiu ${Math.abs(cpaChange).toFixed(1)}%` : `CPA subiu ${cpaChange.toFixed(1)}%`,
-        detail: `De ${fmtCurrency(overview.cpa?.previous || 0)} para ${fmtCurrency(overview.cpa?.current || 0)} vs período anterior`,
-        icon: cpaChange < 0 ? CheckCircle2 : AlertTriangle,
-      });
-    }
-    const ctrCurrent = overview.ctr?.current || 0;
-    if (ctrCurrent > 0 && ctrCurrent < 0.5) {
-      insights.push({
-        tone: 'warning',
-        title: `CTR baixo (${fmtPct(ctrCurrent)})`,
-        detail: 'Considere revisar criativos e segmentação para aumentar a relevância',
-        icon: AlertTriangle,
-      });
-    }
-    const freqCurrent = overview.frequency?.current || metaData?.overview?.frequency?.current || 0;
-    if (freqCurrent > 3) {
-      insights.push({
-        tone: 'warning',
-        title: `Frequência alta (${fmtDecimal(freqCurrent, 2)})`,
-        detail: 'Audiência sendo impactada várias vezes — risco de fadiga criativa',
-        icon: Repeat,
-      });
-    }
-    const bestCampaign = [...campaigns].sort((a: any, b: any) => (b.conversions || 0) - (a.conversions || 0))[0];
-    if (bestCampaign) {
-      insights.push({
-        tone: 'positive',
-        title: `Campanha destaque: ${bestCampaign.name?.slice(0, 40)}`,
-        detail: `${fmtNum(bestCampaign.conversions)} conversões · CPA ${fmtCurrency(bestCampaign.cpa || 0)}`,
-        icon: Award,
-      });
-    }
-    if (platform === 'both' && metaSpend > 0 && googleSpend > 0) {
-      const metaCpa = metaData?.overview?.cpa?.current || 0;
-      const googleCpa = googleData?.overview?.cpa?.current || 0;
-      if (metaCpa > 0 && googleCpa > 0) {
-        const winner = metaCpa < googleCpa ? 'Meta' : 'Google';
-        const diff = Math.abs(metaCpa - googleCpa) / Math.max(metaCpa, googleCpa) * 100;
-        insights.push({
-          tone: 'info',
-          title: `${winner} mais eficiente em CPA`,
-          detail: `Meta ${fmtCurrency(metaCpa)} · Google ${fmtCurrency(googleCpa)} (${diff.toFixed(0)}% de diferença)`,
-          icon: Zap,
-        });
-      }
-    }
-    if (insights.length === 0) {
-      insights.push({
-        tone: 'info',
-        title: 'Performance estável',
-        detail: 'Sem variações significativas no período. Continue monitorando.',
-        icon: TrendingUp,
-      });
-    }
-
     return {
       overview,
       metaData,
@@ -200,7 +139,6 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
       originData,
       topAds,
       campaigns,
-      insights,
     };
   }, [data, platform]);
 
