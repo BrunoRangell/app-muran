@@ -1,20 +1,18 @@
 import { useMemo } from "react";
 import {
   Eye, MousePointer, Target, TrendingUp, DollarSign,
-  Facebook, Search, BarChart3, Filter, Download,
-  Repeat, Zap, Layers, Award, AlertTriangle, CheckCircle2,
+  Facebook, Search, BarChart3, Filter,
+  Repeat, Layers, Award,
   Users as UsersIcon, MapPin, PieChart as PieIcon,
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ComposedChart,
 } from "recharts";
 import { SidebarNav } from "./premium-templates/dashcortex/SidebarNav";
 import { KpiCard } from "./premium-templates/dashcortex/KpiCard";
 import { PlatformBlock } from "./premium-templates/dashcortex/PlatformBlock";
-import { RegionTable } from "./premium-templates/dashcortex/RegionTable";
-import { OriginPieChart } from "./premium-templates/dashcortex/OriginPieChart";
 import { TopCreativesSection } from "./TopCreativesSection";
 import { CampaignsInsightsTable } from "./CampaignsInsightsTable";
 
