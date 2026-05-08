@@ -2,15 +2,12 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { subDays } from "date-fns";
 import { TrafficReportFilters } from "@/components/traffic-reports/TrafficReportFilters";
-import { TemplateSelector } from "@/components/traffic-reports/TemplateSelector";
-import { TemplateCustomizer } from "@/components/traffic-reports/TemplateCustomizer";
 import { ClientPortalButton } from "@/components/traffic-reports/ClientPortalButton";
 import { ReportContent, ViewMode } from "@/components/traffic-reports/ReportContent";
 import { PortalHeader } from "@/components/traffic-reports/PortalHeader";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
-import { useReportTemplates, ReportTemplate } from "@/hooks/useReportTemplates";
 import { useClientPortalByToken, useManageClientPortal } from "@/hooks/useClientPortal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,7 +29,6 @@ const PERIOD_OPTIONS = [
 ];
 
 const TrafficReports = () => {
-  // Detectar modo portal via rota
   const { accessToken } = useParams<{ accessToken?: string }>();
   const isPortalMode = !!accessToken;
 
@@ -45,8 +41,6 @@ const TrafficReports = () => {
     start: subDays(new Date(), 30),
     end: new Date()
   });
-  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
-  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   // Estado para modo preview (visualizar como cliente)
   const [previewMode, setPreviewMode] = useState(false);
@@ -55,7 +49,6 @@ const TrafficReports = () => {
   const [period, setPeriod] = useState<string>('30');
   const [hasTrackedAccess, setHasTrackedAccess] = useState(false);
 
-  // Determinar se deve mostrar elementos do portal
   const showPortalElements = isPortalMode || previewMode;
 
   // Buscar dados do portal (apenas em modo portal)
@@ -64,7 +57,6 @@ const TrafficReports = () => {
   );
   const { trackAccess } = useManageClientPortal();
 
-  // Rastrear acesso (apenas em modo portal)
   useEffect(() => {
     if (isPortalMode && portal && accessToken && !hasTrackedAccess) {
       trackAccess.mutate(accessToken);
@@ -72,13 +64,11 @@ const TrafficReports = () => {
     }
   }, [isPortalMode, portal, accessToken, hasTrackedAccess, trackAccess]);
 
-  // Determinar cliente e plataforma baseado no modo
   const effectiveClientId = isPortalMode ? portal?.client_id || '' : selectedClient;
-  const effectivePlatform = isPortalMode 
+  const effectivePlatform = isPortalMode
     ? (portal?.default_platform as 'meta' | 'google' | 'both') || 'both'
     : selectedPlatform;
 
-  // Calcular date range baseado no modo
   const effectiveDateRange = useMemo(() => {
     if (isPortalMode) {
       return {
@@ -89,17 +79,14 @@ const TrafficReports = () => {
     return dateRange;
   }, [isPortalMode, period, dateRange]);
 
-  // Buscar clientes (apenas modo interno)
-  const { data: clientsData, isLoading: isLoadingClients } = useUnifiedData();
+  const { data: clientsData } = useUnifiedData();
 
-  // Buscar contas do cliente (em modo portal, propaga o accessToken para usar a RPC pública)
-  const { data: accountsData, isLoading: isLoadingAccounts } = useClientAccounts(
+  const { data: accountsData } = useClientAccounts(
     effectiveClientId,
     effectivePlatform === 'both' ? undefined : effectivePlatform,
     isPortalMode ? accessToken : undefined
   );
 
-  // Auto-selecionar contas em modo portal
   const effectiveAccounts = useMemo(() => {
     if (isPortalMode) {
       if (!accountsData) return [];
@@ -114,32 +101,8 @@ const TrafficReports = () => {
     return selectedAccounts;
   }, [isPortalMode, accountsData, effectivePlatform, selectedAccounts]);
 
-  // Buscar templates
-  const { templates } = useReportTemplates(effectiveClientId || undefined);
-
-  // Estado para template selecionado no portal
-  const [portalSelectedTemplateId, setPortalSelectedTemplateId] = useState<string>('');
-
-  // Template ativo (modo portal usa seleção local ou auto-seleciona, modo interno usa seleção do usuário)
-  const effectiveTemplate = useMemo(() => {
-    if (isPortalMode) {
-      if (!templates.length) return null;
-      // Se usuário selecionou um template no portal, usar esse
-      if (portalSelectedTemplateId) {
-        const selected = templates.find(t => t.id === portalSelectedTemplateId);
-        if (selected) return selected;
-      }
-      // Auto-selecionar: template do cliente ou global
-      const clientTemplate = templates.find(t => t.client_id === portal?.client_id);
-      if (clientTemplate) return clientTemplate;
-      return templates.find(t => t.is_global) || null;
-    }
-    return selectedTemplate;
-  }, [isPortalMode, templates, portal?.client_id, selectedTemplate, portalSelectedTemplateId]);
-
-  // Buscar insights de tráfego
-  const { 
-    data: insightsData, 
+  const {
+    data: insightsData,
     isLoading: isLoadingInsights,
     error: insightsError,
     refetch
@@ -163,11 +126,11 @@ const TrafficReports = () => {
   const handlePlatformChange = (platform: 'meta' | 'google' | 'both') => {
     setSelectedPlatform(platform);
     setViewMode('combined');
-    
+
     if (platform === 'both') {
       const metaPrimary = accountsData?.find(a => a.platform === 'meta' && a.is_primary);
       const googlePrimary = accountsData?.find(a => a.platform === 'google' && a.is_primary);
-      const autoSelected = [];
+      const autoSelected: string[] = [];
       if (metaPrimary) autoSelected.push(metaPrimary.id);
       if (googlePrimary) autoSelected.push(googlePrimary.id);
       setSelectedAccounts(autoSelected);
@@ -183,7 +146,10 @@ const TrafficReports = () => {
     return accountsData?.find(a => effectiveAccounts.includes(a.id))?.account_id;
   }, [accountsData, effectiveAccounts]);
 
-  // Estados de loading/erro para modo portal
+  const clientName = isPortalMode
+    ? portal?.clients?.company_name
+    : clientsData?.find(c => c.id === selectedClient)?.company_name;
+
   if (isPortalMode && isLoadingPortal) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
@@ -212,11 +178,6 @@ const TrafficReports = () => {
     );
   }
 
-  // Detectar template premium para layout fullscreen
-  const isPremiumTemplate =
-    (effectiveTemplate?.sections as any)?.premiumLayout === 'dashcortex' ||
-    (effectiveTemplate?.sections as any)?.premiumTheme === 'dark';
-
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       {/* Banner de modo preview */}
@@ -224,9 +185,9 @@ const TrafficReports = () => {
         <div className="fixed top-0 left-0 right-0 z-50 bg-muran-primary text-white py-2 px-4 flex items-center justify-center gap-3 shadow-lg">
           <Eye className="h-4 w-4" />
           <span className="text-sm font-medium">Modo Preview - Visualizando como cliente</span>
-          <Button 
-            size="sm" 
-            variant="secondary" 
+          <Button
+            size="sm"
+            variant="secondary"
             className="h-7 px-3 text-xs"
             onClick={() => setPreviewMode(false)}
           >
@@ -236,11 +197,11 @@ const TrafficReports = () => {
         </div>
       )}
 
-      {/* Header integrado do portal - modo portal OU preview */}
+      {/* Header do portal — modo portal OU preview */}
       {showPortalElements && (
         <div className={previewMode && !isPortalMode ? 'mt-10' : ''}>
           <PortalHeader
-            clientName={isPortalMode ? portal?.clients?.company_name : clientsData?.find(c => c.id === selectedClient)?.company_name}
+            clientName={clientName}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             hasMetaData={!!insightsData?.metaData}
@@ -250,7 +211,7 @@ const TrafficReports = () => {
         </div>
       )}
 
-      <div className={isPremiumTemplate && hasSelection ? "flex-1 w-full" : "flex-1 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 w-full"}>
+      <div className={hasSelection ? "flex-1 w-full" : "flex-1 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 w-full"}>
         {/* Header do modo interno */}
         {!showPortalElements && (
           <div className="flex items-center justify-between">
@@ -262,77 +223,47 @@ const TrafficReports = () => {
                 Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
               </p>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              {/* Botão de Preview */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPreviewMode(true)}
                 className="gap-2"
+                disabled={!selectedClient}
               >
                 <Eye className="h-4 w-4" />
                 Visualizar como Cliente
               </Button>
-              
+
               {selectedClient && (
-                <ClientPortalButton 
-                  clientId={selectedClient} 
+                <ClientPortalButton
+                  clientId={selectedClient}
                   clientName={clientsData?.find(c => c.id === selectedClient)?.company_name}
                 />
               )}
-              <TemplateSelector
-                selectedTemplateId={selectedTemplate?.id}
-                onTemplateSelect={setSelectedTemplate}
-                onCustomize={() => setCustomizerOpen(true)}
-                clientId={selectedClient}
-              />
             </div>
           </div>
         )}
 
-        {/* Seletores para modo portal */}
-        {showPortalElements && isPortalMode && (
-          <div className="flex items-center justify-end gap-4 flex-wrap">
-            {/* Seletor de template */}
-            {templates.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Modelo:</span>
-                <Select 
-                  value={portalSelectedTemplateId || '_auto'} 
-                  onValueChange={(val) => setPortalSelectedTemplateId(val === '_auto' ? '' : val)}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Automático" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_auto">Visualização Padrão</SelectItem>
-                    {templates.map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            
-            {/* Seletor de período (se permitido) */}
-            {portal?.allow_period_change && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <Select value={period} onValueChange={setPeriod}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PERIOD_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+        {/* Seletor de período para portal */}
+        {showPortalElements && isPortalMode && portal?.allow_period_change && (
+          <div className="flex items-center justify-end gap-4 flex-wrap p-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIOD_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 
@@ -354,7 +285,6 @@ const TrafficReports = () => {
           />
         )}
 
-        {/* Estados de seleção apenas para modo interno (sem preview) */}
         {!isPortalMode && !previewMode && !selectedClient && (
           <Alert>
             <AlertDescription>
@@ -378,26 +308,19 @@ const TrafficReports = () => {
             platform={effectivePlatform}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
-            template={effectiveTemplate}
             accountId={accountId}
             isLoading={isLoadingInsights}
             error={insightsError}
             hideViewSelector={showPortalElements}
-          />
-        )}
-
-        {/* Template Customizer apenas para modo interno (sem preview) */}
-        {!isPortalMode && !previewMode && (
-          <TemplateCustomizer
-            open={customizerOpen}
-            onOpenChange={setCustomizerOpen}
-            template={selectedTemplate}
-            clientId={selectedClient}
+            clientName={clientName}
+            dateRange={{
+              start: effectiveDateRange.start.toISOString().split('T')[0],
+              end: effectiveDateRange.end.toISOString().split('T')[0],
+            }}
           />
         )}
       </div>
 
-      {/* Footer discreto - modo portal OU preview */}
       {showPortalElements && (
         <footer className="py-6 text-center border-t border-border/50">
           <p className="text-sm text-muted-foreground">

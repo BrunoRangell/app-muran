@@ -4,15 +4,13 @@ import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { 
-  LayoutGrid, 
-  Search, 
-  ExternalLink, 
-  Users, 
+import {
+  LayoutGrid,
+  Search,
+  ExternalLink,
+  Users,
   Link2,
   Link2Off,
-  LayoutTemplate,
-  Eye,
   Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -249,23 +247,6 @@ const TrafficReportsDashboard = () => {
                 Gerencie relatórios de tráfego dos clientes
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/relatorios-trafego/templates")}
-              className="gap-2"
-            >
-              <LayoutTemplate className="h-4 w-4" />
-              Editor de Templates
-            </Button>
-            <Button 
-              onClick={() => navigate("/relatorios-trafego/visualizar")}
-              className="gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              Ver Todos os Relatórios
-            </Button>
           </div>
         </div>
 
