@@ -12,8 +12,17 @@ const items = [
   { id: "campaigns", label: "Campanhas", icon: Filter },
 ];
 
-export function SidebarNav({ active = "overview" }: { active?: string }) {
+interface SidebarNavProps {
+  active?: string;
+  onNavigate?: (id: string) => void;
+}
+
+export function SidebarNav({ active = "overview", onNavigate }: SidebarNavProps) {
   const handleClick = (id: string) => {
+    if (onNavigate) {
+      onNavigate(id);
+      return;
+    }
     const el = document.getElementById(`dashcortex-section-${id}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };

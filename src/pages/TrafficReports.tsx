@@ -179,8 +179,15 @@ const TrafficReports = () => {
     );
   }
 
+  const portalShellStyle = showPortalElements
+    ? { background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" }
+    : undefined;
+
   return (
-    <div className={cn("min-h-screen flex flex-col", showPortalElements ? "bg-[#0B0F1A]" : "bg-muted/30")}>
+    <div
+      className={cn("min-h-screen flex flex-col", !showPortalElements && "bg-muted/30")}
+      style={portalShellStyle}
+    >
       {/* Banner de modo preview */}
       {previewMode && !isPortalMode && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-muran-primary text-white py-2 px-4 flex items-center justify-center gap-3 shadow-lg">
@@ -318,17 +325,10 @@ const TrafficReports = () => {
               start: effectiveDateRange.start.toISOString().split('T')[0],
               end: effectiveDateRange.end.toISOString().split('T')[0],
             }}
+            embedded={showPortalElements}
           />
         )}
       </div>
-
-      {showPortalElements && (
-        <footer className="py-6 text-center border-t border-border/50">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="text-muran-primary font-semibold">Muran</span>
-          </p>
-        </footer>
-      )}
     </div>
   );
 };

@@ -16,6 +16,7 @@ interface ReportContentProps {
   hideViewSelector?: boolean;
   clientName?: string;
   dateRange?: { start: string; end: string };
+  embedded?: boolean;
 }
 
 export function ReportContent({
@@ -27,6 +28,7 @@ export function ReportContent({
   accountId,
   clientName,
   dateRange,
+  embedded,
 }: ReportContentProps) {
   // Determinar quais dados usar baseado no viewMode (apenas relevante quando platform='both')
   const activeData = useMemo(() => {
@@ -87,6 +89,7 @@ export function ReportContent({
       clientName={clientName}
       dateRange={dateRange}
       accountId={accountId}
+      embedded={embedded}
     />
   );
 }

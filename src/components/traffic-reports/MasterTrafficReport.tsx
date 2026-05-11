@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Eye, MousePointer, Target, TrendingUp, DollarSign,
   Facebook, Search, BarChart3, Filter,
@@ -23,6 +23,8 @@ interface MasterTrafficReportProps {
   clientName?: string;
   dateRange?: { start: string; end: string };
   accountId?: string;
+  /** Quando true, não renderiza o background/shell próprio — o container pai já provê. */
+  embedded?: boolean;
 }
 
 const fmtNum = (v: number) => new Intl.NumberFormat("pt-BR").format(Math.round(v || 0));
@@ -71,7 +73,33 @@ function SectionTitle({ icon: Icon, label, hint }: { icon: any; label: string; h
   );
 }
 
-export function MasterTrafficReport({ data, platform, clientName, dateRange }: MasterTrafficReportProps) {
+export function MasterTrafficReport({ data, platform, clientName, dateRange, embedded = false }: MasterTrafficReportProps) {
+  const [activeSection, setActiveSection] = useState<string>("overview");
+
+  useEffect(() => {
+    const ids = ["overview", "performance", "meta-ads", "google-ads", "funnel", "audience", "creatives", "campaigns"];
+    const elements = ids
+      .map((id) => document.getElementById(`dashcortex-section-${id}`))
+      .filter((el): el is HTMLElement => !!el);
+    if (!elements.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const id = visible[0].target.id.replace("dashcortex-section-", "");
+          setActiveSection(id);
+        }
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [data]);
+
   const normalized = useMemo(() => {
     if (!data) return null;
 
@@ -177,19 +205,23 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
     unknown: "#64748b", desconhecido: "#64748b",
   };
 
+  const rootClass = embedded
+    ? "dashcortex-root px-3 sm:px-6 lg:px-8 py-4 sm:py-6"
+    : "dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen";
+  const rootStyle = embedded
+    ? undefined
+    : { background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" };
+
   return (
-    <div
-      className="dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen"
-      style={{ background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" }}
-    >
+    <div className={rootClass} style={rootStyle}>
       <style>{`
         .dashcortex-root { font-family: 'Space Grotesk', -apple-system, sans-serif; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .dashcortex-root [class*="recharts-"] text { fill: rgba(255,255,255,0.5); font-size: 11px; }
+        .dashcortex-root [class*="recharts-"] text { fill: rgba(255,255,255,0.65); font-size: 11px; }
       `}</style>
 
       <div className="flex gap-6 max-w-[1600px] mx-auto">
-        <SidebarNav active="overview" />
+        <SidebarNav active={activeSection} />
 
         <div className="flex-1 min-w-0 space-y-6">
           {/* ============ HEADER ============ */}
@@ -359,7 +391,7 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] uppercase tracking-wider text-white/40 mb-1">{stage.label}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-white/55 mb-1">{stage.label}</p>
                     <p className="text-2xl font-bold text-white tracking-tight">{stage.fmt(stage.value)}</p>
                   </div>
                 );
@@ -445,36 +477,20 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange }: M
 
           {/* ============ TOP CRIATIVOS ============ */}
           {topAds && topAds.length > 0 && (
-            <GlassCard id={SECTION_ID('creatives')} className="!p-0 overflow-hidden">
-              <div className="p-5 pb-0">
-                <SectionTitle icon={Award} label="Top Criativos" hint={`${Math.min(topAds.length, 10)} melhores`} />
-              </div>
-              <div className="px-5 pb-5 [&_.bg-card]:!bg-white/[0.02] [&_.bg-card]:!border-white/[0.06] [&_.bg-card]:!text-white">
-                <TopCreativesSection topAds={topAds} limit={10} />
-              </div>
+            <GlassCard id={SECTION_ID('creatives')}>
+              <SectionTitle icon={Award} label="Top Criativos" hint={`${Math.min(topAds.length, 10)} melhores`} />
+              <TopCreativesSection topAds={topAds} limit={10} />
             </GlassCard>
           )}
 
           {/* ============ TABELA DE CAMPANHAS ============ */}
           {campaigns && campaigns.length > 0 && (
-            <GlassCard id={SECTION_ID('campaigns')} className="!p-0 overflow-hidden">
-              <div className="p-5 pb-0">
-                <SectionTitle icon={Filter} label="Campanhas" hint={`${campaigns.length} campanhas`} />
-              </div>
-              <div className="px-5 pb-5 [&_*]:!text-inherit dashcortex-table">
-                <CampaignsInsightsTable
-                  campaigns={campaigns}
-                  showPlatformFilter={platform === 'both'}
-                />
-              </div>
-              <style>{`
-                .dashcortex-table .text-foreground { color: rgba(255,255,255,0.9); }
-                .dashcortex-table .text-muted-foreground { color: rgba(255,255,255,0.5); }
-                .dashcortex-table table { color: rgba(255,255,255,0.85); }
-                .dashcortex-table th { color: rgba(255,255,255,0.55) !important; border-color: rgba(255,255,255,0.06) !important; }
-                .dashcortex-table td { border-color: rgba(255,255,255,0.04) !important; }
-                .dashcortex-table tr:hover { background: rgba(255,255,255,0.02) !important; }
-              `}</style>
+            <GlassCard id={SECTION_ID('campaigns')}>
+              <SectionTitle icon={Filter} label="Campanhas" hint={`${campaigns.length} campanhas`} />
+              <CampaignsInsightsTable
+                campaigns={campaigns}
+                showPlatformFilter={platform === 'both'}
+              />
             </GlassCard>
           )}
 
