@@ -477,36 +477,20 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
 
           {/* ============ TOP CRIATIVOS ============ */}
           {topAds && topAds.length > 0 && (
-            <GlassCard id={SECTION_ID('creatives')} className="!p-0 overflow-hidden">
-              <div className="p-5 pb-0">
-                <SectionTitle icon={Award} label="Top Criativos" hint={`${Math.min(topAds.length, 10)} melhores`} />
-              </div>
-              <div className="px-5 pb-5 [&_.bg-card]:!bg-white/[0.02] [&_.bg-card]:!border-white/[0.06] [&_.bg-card]:!text-white">
-                <TopCreativesSection topAds={topAds} limit={10} />
-              </div>
+            <GlassCard id={SECTION_ID('creatives')}>
+              <SectionTitle icon={Award} label="Top Criativos" hint={`${Math.min(topAds.length, 10)} melhores`} />
+              <TopCreativesSection topAds={topAds} limit={10} />
             </GlassCard>
           )}
 
           {/* ============ TABELA DE CAMPANHAS ============ */}
           {campaigns && campaigns.length > 0 && (
-            <GlassCard id={SECTION_ID('campaigns')} className="!p-0 overflow-hidden">
-              <div className="p-5 pb-0">
-                <SectionTitle icon={Filter} label="Campanhas" hint={`${campaigns.length} campanhas`} />
-              </div>
-              <div className="px-5 pb-5 [&_*]:!text-inherit dashcortex-table">
-                <CampaignsInsightsTable
-                  campaigns={campaigns}
-                  showPlatformFilter={platform === 'both'}
-                />
-              </div>
-              <style>{`
-                .dashcortex-table .text-foreground { color: rgba(255,255,255,0.9); }
-                .dashcortex-table .text-muted-foreground { color: rgba(255,255,255,0.5); }
-                .dashcortex-table table { color: rgba(255,255,255,0.85); }
-                .dashcortex-table th { color: rgba(255,255,255,0.55) !important; border-color: rgba(255,255,255,0.06) !important; }
-                .dashcortex-table td { border-color: rgba(255,255,255,0.04) !important; }
-                .dashcortex-table tr:hover { background: rgba(255,255,255,0.02) !important; }
-              `}</style>
+            <GlassCard id={SECTION_ID('campaigns')}>
+              <SectionTitle icon={Filter} label="Campanhas" hint={`${campaigns.length} campanhas`} />
+              <CampaignsInsightsTable
+                campaigns={campaigns}
+                showPlatformFilter={platform === 'both'}
+              />
             </GlassCard>
           )}
 
