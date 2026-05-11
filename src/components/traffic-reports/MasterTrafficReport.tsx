@@ -391,7 +391,7 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] uppercase tracking-wider text-white/40 mb-1">{stage.label}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-white/55 mb-1">{stage.label}</p>
                     <p className="text-2xl font-bold text-white tracking-tight">{stage.fmt(stage.value)}</p>
                   </div>
                 );
