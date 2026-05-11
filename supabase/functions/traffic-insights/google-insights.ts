@@ -95,34 +95,25 @@ export async function fetchGoogleInsights(
     throw new Error(`Conta Google não encontrada: ${accountError?.message}`);
   }
 
-  // Buscar tokens de acesso Google globais
-  const { data: accessTokenData, error: accessError } = await supabase
-    .from('api_tokens')
-    .select('value')
-    .eq('name', 'google_ads_access_token')
-    .single();
-
+  // Buscar developer token e manager id (access token é renovado separadamente)
   const { data: devTokenData, error: devError } = await supabase
     .from('api_tokens')
     .select('value')
     .eq('name', 'google_ads_developer_token')
     .single();
 
-  const { data: managerIdData, error: managerError } = await supabase
+  const { data: managerIdData } = await supabase
     .from('api_tokens')
     .select('value')
     .eq('name', 'google_ads_manager_id')
     .single();
 
-  if (accessError || !accessTokenData?.value) {
-    throw new Error('Token de acesso Google não encontrado. Configure o token em Configurações → API Tokens');
-  }
-
   if (devError || !devTokenData?.value) {
     throw new Error('Developer Token Google não encontrado. Configure o token em Configurações → API Tokens');
   }
 
-  const accessToken = accessTokenData.value;
+  // Renova/recupera access token válido (espelha unified-meta-review)
+  const accessToken = await getValidGoogleAccessToken();
   const developerToken = devTokenData.value;
   const managerId = managerIdData?.value || null;
   const customerId = accountData.account_id.replace(/-/g, '');
