@@ -5,6 +5,76 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Renova o google_ads_access_token usando refresh_token quando próximo de expirar.
+// Espelha a lógica de unified-meta-review/account-health.ts (manageGoogleAdsTokens).
+async function getValidGoogleAccessToken(): Promise<string> {
+  const { data: tokensData, error: tokensError } = await supabase
+    .from('api_tokens')
+    .select('name, value')
+    .in('name', [
+      'google_ads_access_token',
+      'google_ads_refresh_token',
+      'google_ads_token_expires_at',
+      'google_ads_client_id',
+      'google_ads_client_secret',
+    ]);
+
+  if (tokensError) {
+    console.error('❌ [GOOGLE-TOKEN] Erro ao buscar tokens:', tokensError);
+    throw new Error('Falha ao buscar tokens do Google Ads.');
+  }
+
+  const tokens: Record<string, string> = {};
+  (tokensData || []).forEach((t: any) => { tokens[t.name] = t.value; });
+
+  const expiresAt = parseInt(tokens['google_ads_token_expires_at'] || '0');
+  const fiveMinutesMs = 5 * 60 * 1000;
+
+  if (tokens['google_ads_access_token'] && expiresAt > Date.now() + fiveMinutesMs) {
+    console.log('🔐 [GOOGLE-TOKEN] Token válido em cache, reutilizando');
+    return tokens['google_ads_access_token'];
+  }
+
+  const refreshToken = tokens['google_ads_refresh_token'];
+  const clientId = tokens['google_ads_client_id'];
+  const clientSecret = tokens['google_ads_client_secret'];
+
+  if (!refreshToken || !clientId || !clientSecret) {
+    throw new Error(
+      'Configuração do Google Ads incompleta: faltam refresh_token, client_id ou client_secret em api_tokens.'
+    );
+  }
+
+  console.log('🔄 [GOOGLE-TOKEN] Renovando access_token via refresh_token');
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.error('❌ [GOOGLE-TOKEN] Falha na renovação:', data?.error || data);
+    throw new Error(`Erro ao renovar token Google Ads: ${data?.error_description || data?.error || 'desconhecido'}`);
+  }
+
+  const newAccessToken = data.access_token as string;
+  const newExpiresAt = Date.now() + ((data.expires_in - 60) * 1000);
+
+  await supabase.from('api_tokens').upsert([
+    { name: 'google_ads_access_token', value: newAccessToken },
+    { name: 'google_ads_token_expires_at', value: newExpiresAt.toString() },
+  ], { onConflict: 'name', ignoreDuplicates: false });
+
+  console.log('✅ [GOOGLE-TOKEN] Token renovado e salvo');
+  return newAccessToken;
+}
+
 export async function fetchGoogleInsights(
   clientId: string,
   accountId: string,
@@ -25,34 +95,25 @@ export async function fetchGoogleInsights(
     throw new Error(`Conta Google não encontrada: ${accountError?.message}`);
   }
 
-  // Buscar tokens de acesso Google globais
-  const { data: accessTokenData, error: accessError } = await supabase
-    .from('api_tokens')
-    .select('value')
-    .eq('name', 'google_ads_access_token')
-    .single();
-
+  // Buscar developer token e manager id (access token é renovado separadamente)
   const { data: devTokenData, error: devError } = await supabase
     .from('api_tokens')
     .select('value')
     .eq('name', 'google_ads_developer_token')
     .single();
 
-  const { data: managerIdData, error: managerError } = await supabase
+  const { data: managerIdData } = await supabase
     .from('api_tokens')
     .select('value')
     .eq('name', 'google_ads_manager_id')
     .single();
 
-  if (accessError || !accessTokenData?.value) {
-    throw new Error('Token de acesso Google não encontrado. Configure o token em Configurações → API Tokens');
-  }
-
   if (devError || !devTokenData?.value) {
     throw new Error('Developer Token Google não encontrado. Configure o token em Configurações → API Tokens');
   }
 
-  const accessToken = accessTokenData.value;
+  // Renova/recupera access token válido (espelha unified-meta-review)
+  const accessToken = await getValidGoogleAccessToken();
   const developerToken = devTokenData.value;
   const managerId = managerIdData?.value || null;
   const customerId = accountData.account_id.replace(/-/g, '');
