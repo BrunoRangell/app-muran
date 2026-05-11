@@ -205,19 +205,23 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
     unknown: "#64748b", desconhecido: "#64748b",
   };
 
+  const rootClass = embedded
+    ? "dashcortex-root px-3 sm:px-6 lg:px-8 py-4 sm:py-6"
+    : "dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen";
+  const rootStyle = embedded
+    ? undefined
+    : { background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" };
+
   return (
-    <div
-      className="dashcortex-root -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen"
-      style={{ background: "radial-gradient(ellipse at top, #1a1030 0%, #0B0F1A 50%)" }}
-    >
+    <div className={rootClass} style={rootStyle}>
       <style>{`
         .dashcortex-root { font-family: 'Space Grotesk', -apple-system, sans-serif; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .dashcortex-root [class*="recharts-"] text { fill: rgba(255,255,255,0.5); font-size: 11px; }
+        .dashcortex-root [class*="recharts-"] text { fill: rgba(255,255,255,0.65); font-size: 11px; }
       `}</style>
 
       <div className="flex gap-6 max-w-[1600px] mx-auto">
-        <SidebarNav active="overview" />
+        <SidebarNav active={activeSection} />
 
         <div className="flex-1 min-w-0 space-y-6">
           {/* ============ HEADER ============ */}
