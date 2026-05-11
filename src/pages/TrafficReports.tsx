@@ -325,17 +325,10 @@ const TrafficReports = () => {
               start: effectiveDateRange.start.toISOString().split('T')[0],
               end: effectiveDateRange.end.toISOString().split('T')[0],
             }}
+            embedded={showPortalElements}
           />
         )}
       </div>
-
-      {showPortalElements && (
-        <footer className="py-6 text-center border-t border-border/50">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="text-muran-primary font-semibold">Muran</span>
-          </p>
-        </footer>
-      )}
     </div>
   );
 };
