@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Eye, MousePointer, Target, TrendingUp, DollarSign,
   Facebook, Search, BarChart3, Filter,
@@ -23,6 +23,8 @@ interface MasterTrafficReportProps {
   clientName?: string;
   dateRange?: { start: string; end: string };
   accountId?: string;
+  /** Quando true, não renderiza o background/shell próprio — o container pai já provê. */
+  embedded?: boolean;
 }
 
 const fmtNum = (v: number) => new Intl.NumberFormat("pt-BR").format(Math.round(v || 0));
@@ -71,7 +73,33 @@ function SectionTitle({ icon: Icon, label, hint }: { icon: any; label: string; h
   );
 }
 
-export function MasterTrafficReport({ data, platform, clientName, dateRange }: MasterTrafficReportProps) {
+export function MasterTrafficReport({ data, platform, clientName, dateRange, embedded = false }: MasterTrafficReportProps) {
+  const [activeSection, setActiveSection] = useState<string>("overview");
+
+  useEffect(() => {
+    const ids = ["overview", "performance", "meta-ads", "google-ads", "funnel", "audience", "creatives", "campaigns"];
+    const elements = ids
+      .map((id) => document.getElementById(`dashcortex-section-${id}`))
+      .filter((el): el is HTMLElement => !!el);
+    if (!elements.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const id = visible[0].target.id.replace("dashcortex-section-", "");
+          setActiveSection(id);
+        }
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [data]);
+
   const normalized = useMemo(() => {
     if (!data) return null;
 
