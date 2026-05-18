@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Search, Play, Images } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Play, Images } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/utils/chartUtils";
 import { proxiedImageUrl } from "@/lib/metaImageProxy";
+import { MetaVideoPlayerDialog } from "./MetaVideoPlayerDialog";
 import {
   Select,
   SelectContent,
@@ -45,16 +46,24 @@ type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
 export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionProps) {
   const [sortBy, setSortBy] = useState<SortOption>('impressions');
   const [failedThumbs, setFailedThumbs] = useState<Record<string, boolean>>({});
+  const [playerAd, setPlayerAd] = useState<TopAd | null>(null);
 
-  const sortedAds = [...topAds].sort((a, b) => {
+  // Apenas criativos do Meta — Google Ads são majoritariamente texto, sem preview útil
+  const metaAds = useMemo(() => topAds.filter(ad => ad.platform === 'meta'), [topAds]);
+
+  const sortedAds = [...metaAds].sort((a, b) => {
     if (sortBy === 'cpa') {
-      // menor CPA é melhor (mas zero significa sem dado)
       const av = a.metrics.cpa || Infinity;
       const bv = b.metrics.cpa || Infinity;
       return av - bv;
     }
     return b.metrics[sortBy] - a.metrics[sortBy];
   }).slice(0, limit);
+
+  // Se não houver criativos Meta, não renderiza nada (a seção desaparece)
+  if (metaAds.length === 0) {
+    return null;
+  }
 
   const getRankBadge = (index: number) => {
     if (index === 0) return "🔥 Top 1";
@@ -128,74 +137,85 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
               )}
 
               {/* Creative Preview com blur backdrop */}
-              <div className="relative aspect-video bg-gradient-to-br from-white/[0.03] to-white/[0.01] overflow-hidden">
-                {hasThumb ? (
-                  <>
-                    {/* Skeleton placeholder enquanto carrega */}
-                    <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
-                    {/* Backdrop blur */}
-                    <img
-                      src={proxiedThumb}
-                      alt=""
-                      aria-hidden="true"
-                      referrerPolicy="no-referrer"
-                      className="absolute inset-0 w-full h-full object-cover scale-110 opacity-50"
-                      style={{ filter: "blur(24px)" }}
-                    />
-                    <div className="absolute inset-0 bg-[#0B0F1A]/40" />
-                    {/* Imagem principal centralizada */}
-                    <img
-                      src={proxiedThumb}
-                      alt={ad.name}
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      className="relative z-10 w-full h-full object-contain"
-                      onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
-                    />
+              {(() => {
+                const isPlayableVideo = mediaType === 'video' && !!ad.creative.videoId;
+                const PreviewTag = isPlayableVideo ? 'button' : 'div';
+                return (
+                  <PreviewTag
+                    type={isPlayableVideo ? 'button' : undefined}
+                    onClick={isPlayableVideo ? () => setPlayerAd(ad) : undefined}
+                    className={`relative aspect-video w-full bg-gradient-to-br from-white/[0.03] to-white/[0.01] overflow-hidden block ${
+                      isPlayableVideo ? 'cursor-pointer group/play' : ''
+                    }`}
+                    aria-label={isPlayableVideo ? `Assistir vídeo: ${ad.name}` : undefined}
+                  >
+                    {hasThumb ? (
+                      <>
+                        <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
+                        <img
+                          src={proxiedThumb}
+                          alt=""
+                          aria-hidden="true"
+                          referrerPolicy="no-referrer"
+                          className="absolute inset-0 w-full h-full object-cover scale-110 opacity-50"
+                          style={{ filter: "blur(24px)" }}
+                        />
+                        <div className="absolute inset-0 bg-[#0B0F1A]/40" />
+                        <img
+                          src={proxiedThumb}
+                          alt={ad.name}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          className="relative z-10 w-full h-full object-contain transition-transform duration-300 group-hover/play:scale-[1.02]"
+                          onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
+                        />
 
-                    {/* Overlay para vídeo */}
-                    {mediaType === 'video' && (
-                      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                        <div className="rounded-full bg-black/55 backdrop-blur-md border border-white/20 p-3 shadow-lg">
-                          <Play className="h-6 w-6 text-white fill-white" />
+                        {/* Overlay para vídeo (com hover quando jogável) */}
+                        {mediaType === 'video' && (
+                          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                            <div
+                              className={`rounded-full bg-black/55 backdrop-blur-md border border-white/20 p-3 shadow-lg transition-all duration-300 ${
+                                isPlayableVideo
+                                  ? 'group-hover/play:scale-110 group-hover/play:bg-[#ff6e00]/80 group-hover/play:border-[#ff6e00]'
+                                  : ''
+                              }`}
+                            >
+                              <Play className="h-6 w-6 text-white fill-white" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Overlay para carrossel */}
+                        {mediaType === 'carousel' && (
+                          <div className="absolute bottom-2 right-2 z-20">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-black/55 backdrop-blur-md border border-white/15 px-2 py-1 text-[10px] font-medium text-white/90">
+                              <Images className="h-3 w-3" /> Carrossel
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff6e00]/10 via-transparent to-white/[0.02]">
+                        <div className="text-center p-4">
+                          {mediaType === 'video' ? (
+                            <Play className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
+                          ) : (
+                            <Target className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
+                          )}
+                          <p className="text-xs text-white/50">Preview não disponível</p>
                         </div>
                       </div>
                     )}
 
-                    {/* Overlay para carrossel */}
-                    {mediaType === 'carousel' && (
-                      <div className="absolute bottom-2 right-2 z-20">
-                        <span className="inline-flex items-center gap-1 rounded-md bg-black/55 backdrop-blur-md border border-white/15 px-2 py-1 text-[10px] font-medium text-white/90">
-                          <Images className="h-3 w-3" /> Carrossel
-                        </span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff6e00]/10 via-transparent to-white/[0.02]">
-                    <div className="text-center p-4">
-                      {mediaType === 'video' ? (
-                        <Play className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
-                      ) : (
-                        <Target className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
-                      )}
-                      <p className="text-xs text-white/50">Preview não disponível</p>
+                    {/* Platform Badge (sempre Meta nesta seção) */}
+                    <div className="absolute bottom-2 left-2 z-20">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2 py-1 text-[10px] font-medium text-white/85">
+                        <Facebook className="h-3 w-3 text-[#1877f2]" /> Meta Ads
+                      </span>
                     </div>
-                  </div>
-                )}
-
-
-                {/* Platform Badge */}
-                <div className="absolute bottom-2 left-2 z-20">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2 py-1 text-[10px] font-medium text-white/85">
-                    {ad.platform === 'meta' ? (
-                      <><Facebook className="h-3 w-3 text-[#1877f2]" /> Meta Ads</>
-                    ) : (
-                      <><Search className="h-3 w-3 text-[#34a853]" /> Google Ads</>
-                    )}
-                  </span>
-                </div>
-              </div>
+                  </PreviewTag>
+                );
+              })()}
 
               <div className="p-4 space-y-3">
                 {/* Ad Name */}
@@ -258,6 +278,14 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
           <p>Nenhum criativo disponível para o período selecionado</p>
         </div>
       )}
+
+      <MetaVideoPlayerDialog
+        open={!!playerAd}
+        onOpenChange={(o) => !o && setPlayerAd(null)}
+        videoId={playerAd?.creative.videoId}
+        poster={proxiedImageUrl(playerAd?.creative.thumbnail)}
+        ad={playerAd}
+      />
     </div>
   );
 }
