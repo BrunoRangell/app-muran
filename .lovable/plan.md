@@ -1,37 +1,51 @@
-# Top Criativos — corrigir overlay de player e melhorar qualidade de imagens
+# Top Criativos: somente Meta + reprodução de vídeo
 
-## Problemas relatados
+Duas mudanças na seção "Top Criativos" dos relatórios de tráfego.
 
-1. O ícone de "play" (player) está aparecendo também em criativos que **não são vídeos**.
-2. Em criativos do tipo imagem, o preview fica **muito pequeno e pixelado** dentro do card (a imagem aparece centralizada com bordas escuras grandes ao redor).
+## 1. Mostrar apenas criativos do Meta
 
-Vídeos estão funcionando perfeitamente — manter o comportamento atual deles.
+Hoje a seção mistura Meta e Google. Como Google Ads são (na maioria) anúncios de texto sem preview visual relevante, vamos esconder completamente os itens cuja `platform === 'google'`.
 
-## Mudanças propostas (apenas frontend)
+- Filtrar `topAds` para manter apenas `platform === 'meta'` dentro de `TopCreativesSection`.
+- Se após o filtro a lista ficar vazia, a seção inteira não é renderizada (incluindo o título "Top Criativos").
+- Ajustar o hint do título (em `MasterTrafficReport`) para refletir a contagem de Meta após o filtro.
 
-Arquivo único: `src/components/traffic-reports/TopCreativesSection.tsx`
+## 2. Reproduzir vídeos do Meta diretamente no card
 
-### 1. Player só em vídeos reais
+Hoje só vemos a capa (thumbnail). Quando o criativo é vídeo (`mediaType === 'video'` e existe `videoId`), o usuário poderá clicar e assistir.
 
-Hoje o overlay com o ícone de play é renderizado sempre que `mediaType === 'video'`. Vamos restringir para `isPlayableVideo` (ou seja, `mediaType === 'video' && videoId` presente). Assim qualquer criativo que não seja vídeo de verdade nunca mostra o botão de play — eliminando o caso reportado.
+UX proposta:
 
-### 2. Layout de preview diferenciado por tipo de mídia
+- Clicar na capa do vídeo abre um modal (Dialog) com o player rodando no centro, fundo escurecido. O modal mostra também: nome do anúncio, campanha, e métricas principais.
+- Botão "Play" sobreposto fica mais convidativo (já existe o ícone, vamos aumentar e adicionar hover).
+- Loading skeleton enquanto o vídeo é buscado.
+- Se a busca falhar, mostrar mensagem amigável com link "Abrir no Facebook" usando o `permalink_url`.
 
-Hoje todos os criativos usam o mesmo tratamento: fundo borrado + `object-contain`. Isso é ótimo para vídeos (preserva proporção 9:16 / 1:1 sem cortar), mas péssimo para imagens estáticas, porque a imagem original costuma ser pequena e fica reduzida no centro do card, parecendo pixelada.
+Para obter o arquivo do vídeo, criamos um endpoint server-side (edge function) que consulta a Graph API com o token Meta da agência e retorna a URL `source` (mp4) — assim o token nunca é exposto no frontend e contornamos CORS.
 
-Novo comportamento:
+## Detalhes técnicos
 
-- **Vídeo** (`mediaType === 'video'`): mantém exatamente o layout atual (fundo borrado + imagem `object-contain` + overlay de play quando jogável). Sem mudança visual.
-- **Imagem / Carrossel**: o thumbnail passa a preencher o card com `object-cover`, sem o fundo borrado e sem letterbox. Isso elimina a sensação de "imagem minúscula no meio do card" e dá muito mais presença visual ao criativo. Pequenas perdas de proporção são aceitáveis (corte suave nas bordas), e a nitidez percebida melhora bastante porque a imagem ocupa toda a área disponível.
-- Manter o badge "Carrossel" no canto inferior direito e o badge "Meta Ads" no canto inferior esquerdo.
+Arquivos afetados:
 
-### 3. Pequeno polimento
+- `src/components/traffic-reports/TopCreativesSection.tsx` — filtro Meta-only, estado do modal, integração com novo hook de vídeo.
+- `src/components/traffic-reports/MasterTrafficReport.tsx` — ajustar contagem exibida no `SectionTitle`.
+- `src/lib/metaVideoSource.ts` (novo) — hook `useMetaVideoSource(videoId)` que chama o endpoint e cacheia via React Query.
+- `supabase/functions/meta-video-source/index.ts` (novo) — recebe `?video_id=`, busca `GET /{video_id}?fields=source,permalink_url,picture` com o token da agência e retorna `{ source, permalink_url }`. Cache HTTP de 6h.
+- `supabase/config.toml` — registrar a nova função como pública.
 
-- Remover o `cursor-pointer` / `group/play` para criativos que não são vídeos jogáveis (já implícito ao restringir `isPlayableVideo`, mas garantir que a tag continue sendo `<div>` e não `<button>` nesses casos).
-- Manter o fallback "Preview não disponível" como está.
+Componente novo `MetaVideoPlayerDialog`:
 
-## Sem mudanças
+```text
++------------------------------------------+
+|  [X]                                     |
+|                                          |
+|        <video controls autoplay>         |
+|                                          |
+|  Nome do anúncio                         |
+|  Campanha · 1.234 impressões · R$ 567   |
+|                                          |
+|  [Abrir no Facebook]                     |
++------------------------------------------+
+```
 
-- Backend (`ads-processor.ts`, `meta-image-proxy`, `meta-video-source`) permanece intacto.
-- Modal de player de vídeo (`MetaVideoPlayerDialog`) permanece intacto.
-- Ordenação, badges de ranking, métricas e investimento permanecem iguais.
+Sem alterações em RLS, schema, ou no backend `traffic-insights` (que já entrega `videoId`).
