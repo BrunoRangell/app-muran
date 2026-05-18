@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Search, Play, Images } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Play, Images } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/utils/chartUtils";
 import { proxiedImageUrl } from "@/lib/metaImageProxy";
+import { MetaVideoPlayerDialog } from "./MetaVideoPlayerDialog";
 import {
   Select,
   SelectContent,
