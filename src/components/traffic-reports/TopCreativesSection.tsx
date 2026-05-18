@@ -46,16 +46,24 @@ type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
 export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionProps) {
   const [sortBy, setSortBy] = useState<SortOption>('impressions');
   const [failedThumbs, setFailedThumbs] = useState<Record<string, boolean>>({});
+  const [playerAd, setPlayerAd] = useState<TopAd | null>(null);
 
-  const sortedAds = [...topAds].sort((a, b) => {
+  // Apenas criativos do Meta — Google Ads são majoritariamente texto, sem preview útil
+  const metaAds = useMemo(() => topAds.filter(ad => ad.platform === 'meta'), [topAds]);
+
+  const sortedAds = [...metaAds].sort((a, b) => {
     if (sortBy === 'cpa') {
-      // menor CPA é melhor (mas zero significa sem dado)
       const av = a.metrics.cpa || Infinity;
       const bv = b.metrics.cpa || Infinity;
       return av - bv;
     }
     return b.metrics[sortBy] - a.metrics[sortBy];
   }).slice(0, limit);
+
+  // Se não houver criativos Meta, não renderiza nada (a seção desaparece)
+  if (metaAds.length === 0) {
+    return null;
+  }
 
   const getRankBadge = (index: number) => {
     if (index === 0) return "🔥 Top 1";
