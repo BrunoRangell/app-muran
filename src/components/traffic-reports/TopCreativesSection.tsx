@@ -22,6 +22,7 @@ interface TopAd {
     type?: string;
     mediaType?: 'image' | 'video' | 'carousel';
     videoId?: string;
+    permalinkUrl?: string;
   };
   metrics: {
     impressions: number;
