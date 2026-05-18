@@ -164,11 +164,14 @@ async function resolveObjectStoryPosts(
         if (!post || typeof post !== 'object') continue;
         const att = post?.attachments?.data?.[0];
         const subs = att?.subattachments?.data;
-        const attType = (att?.media_type || att?.type || '').toString().toLowerCase();
+        // Per docs: StoryAttachment.type é o identificador canônico (photo, video, album, multiple, ...).
+        const attType = (att?.type || att?.media_type || '').toString().toLowerCase();
+        const firstSubType = (Array.isArray(subs) ? (subs[0]?.type || subs[0]?.media_type) : '')?.toString().toLowerCase() || '';
         const postType = (post?.type || post?.status_type || '').toString().toLowerCase();
 
         const isVideo =
           VIDEO_MEDIA_TYPES.has(attType) ||
+          attType.includes('video') ||
           postType.includes('video') ||
           !!att?.media?.source ||
           /\/videos\//.test(att?.url || '') ||
@@ -176,7 +179,11 @@ async function resolveObjectStoryPosts(
           /\/videos\//.test(att?.unshimmed_url || '');
 
         const isCarousel =
-          Array.isArray(subs) && subs.length > 1 && !isVideo;
+          !isVideo && (
+            attType === 'album' ||
+            attType === 'multiple' ||
+            (Array.isArray(subs) && subs.length > 1)
+          );
 
         const mediaType: 'image' | 'video' | 'carousel' = isVideo
           ? 'video'
@@ -184,12 +191,13 @@ async function resolveObjectStoryPosts(
           ? 'carousel'
           : 'image';
 
+        // videoId só é confiável quando o tipo indica vídeo
         let videoId: string | undefined;
         if (mediaType === 'video') {
+          const targetIdIfVideo = (attType.includes('video') || VIDEO_MEDIA_TYPES.has(attType)) ? att?.target?.id : undefined;
           const candidates = [
-            att?.target?.id,
+            targetIdIfVideo,
             att?.media?.id,
-            post?.object_id,
             (att?.url || '').match(/\/videos\/(\d+)/)?.[1],
             (att?.unshimmed_url || '').match(/\/videos\/(\d+)/)?.[1],
             (att?.target?.url || '').match(/\/videos\/(\d+)/)?.[1],
@@ -197,23 +205,21 @@ async function resolveObjectStoryPosts(
           videoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
         }
 
-        // Para imagens/carrosséis, capturar photoId para resolver versão HD via /{photo_id}?fields=images
+        // photoId só quando o tipo justifica (photo ou primeiro sub photo)
         let photoId: string | undefined;
-        if (mediaType === 'image' || mediaType === 'carousel') {
-          const firstSubTarget = Array.isArray(subs) ? subs[0]?.target?.id : undefined;
-          const candidates = [
-            att?.target?.id,
-            firstSubTarget,
-            post?.object_id,
-          ];
-          photoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
+        if (mediaType === 'image' && attType === 'photo') {
+          photoId = typeof att?.target?.id === 'string' && /^\d+$/.test(att.target.id) ? att.target.id : undefined;
+        } else if (mediaType === 'carousel' && firstSubType === 'photo') {
+          const tid = subs?.[0]?.target?.id;
+          photoId = typeof tid === 'string' && /^\d+$/.test(tid) ? tid : undefined;
         }
 
-        // Preferir full_picture, evitar post.picture (geralmente é o 64x64)
+        // Cascateamento de thumbnail — sempre devolver alguma coisa (post.picture como último recurso).
         const thumbnail =
           post?.full_picture ||
           att?.media?.image?.src ||
           subs?.[0]?.media?.image?.src ||
+          post?.picture ||
           undefined;
 
         out[postId] = {
