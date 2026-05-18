@@ -30,6 +30,7 @@ import { Info } from "lucide-react";
 import { useRecentlyReviewed } from "../context/RecentlyReviewedContext";
 import { AddSecondaryAccountModal } from "@/components/daily-reviews/budget-setup/AddSecondaryAccountModal";
 import { useMutation } from "@tanstack/react-query";
+import { CampaignsDetailContent, BudgetCompositionContent } from "./BudgetPopoverContents";
 
 interface CircularBudgetCardProps {
   client: any;
