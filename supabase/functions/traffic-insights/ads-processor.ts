@@ -129,7 +129,7 @@ async function resolveImageHashes(
 async function resolveObjectStoryPosts(
   accessToken: string,
   postIds: string[]
-): Promise<Record<string, { mediaType: 'image' | 'video' | 'carousel'; videoId?: string; thumbnail?: string; permalink?: string }>> {
+): Promise<Record<string, { mediaType: 'image' | 'video' | 'carousel'; videoId?: string; photoId?: string; thumbnail?: string; permalink?: string }>> {
   if (postIds.length === 0) return {};
   const unique = Array.from(new Set(postIds));
   const out: Record<string, any> = {};
@@ -197,15 +197,29 @@ async function resolveObjectStoryPosts(
           videoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
         }
 
+        // Para imagens/carrosséis, capturar photoId para resolver versão HD via /{photo_id}?fields=images
+        let photoId: string | undefined;
+        if (mediaType === 'image' || mediaType === 'carousel') {
+          const firstSubTarget = Array.isArray(subs) ? subs[0]?.target?.id : undefined;
+          const candidates = [
+            att?.target?.id,
+            firstSubTarget,
+            post?.object_id,
+          ];
+          photoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
+        }
+
+        // Preferir full_picture, evitar post.picture (geralmente é o 64x64)
         const thumbnail =
           post?.full_picture ||
           att?.media?.image?.src ||
           subs?.[0]?.media?.image?.src ||
-          post?.picture;
+          undefined;
 
         out[postId] = {
           mediaType,
           videoId,
+          photoId,
           thumbnail,
           permalink: post?.permalink_url,
         };
@@ -216,6 +230,69 @@ async function resolveObjectStoryPosts(
   }
 
   return out;
+}
+
+/**
+ * Resolve fotos por ID buscando o array `images` e selecionando a maior versão.
+ */
+async function resolvePhotoImages(
+  accessToken: string,
+  photoIds: string[]
+): Promise<Record<string, { url?: string; permalink?: string }>> {
+  if (photoIds.length === 0) return {};
+  const unique = Array.from(new Set(photoIds.filter((v) => /^\d+$/.test(v))));
+  const out: Record<string, any> = {};
+  const chunkSize = 40;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      ids: chunk.join(','),
+      fields: 'images,permalink_url',
+    });
+    const url = `https://graph.facebook.com/${META_API_VERSION}/?${params}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        const txt = await r.text();
+        console.warn(`[META-ADS] photo images lookup failed: ${r.status} ${txt.slice(0, 200)}`);
+        continue;
+      }
+      const data = await r.json();
+      for (const [pid, info] of Object.entries<any>(data)) {
+        if (!info || typeof info !== 'object') continue;
+        const images = Array.isArray(info.images) ? [...info.images] : [];
+        images.sort((a: any, b: any) => (b?.width || 0) - (a?.width || 0));
+        const best = images[0]?.source;
+        out[pid] = { url: best, permalink: info.permalink_url };
+      }
+    } catch (e) {
+      console.warn('[META-ADS] photo images lookup error:', e);
+    }
+  }
+  return out;
+}
+
+/**
+ * Tenta remover transformações de tamanho (p64x64, c0.5x0.5f, dst-emg0) de URLs da CDN da Meta
+ * para obter uma versão sem corte/redimensionamento. Mantém o resto da URL intacto.
+ */
+function upscaleMetaCdnUrl(rawUrl?: string): string | undefined {
+  if (!rawUrl) return rawUrl;
+  try {
+    const u = new URL(rawUrl);
+    const stp = u.searchParams.get('stp');
+    if (!stp) return rawUrl;
+    // Detecta apenas se há indicativos de thumbnail pequeno
+    if (!/p\d+x\d+|c0\.\d+x0\.\d+f|emg0/.test(stp)) return rawUrl;
+    // Reduz `stp` para apenas o sufixo de formato (ex: dst-jpg_tt6 ou tt6)
+    const ttMatch = stp.match(/tt\d+/);
+    const tt = ttMatch ? ttMatch[0] : 'tt6';
+    u.searchParams.set('stp', `dst-jpg_${tt}`);
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
 }
 
 /**
@@ -401,6 +478,7 @@ export async function fetchMetaTopAds(
         storyLookups.map((s) => s.storyId)
       );
       let resolved = 0;
+      const photoLookups: { ad: TopAd; photoId: string }[] = [];
       for (const { ad, storyId } of storyLookups) {
         const post = postMap[storyId];
         if (!post) continue;
@@ -413,9 +491,32 @@ export async function fetchMetaTopAds(
         if (post.permalink && !ad.creative.permalinkUrl) {
           ad.creative.permalinkUrl = post.permalink;
         }
+        if (post.photoId && (post.mediaType === 'image' || post.mediaType === 'carousel')) {
+          photoLookups.push({ ad, photoId: post.photoId });
+        }
         resolved++;
       }
       console.log(`📎 [META-ADS] object_story_id resolved: ${resolved}/${storyLookups.length}`);
+
+      // Resolver versão HD da foto via /{photo_id}?fields=images
+      if (photoLookups.length > 0) {
+        const photoMap = await resolvePhotoImages(
+          accessToken,
+          photoLookups.map((p) => p.photoId)
+        );
+        let upgraded = 0;
+        for (const { ad, photoId } of photoLookups) {
+          const info = photoMap[photoId];
+          if (!info?.url) continue;
+          ad.creative.thumbnail = info.url;
+          ad.creative.thumbnailSource = 'photo_images_lookup';
+          if (info.permalink && !ad.creative.permalinkUrl) {
+            ad.creative.permalinkUrl = info.permalink;
+          }
+          upgraded++;
+        }
+        console.log(`🖼️ [META-ADS] photo images upgraded: ${upgraded}/${photoLookups.length}`);
+      }
     }
 
     // Enriquecer vídeos com picture/permalink HD via /{video_id}
@@ -443,6 +544,17 @@ export async function fetchMetaTopAds(
     }
 
     for (const ad of ads) delete (ad as any).__storyId;
+
+    // Último recurso: tentar upscale de URLs da CDN da Meta que vieram como thumbnail pequena
+    for (const ad of ads) {
+      const t = ad.creative.thumbnail;
+      if (!t) continue;
+      const upscaled = upscaleMetaCdnUrl(t);
+      if (upscaled && upscaled !== t) {
+        ad.creative.thumbnail = upscaled;
+        ad.creative.thumbnailSource = (ad.creative.thumbnailSource || 'unknown') + '+upscaled';
+      }
+    }
 
     // Log telemetria de fontes
     const sourceStats: Record<string, number> = {};
