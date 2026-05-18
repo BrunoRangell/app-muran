@@ -20,33 +20,52 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
   try {
     const today = getTodayInBrazil();
     console.log(`🔍 [CAMPAIGNS] Buscando campanhas Meta para conta ${accountId} na data ${today}`);
-    
-    const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
-    
-    const campaignsResponse = await fetch(campaignsUrl);
-    const campaignsData = await campaignsResponse.json();
-    
-    if (!campaignsResponse.ok || campaignsData.error) {
-      console.error(`❌ [CAMPAIGNS] Erro ao buscar campanhas:`, campaignsData.error || campaignsResponse.status);
-      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
+
+    // Buscar TODAS as campanhas paginando o cursor da Meta.
+    // Sem paginação, contas com >25 campanhas perdiam as últimas (bug histórico).
+    const allCampaigns: any[] = [];
+    let nextUrl: string | null =
+      `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=200&access_token=${accessToken}`;
+    let pageCount = 0;
+    const MAX_PAGES = 20; // proteção contra loop infinito (até 4000 campanhas)
+
+    while (nextUrl && pageCount < MAX_PAGES) {
+      pageCount++;
+      const resp = await fetch(nextUrl);
+      const json = await resp.json();
+
+      if (!resp.ok || json.error) {
+        console.error(`❌ [CAMPAIGNS] Erro ao buscar campanhas (página ${pageCount}):`, json.error || resp.status);
+        if (allCampaigns.length === 0) {
+          return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
+        }
+        break; // se já temos algumas páginas, segue com o que conseguimos
+      }
+
+      if (Array.isArray(json.data)) {
+        allCampaigns.push(...json.data);
+      }
+
+      nextUrl = json.paging?.next || null;
     }
-    
-    if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
+
+    if (allCampaigns.length === 0) {
       console.log(`⚠️ [CAMPAIGNS] Nenhuma campanha encontrada para conta ${accountId}`);
       return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
-    
-    const activeCampaigns = campaignsData.data.filter((campaign: any) => 
+
+    const activeCampaigns = allCampaigns.filter((campaign: any) =>
       campaign.effective_status === 'ACTIVE'
     );
-    
-    console.log(`✅ [CAMPAIGNS] ${activeCampaigns.length} campanhas ativas encontradas`);
-    
+
+    console.log(`✅ [CAMPAIGNS] ${activeCampaigns.length} ativas de ${allCampaigns.length} totais (${pageCount} página(s))`);
+
     if (activeCampaigns.length === 0) {
       return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
+
     
-    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
     
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
@@ -71,7 +90,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const campaignsDetails = [];
     for (const campaign of activeCampaigns) {
       try {
-        const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
         const campaignResponse = await fetch(campaignInsightsUrl);
         const campaignInsights = await campaignResponse.json();
         
