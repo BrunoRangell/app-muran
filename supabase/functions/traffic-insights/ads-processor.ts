@@ -410,10 +410,38 @@ export async function fetchMetaTopAds(
           ad.creative.thumbnail = post.thumbnail;
           ad.creative.thumbnailSource = 'object_story_id_lookup';
         }
+        if (post.permalink && !ad.creative.permalinkUrl) {
+          ad.creative.permalinkUrl = post.permalink;
+        }
         resolved++;
       }
       console.log(`📎 [META-ADS] object_story_id resolved: ${resolved}/${storyLookups.length}`);
     }
+
+    // Enriquecer vídeos com picture/permalink HD via /{video_id}
+    const videoIdsToEnrich = ads
+      .filter((a) => a.creative.mediaType === 'video' && a.creative.videoId)
+      .map((a) => a.creative.videoId!) as string[];
+    if (videoIdsToEnrich.length > 0) {
+      const videoMap = await resolveVideoDetails(accessToken, videoIdsToEnrich);
+      let enriched = 0;
+      for (const ad of ads) {
+        const vid = ad.creative.videoId;
+        if (!vid) continue;
+        const info = videoMap[vid];
+        if (!info) continue;
+        if (info.picture && (!ad.creative.thumbnail || ad.creative.thumbnailSource === 'creative.thumbnail_url' || ad.creative.thumbnailSource === 'none')) {
+          ad.creative.thumbnail = info.picture;
+          ad.creative.thumbnailSource = 'video_details_lookup';
+        }
+        if (info.permalink && !ad.creative.permalinkUrl) {
+          ad.creative.permalinkUrl = info.permalink;
+        }
+        enriched++;
+      }
+      console.log(`🎬 [META-ADS] video details enriched: ${enriched}/${videoIdsToEnrich.length}`);
+    }
+
     for (const ad of ads) delete (ad as any).__storyId;
 
     // Log telemetria de fontes
