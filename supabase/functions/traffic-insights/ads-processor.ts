@@ -1,6 +1,18 @@
 import { TopAd } from "./types.ts";
 
-const META_API_VERSION = "v22.0";
+const META_API_VERSION = "v24.0";
+
+const VIDEO_MEDIA_TYPES = new Set([
+  'video',
+  'video_inline',
+  'video_autoplay',
+  'video_direct_response',
+  'video_direct_response_autoplay',
+  'native_video',
+  'animated_image_video',
+  'animated_image_autoplay',
+  'share',
+]);
 
 /**
  * Escolhe a melhor URL de imagem disponível para um criativo Meta.
@@ -122,14 +134,22 @@ async function resolveObjectStoryPosts(
   const unique = Array.from(new Set(postIds));
   const out: Record<string, any> = {};
 
-  // Batch via ?ids=a,b,c (Graph aceita até ~50 ids por request)
   const chunkSize = 40;
   for (let i = 0; i < unique.length; i += chunkSize) {
     const chunk = unique.slice(i, i + chunkSize);
     const params = new URLSearchParams({
       access_token: accessToken,
       ids: chunk.join(','),
-      fields: 'full_picture,permalink_url,attachments{media_type,media,subattachments,target,url}',
+      fields: [
+        'full_picture',
+        'picture',
+        'permalink_url',
+        'source',
+        'type',
+        'status_type',
+        'object_id',
+        'attachments{media_type,type,media,subattachments,target,url,unshimmed_url}',
+      ].join(','),
     });
     const url = `https://graph.facebook.com/${META_API_VERSION}/?${params}`;
     try {
@@ -143,22 +163,45 @@ async function resolveObjectStoryPosts(
       for (const [postId, post] of Object.entries<any>(data)) {
         if (!post || typeof post !== 'object') continue;
         const att = post?.attachments?.data?.[0];
-        const mediaType: 'image' | 'video' | 'carousel' =
-          att?.subattachments?.data?.length > 1
-            ? 'carousel'
-            : att?.media_type === 'video' || att?.media_type === 'video_inline' || att?.media_type === 'video_autoplay'
-            ? 'video'
-            : 'image';
+        const subs = att?.subattachments?.data;
+        const attType = (att?.media_type || att?.type || '').toString().toLowerCase();
+        const postType = (post?.type || post?.status_type || '').toString().toLowerCase();
 
-        const videoId =
-          mediaType === 'video'
-            ? att?.target?.id || (att?.target?.url?.match(/\/videos\/(\d+)/)?.[1])
-            : undefined;
+        const isVideo =
+          VIDEO_MEDIA_TYPES.has(attType) ||
+          postType.includes('video') ||
+          !!att?.media?.source ||
+          /\/videos\//.test(att?.url || '') ||
+          /\/videos\//.test(att?.target?.url || '') ||
+          /\/videos\//.test(att?.unshimmed_url || '');
+
+        const isCarousel =
+          Array.isArray(subs) && subs.length > 1 && !isVideo;
+
+        const mediaType: 'image' | 'video' | 'carousel' = isVideo
+          ? 'video'
+          : isCarousel
+          ? 'carousel'
+          : 'image';
+
+        let videoId: string | undefined;
+        if (mediaType === 'video') {
+          const candidates = [
+            att?.target?.id,
+            att?.media?.id,
+            post?.object_id,
+            (att?.url || '').match(/\/videos\/(\d+)/)?.[1],
+            (att?.unshimmed_url || '').match(/\/videos\/(\d+)/)?.[1],
+            (att?.target?.url || '').match(/\/videos\/(\d+)/)?.[1],
+          ];
+          videoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
+        }
 
         const thumbnail =
           post?.full_picture ||
           att?.media?.image?.src ||
-          att?.subattachments?.data?.[0]?.media?.image?.src;
+          subs?.[0]?.media?.image?.src ||
+          post?.picture;
 
         out[postId] = {
           mediaType,
@@ -172,6 +215,44 @@ async function resolveObjectStoryPosts(
     }
   }
 
+  return out;
+}
+
+/**
+ * Busca detalhes de vídeos (thumbnail HD, picture, permalink) por video_id em lote.
+ */
+async function resolveVideoDetails(
+  accessToken: string,
+  videoIds: string[]
+): Promise<Record<string, { picture?: string; permalink?: string }>> {
+  if (videoIds.length === 0) return {};
+  const unique = Array.from(new Set(videoIds.filter((v) => /^\d+$/.test(v))));
+  const out: Record<string, any> = {};
+  const chunkSize = 40;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      ids: chunk.join(','),
+      fields: 'picture,permalink_url',
+    });
+    const url = `https://graph.facebook.com/${META_API_VERSION}/?${params}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        const txt = await r.text();
+        console.warn(`[META-ADS] video details lookup failed: ${r.status} ${txt.slice(0, 200)}`);
+        continue;
+      }
+      const data = await r.json();
+      for (const [vid, info] of Object.entries<any>(data)) {
+        if (!info || typeof info !== 'object') continue;
+        out[vid] = { picture: info.picture, permalink: info.permalink_url };
+      }
+    } catch (e) {
+      console.warn('[META-ADS] video details lookup error:', e);
+    }
+  }
   return out;
 }
 
@@ -329,10 +410,38 @@ export async function fetchMetaTopAds(
           ad.creative.thumbnail = post.thumbnail;
           ad.creative.thumbnailSource = 'object_story_id_lookup';
         }
+        if (post.permalink && !ad.creative.permalinkUrl) {
+          ad.creative.permalinkUrl = post.permalink;
+        }
         resolved++;
       }
       console.log(`📎 [META-ADS] object_story_id resolved: ${resolved}/${storyLookups.length}`);
     }
+
+    // Enriquecer vídeos com picture/permalink HD via /{video_id}
+    const videoIdsToEnrich = ads
+      .filter((a) => a.creative.mediaType === 'video' && a.creative.videoId)
+      .map((a) => a.creative.videoId!) as string[];
+    if (videoIdsToEnrich.length > 0) {
+      const videoMap = await resolveVideoDetails(accessToken, videoIdsToEnrich);
+      let enriched = 0;
+      for (const ad of ads) {
+        const vid = ad.creative.videoId;
+        if (!vid) continue;
+        const info = videoMap[vid];
+        if (!info) continue;
+        if (info.picture && (!ad.creative.thumbnail || ad.creative.thumbnailSource === 'creative.thumbnail_url' || ad.creative.thumbnailSource === 'none')) {
+          ad.creative.thumbnail = info.picture;
+          ad.creative.thumbnailSource = 'video_details_lookup';
+        }
+        if (info.permalink && !ad.creative.permalinkUrl) {
+          ad.creative.permalinkUrl = info.permalink;
+        }
+        enriched++;
+      }
+      console.log(`🎬 [META-ADS] video details enriched: ${enriched}/${videoIdsToEnrich.length}`);
+    }
+
     for (const ad of ads) delete (ad as any).__storyId;
 
     // Log telemetria de fontes

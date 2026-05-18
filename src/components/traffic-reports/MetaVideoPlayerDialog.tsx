@@ -8,6 +8,7 @@ interface MetaVideoPlayerDialogProps {
   onOpenChange: (open: boolean) => void;
   videoId?: string;
   poster?: string;
+  permalinkUrl?: string;
   ad: {
     name: string;
     metrics: {
@@ -23,24 +24,28 @@ export function MetaVideoPlayerDialog({
   onOpenChange,
   videoId,
   poster,
+  permalinkUrl,
   ad,
 }: MetaVideoPlayerDialogProps) {
-  const { data, isLoading, error } = useMetaVideoSource(videoId, open);
+  const { data, isLoading, error } = useMetaVideoSource(videoId, open && !!videoId);
+  const effectivePermalink = data?.permalink_url || permalinkUrl;
+  const hasSource = !!data?.source;
+  const showLoading = !!videoId && isLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl p-0 overflow-hidden bg-[#0B0F1A] border-white/10 text-white">
         <div className="relative bg-black aspect-video flex items-center justify-center">
-          {isLoading && (
+          {showLoading && (
             <div className="flex flex-col items-center gap-2 text-white/70">
               <Loader2 className="h-8 w-8 animate-spin text-[#ff6e00]" />
               <span className="text-sm">Carregando vídeo…</span>
             </div>
           )}
 
-          {!isLoading && data?.source && (
+          {!showLoading && hasSource && (
             <video
-              src={data.source}
+              src={data!.source!}
               poster={poster}
               controls
               autoPlay
@@ -49,20 +54,29 @@ export function MetaVideoPlayerDialog({
             />
           )}
 
-          {!isLoading && !data?.source && (
+          {!showLoading && !hasSource && (
             <div className="flex flex-col items-center gap-3 text-center px-6 py-10">
-              <AlertCircle className="h-10 w-10 text-[#ff6e00]/70" />
-              <p className="text-sm text-white/75">
+              {poster && (
+                <img
+                  src={poster}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover opacity-30"
+                  style={{ filter: 'blur(12px)' }}
+                />
+              )}
+              <AlertCircle className="relative h-10 w-10 text-[#ff6e00]/70" />
+              <p className="relative text-sm text-white/80 max-w-md">
                 {error
-                  ? "Não foi possível carregar o vídeo."
-                  : "Este vídeo não está mais disponível para reprodução direta."}
+                  ? "Não foi possível carregar o vídeo diretamente. Abra a publicação no Facebook para assistir."
+                  : "Este criativo usa uma publicação existente — abra no Facebook para assistir ao vídeo original."}
               </p>
-              {data?.permalink_url && (
+              {effectivePermalink && (
                 <a
-                  href={data.permalink_url}
+                  href={effectivePermalink}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1877f2]/15 border border-[#1877f2]/30 text-[#4a9bff] hover:bg-[#1877f2]/25 transition-colors text-sm font-medium"
+                  className="relative inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1877f2]/15 border border-[#1877f2]/30 text-[#4a9bff] hover:bg-[#1877f2]/25 transition-colors text-sm font-medium"
                 >
                   <Facebook className="h-4 w-4" />
                   Abrir no Facebook
@@ -97,9 +111,9 @@ export function MetaVideoPlayerDialog({
                   {formatCurrency(ad.metrics.spend)}
                 </span>
               </span>
-              {data?.permalink_url && (
+              {effectivePermalink && (
                 <a
-                  href={data.permalink_url}
+                  href={effectivePermalink}
                   target="_blank"
                   rel="noreferrer"
                   className="ml-auto inline-flex items-center gap-1.5 text-white/55 hover:text-white transition-colors"

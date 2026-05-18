@@ -22,6 +22,7 @@ interface TopAd {
     type?: string;
     mediaType?: 'image' | 'video' | 'carousel';
     videoId?: string;
+    permalinkUrl?: string;
   };
   metrics: {
     impressions: number;
@@ -138,7 +139,7 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
 
               {/* Creative Preview com blur backdrop */}
               {(() => {
-                const isPlayableVideo = mediaType === 'video' && !!ad.creative.videoId;
+                const isPlayableVideo = mediaType === 'video' && (!!ad.creative.videoId || !!ad.creative.permalinkUrl);
                 const PreviewTag = isPlayableVideo ? 'button' : 'div';
                 return (
                   <PreviewTag
@@ -284,6 +285,7 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
         onOpenChange={(o) => !o && setPlayerAd(null)}
         videoId={playerAd?.creative.videoId}
         poster={proxiedImageUrl(playerAd?.creative.thumbnail)}
+        permalinkUrl={playerAd?.creative.permalinkUrl}
         ad={playerAd}
       />
     </div>
