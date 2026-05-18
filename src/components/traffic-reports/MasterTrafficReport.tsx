@@ -476,12 +476,16 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
           )}
 
           {/* ============ TOP CRIATIVOS ============ */}
-          {topAds && topAds.length > 0 && (
-            <GlassCard id={SECTION_ID('creatives')}>
-              <SectionTitle icon={Award} label="Top Criativos" hint={`${Math.min(topAds.length, 10)} melhores`} />
-              <TopCreativesSection topAds={topAds} limit={10} />
-            </GlassCard>
-          )}
+          {(() => {
+            const metaTopAds = (topAds || []).filter((a: any) => a.platform === 'meta');
+            if (metaTopAds.length === 0) return null;
+            return (
+              <GlassCard id={SECTION_ID('creatives')}>
+                <SectionTitle icon={Award} label="Top Criativos (Meta)" hint={`${Math.min(metaTopAds.length, 10)} melhores`} />
+                <TopCreativesSection topAds={topAds} limit={10} />
+              </GlassCard>
+            );
+          })()}
 
           {/* ============ TABELA DE CAMPANHAS ============ */}
           {campaigns && campaigns.length > 0 && (
