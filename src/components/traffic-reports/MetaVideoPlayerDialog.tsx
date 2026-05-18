@@ -111,9 +111,9 @@ export function MetaVideoPlayerDialog({
                   {formatCurrency(ad.metrics.spend)}
                 </span>
               </span>
-              {data?.permalink_url && (
+              {effectivePermalink && (
                 <a
-                  href={data.permalink_url}
+                  href={effectivePermalink}
                   target="_blank"
                   rel="noreferrer"
                   className="ml-auto inline-flex items-center gap-1.5 text-white/55 hover:text-white transition-colors"
