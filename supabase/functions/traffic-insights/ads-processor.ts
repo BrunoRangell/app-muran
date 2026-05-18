@@ -110,6 +110,71 @@ async function resolveImageHashes(
   }
 }
 
+/**
+ * Resolve posts via object_story_id (page_id_post_id) para anúncios de "publicação existente".
+ * Retorna mapa { postId -> { mediaType, videoId, thumbnail, permalink } }.
+ */
+async function resolveObjectStoryPosts(
+  accessToken: string,
+  postIds: string[]
+): Promise<Record<string, { mediaType: 'image' | 'video' | 'carousel'; videoId?: string; thumbnail?: string; permalink?: string }>> {
+  if (postIds.length === 0) return {};
+  const unique = Array.from(new Set(postIds));
+  const out: Record<string, any> = {};
+
+  // Batch via ?ids=a,b,c (Graph aceita até ~50 ids por request)
+  const chunkSize = 40;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      ids: chunk.join(','),
+      fields: 'full_picture,permalink_url,attachments{media_type,media,subattachments,target,url}',
+    });
+    const url = `https://graph.facebook.com/${META_API_VERSION}/?${params}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        const txt = await r.text();
+        console.warn(`[META-ADS] object_story_id lookup failed: ${r.status} ${txt.slice(0, 300)}`);
+        continue;
+      }
+      const data = await r.json();
+      for (const [postId, post] of Object.entries<any>(data)) {
+        if (!post || typeof post !== 'object') continue;
+        const att = post?.attachments?.data?.[0];
+        const mediaType: 'image' | 'video' | 'carousel' =
+          att?.subattachments?.data?.length > 1
+            ? 'carousel'
+            : att?.media_type === 'video' || att?.media_type === 'video_inline' || att?.media_type === 'video_autoplay'
+            ? 'video'
+            : 'image';
+
+        const videoId =
+          mediaType === 'video'
+            ? att?.target?.id || (att?.target?.url?.match(/\/videos\/(\d+)/)?.[1])
+            : undefined;
+
+        const thumbnail =
+          post?.full_picture ||
+          att?.media?.image?.src ||
+          att?.subattachments?.data?.[0]?.media?.image?.src;
+
+        out[postId] = {
+          mediaType,
+          videoId,
+          thumbnail,
+          permalink: post?.permalink_url,
+        };
+      }
+    } catch (e) {
+      console.warn('[META-ADS] object_story_id lookup error:', e);
+    }
+  }
+
+  return out;
+}
+
 export async function fetchMetaTopAds(
   accountId: string,
   accessToken: string,
@@ -215,6 +280,12 @@ export async function fetchMetaTopAds(
           pendingHashLookups.push({ ad: topAd, hash: picked.imageHash });
         }
 
+        // Anexar object_story_id para resolução posterior (ads de "publicação existente")
+        const storyId = creative.object_story_id || creative.effective_object_story_id;
+        if (storyId) {
+          (topAd as any).__storyId = storyId;
+        }
+
         ads.push(topAd);
       }
     }
@@ -229,6 +300,40 @@ export async function fetchMetaTopAds(
         }
       }
     }
+
+    // Resolver posts via object_story_id (ads de "publicação existente")
+    // Necessário quando o video_id não veio no creative ou thumbnail está ausente/genérico.
+    const storyLookups: { ad: TopAd; storyId: string }[] = [];
+    for (const ad of ads) {
+      const storyId = (ad as any).__storyId as string | undefined;
+      if (!storyId) continue;
+      const needsResolve =
+        (ad.creative.mediaType === 'video' && !ad.creative.videoId) ||
+        !ad.creative.thumbnail ||
+        ad.creative.thumbnailSource === 'creative.thumbnail_url' ||
+        ad.creative.thumbnailSource === 'none';
+      if (needsResolve) storyLookups.push({ ad, storyId });
+    }
+    if (storyLookups.length > 0) {
+      const postMap = await resolveObjectStoryPosts(
+        accessToken,
+        storyLookups.map((s) => s.storyId)
+      );
+      let resolved = 0;
+      for (const { ad, storyId } of storyLookups) {
+        const post = postMap[storyId];
+        if (!post) continue;
+        if (post.mediaType) ad.creative.mediaType = post.mediaType;
+        if (post.videoId && !ad.creative.videoId) ad.creative.videoId = post.videoId;
+        if (post.thumbnail) {
+          ad.creative.thumbnail = post.thumbnail;
+          ad.creative.thumbnailSource = 'object_story_id_lookup';
+        }
+        resolved++;
+      }
+      console.log(`📎 [META-ADS] object_story_id resolved: ${resolved}/${storyLookups.length}`);
+    }
+    for (const ad of ads) delete (ad as any).__storyId;
 
     // Log telemetria de fontes
     const sourceStats: Record<string, number> = {};
