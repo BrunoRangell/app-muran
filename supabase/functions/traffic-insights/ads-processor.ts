@@ -545,6 +545,17 @@ export async function fetchMetaTopAds(
 
     for (const ad of ads) delete (ad as any).__storyId;
 
+    // Último recurso: tentar upscale de URLs da CDN da Meta que vieram como thumbnail pequena
+    for (const ad of ads) {
+      const t = ad.creative.thumbnail;
+      if (!t) continue;
+      const upscaled = upscaleMetaCdnUrl(t);
+      if (upscaled && upscaled !== t) {
+        ad.creative.thumbnail = upscaled;
+        ad.creative.thumbnailSource = (ad.creative.thumbnailSource || 'unknown') + '+upscaled';
+      }
+    }
+
     // Log telemetria de fontes
     const sourceStats: Record<string, number> = {};
     for (const a of ads) {
