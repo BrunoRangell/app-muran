@@ -1,37 +1,50 @@
-# Corrigir imagens de baixa resolução em cards de Publicação existente (estáticos)
+# Reverter upscale agressivo e tornar resolução de imagem confiável
 
-## Problema observado
+## Diagnóstico (confirmado em documentação Meta)
 
-Cards de imagem (post estático) vindos de **Publicação existente** estão renderizando em baixíssima resolução. Comparando dois exemplos:
+Olhei a doc oficial v25 de `StoryAttachment`, `StoryAttachmentMedia` e `Photo`:
 
-- **Bom:** URL termina em `stp=dst-jpg_tt6` → 1080x1350.
-- **Ruim:** URL contém `stp=...p64x64_q75_tt6` → 64x64 (thumb minúscula esticada no card).
+- `StoryAttachment.type` é o identificador canônico do tipo (`photo`, `video`, `video_autoplay`, `album`, `multiple`, `animated_image_autoplay`, etc.). `media_type` é apenas auxiliar.
+- `StoryAttachment.target.id` aponta para o objeto-alvo: para `type=photo` é o `photo_id`, para `type=video` é o `video_id`. Usar `target.id` sem checar `type` causa lookups errados.
+- `StoryAttachmentMedia.image` tem `width/height/src` (capa); `Photo.images[]` traz todas as variantes ordenáveis por largura — é a forma oficial de pegar HD.
 
-A URL ruim é uma thumbnail oficial pequena que a Graph API entrega quando caímos em fontes como `post.picture`, `att.media.image.src` (em alguns posts) ou `creative.thumbnail_url` sem o parâmetro de tamanho aplicado. O cascateamento atual em `resolveObjectStoryPosts` e em `pickBestCreativeImage` não garante a versão maior para esses casos.
+E o problema novo veio do meu último ajuste:
+
+1. `upscaleMetaCdnUrl` reescreve o parâmetro `stp` mas mantém o `oh=` (assinatura HMAC da CDN). Isso invalida a URL — a CDN devolve 403 e o `<img onError>` dispara, mostrando "Preview não disponível" em vários cards que antes funcionavam.
+2. Retirar `post.picture` do cascateamento sem garantia de outro fallback deixou alguns cards sem nenhuma thumbnail.
+3. O lookup `photo_images_lookup` está sendo disparado em todos os posts de imagem, inclusive quando `att.target.id` não é um photo_id válido (ex.: links, IG, álbuns sem foto direta), produzindo respostas vazias e perdendo a melhor versão que já tínhamos.
 
 ## O que vou ajustar
 
-1. **Backend `ads-processor.ts` — preferir sempre a maior versão da imagem para Publicação existente**
-   - Quando o post resolvido for do tipo imagem, em vez de aceitar `full_picture`/`picture`/`att.media.image.src` direto, buscar o objeto da foto via `/{object_id}?fields=images` (ou `attachments{...,target{id}}` → `/{target.id}?fields=images`) e escolher a maior entrada do array `images` (ordenado por width desc).
-   - Para carrosséis, aplicar a mesma resolução ao primeiro `subattachment` de imagem.
-   - Manter `full_picture` apenas como fallback final, nunca `post.picture` (é justamente o 64x64).
+1. **Remover `upscaleMetaCdnUrl` por completo**
+   - Toda a etapa de upscale por regex sai do `ads-processor.ts`. URLs assinadas da CDN da Meta não podem ser reescritas no cliente.
 
-2. **Backend — fallback adicional para `creative.thumbnail_url`**
-   - Quando o melhor cascateamento ainda devolver `thumbnail_url` minúsculo, tentar reescrever a URL removendo segmentos `p{N}x{N}` / `c0.5000x0.5000f` / `dst-emg0` para obter a versão sem corte (técnica conhecida na CDN da Meta), antes de servir.
-   - Marcar `thumbnailSource` adequadamente para telemetria (`photo_images_lookup`, `thumbnail_url_upscaled`).
+2. **Voltar `post.picture` como fallback final**
+   - Cascateamento de thumbnail no resolver de Publicação existente: `full_picture` → `att.media.image.src` → `subs[0].media.image.src` → `post.picture` (último recurso, garante algo).
 
-3. **Não mexer em vídeo nem em layout**
-   - Caminho de vídeo continua igual ao já corrigido.
-   - Layout do card não muda; só a fonte/qualidade da imagem.
+3. **Disparar `resolvePhotoImages` apenas quando o tipo justificar**
+   - Só coletar `photoId` quando `att.type === 'photo'` (ou primeiro subattachment `type === 'photo'` em álbuns). Para outros tipos, não tentar, evitando lookups vazios.
+   - Quando o lookup falhar/retornar vazio, **manter a thumbnail anterior**, em vez de zerar.
+
+4. **Validação extra do `videoId`**
+   - Para Publicação existente, só aceitar `att.target.id` como `videoId` se `att.type` indicar vídeo. Senão, descartar.
+   - Mantém os fallbacks por regex em `att.url`/`unshimmed_url`/`target.url`.
+
+5. **Sem mudanças no frontend nem em layout.**
 
 ## Detalhes técnicos
 
-- Novo helper `resolvePhotoImages(accessToken, photoIds)` em `ads-processor.ts` faz batch GET `?ids=...&fields=images,permalink_url` e retorna a maior URL (`images[0].source` após sort por `width` desc).
-- Em `resolveObjectStoryPosts`, quando `mediaType === 'image'`, coletar `att.target.id || post.object_id` como `photoId` candidato; após o loop, chamar `resolvePhotoImages` e substituir `thumbnail` pelo resultado quando disponível.
-- Helper `upscaleMetaCdnUrl(url)` aplica regex para remover `/[?&]?stp=...p\d+x\d+[^&]*` e `c0\.\d+x0\.\d+f`, usado como último recurso.
+- `resolveObjectStoryPosts` passa a usar `attType = att.type || att.media_type` em letras minúsculas e classificar:
+  - vídeo: `type` em `VIDEO_MEDIA_TYPES` ou contém `video`, ou existe `media.source`, ou caminho `/videos/`;
+  - foto: `type === 'photo'` (ou primeiro sub `type === 'photo'`);
+  - múltiplos: `album` / `multiple` / >1 subattachment não-vídeo.
+- `photoId` extraído somente quando classificação for foto.
+- `videoId` extraído somente quando classificação for vídeo.
+- Helper `upscaleMetaCdnUrl` e todo o loop que o aplica são removidos.
 
 ## Validação
 
-- Logar `thumbnailSource` agregado; esperar aumento de `photo_images_lookup` e queda de `object_story_id_lookup` em casos de Publicação existente.
-- Conferir visualmente os dois anúncios citados pelo usuário (perfeito continua perfeito; ruim passa a vir em alta resolução).
-- Confirmar que anúncios criados do zero não regridem.
+- Confirmar via logs que `thumbnail_url_upscaled`/`+upscaled` não aparece mais.
+- Cards que mostravam "Preview não disponível" voltam a renderizar a imagem original.
+- Cards de Publicação existente em foto continuam ganhando HD via `photo_images_lookup` quando aplicável.
+- Vídeos de Publicação existente: thumbnail volta a aparecer e botão "Abrir no Facebook" segue como fallback caso o `source` direto não venha.
