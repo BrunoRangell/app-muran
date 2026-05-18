@@ -278,6 +278,14 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
           <p>Nenhum criativo disponível para o período selecionado</p>
         </div>
       )}
+
+      <MetaVideoPlayerDialog
+        open={!!playerAd}
+        onOpenChange={(o) => !o && setPlayerAd(null)}
+        videoId={playerAd?.creative.videoId}
+        poster={proxiedImageUrl(playerAd?.creative.thumbnail)}
+        ad={playerAd}
+      />
     </div>
   );
 }
