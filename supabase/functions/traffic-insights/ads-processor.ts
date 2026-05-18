@@ -164,11 +164,14 @@ async function resolveObjectStoryPosts(
         if (!post || typeof post !== 'object') continue;
         const att = post?.attachments?.data?.[0];
         const subs = att?.subattachments?.data;
-        const attType = (att?.media_type || att?.type || '').toString().toLowerCase();
+        // Per docs: StoryAttachment.type é o identificador canônico (photo, video, album, multiple, ...).
+        const attType = (att?.type || att?.media_type || '').toString().toLowerCase();
+        const firstSubType = (Array.isArray(subs) ? (subs[0]?.type || subs[0]?.media_type) : '')?.toString().toLowerCase() || '';
         const postType = (post?.type || post?.status_type || '').toString().toLowerCase();
 
         const isVideo =
           VIDEO_MEDIA_TYPES.has(attType) ||
+          attType.includes('video') ||
           postType.includes('video') ||
           !!att?.media?.source ||
           /\/videos\//.test(att?.url || '') ||
@@ -176,7 +179,11 @@ async function resolveObjectStoryPosts(
           /\/videos\//.test(att?.unshimmed_url || '');
 
         const isCarousel =
-          Array.isArray(subs) && subs.length > 1 && !isVideo;
+          !isVideo && (
+            attType === 'album' ||
+            attType === 'multiple' ||
+            (Array.isArray(subs) && subs.length > 1)
+          );
 
         const mediaType: 'image' | 'video' | 'carousel' = isVideo
           ? 'video'
@@ -184,12 +191,13 @@ async function resolveObjectStoryPosts(
           ? 'carousel'
           : 'image';
 
+        // videoId só é confiável quando o tipo indica vídeo
         let videoId: string | undefined;
         if (mediaType === 'video') {
+          const targetIdIfVideo = (attType.includes('video') || VIDEO_MEDIA_TYPES.has(attType)) ? att?.target?.id : undefined;
           const candidates = [
-            att?.target?.id,
+            targetIdIfVideo,
             att?.media?.id,
-            post?.object_id,
             (att?.url || '').match(/\/videos\/(\d+)/)?.[1],
             (att?.unshimmed_url || '').match(/\/videos\/(\d+)/)?.[1],
             (att?.target?.url || '').match(/\/videos\/(\d+)/)?.[1],
@@ -197,23 +205,21 @@ async function resolveObjectStoryPosts(
           videoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
         }
 
-        // Para imagens/carrosséis, capturar photoId para resolver versão HD via /{photo_id}?fields=images
+        // photoId só quando o tipo justifica (photo ou primeiro sub photo)
         let photoId: string | undefined;
-        if (mediaType === 'image' || mediaType === 'carousel') {
-          const firstSubTarget = Array.isArray(subs) ? subs[0]?.target?.id : undefined;
-          const candidates = [
-            att?.target?.id,
-            firstSubTarget,
-            post?.object_id,
-          ];
-          photoId = candidates.find((v) => typeof v === 'string' && /^\d+$/.test(v));
+        if (mediaType === 'image' && attType === 'photo') {
+          photoId = typeof att?.target?.id === 'string' && /^\d+$/.test(att.target.id) ? att.target.id : undefined;
+        } else if (mediaType === 'carousel' && firstSubType === 'photo') {
+          const tid = subs?.[0]?.target?.id;
+          photoId = typeof tid === 'string' && /^\d+$/.test(tid) ? tid : undefined;
         }
 
-        // Preferir full_picture, evitar post.picture (geralmente é o 64x64)
+        // Cascateamento de thumbnail — sempre devolver alguma coisa (post.picture como último recurso).
         const thumbnail =
           post?.full_picture ||
           att?.media?.image?.src ||
           subs?.[0]?.media?.image?.src ||
+          post?.picture ||
           undefined;
 
         out[postId] = {
@@ -271,28 +277,6 @@ async function resolvePhotoImages(
     }
   }
   return out;
-}
-
-/**
- * Tenta remover transformações de tamanho (p64x64, c0.5x0.5f, dst-emg0) de URLs da CDN da Meta
- * para obter uma versão sem corte/redimensionamento. Mantém o resto da URL intacto.
- */
-function upscaleMetaCdnUrl(rawUrl?: string): string | undefined {
-  if (!rawUrl) return rawUrl;
-  try {
-    const u = new URL(rawUrl);
-    const stp = u.searchParams.get('stp');
-    if (!stp) return rawUrl;
-    // Detecta apenas se há indicativos de thumbnail pequeno
-    if (!/p\d+x\d+|c0\.\d+x0\.\d+f|emg0/.test(stp)) return rawUrl;
-    // Reduz `stp` para apenas o sufixo de formato (ex: dst-jpg_tt6 ou tt6)
-    const ttMatch = stp.match(/tt\d+/);
-    const tt = ttMatch ? ttMatch[0] : 'tt6';
-    u.searchParams.set('stp', `dst-jpg_${tt}`);
-    return u.toString();
-  } catch {
-    return rawUrl;
-  }
 }
 
 /**
@@ -545,16 +529,7 @@ export async function fetchMetaTopAds(
 
     for (const ad of ads) delete (ad as any).__storyId;
 
-    // Último recurso: tentar upscale de URLs da CDN da Meta que vieram como thumbnail pequena
-    for (const ad of ads) {
-      const t = ad.creative.thumbnail;
-      if (!t) continue;
-      const upscaled = upscaleMetaCdnUrl(t);
-      if (upscaled && upscaled !== t) {
-        ad.creative.thumbnail = upscaled;
-        ad.creative.thumbnailSource = (ad.creative.thumbnailSource || 'unknown') + '+upscaled';
-      }
-    }
+
 
     // Log telemetria de fontes
     const sourceStats: Record<string, number> = {};
