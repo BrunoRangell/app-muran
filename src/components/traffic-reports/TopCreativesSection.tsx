@@ -139,7 +139,7 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
 
               {/* Creative Preview com blur backdrop */}
               {(() => {
-                const isPlayableVideo = mediaType === 'video' && !!ad.creative.videoId;
+                const isPlayableVideo = mediaType === 'video' && (!!ad.creative.videoId || !!ad.creative.permalinkUrl);
                 const PreviewTag = isPlayableVideo ? 'button' : 'div';
                 return (
                   <PreviewTag
