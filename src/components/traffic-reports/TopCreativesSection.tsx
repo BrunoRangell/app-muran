@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Search } from "lucide-react";
+import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Search, Play, Images } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/utils/chartUtils";
+import { proxiedImageUrl } from "@/lib/metaImageProxy";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,8 @@ interface TopAd {
     title?: string;
     body?: string;
     type?: string;
+    mediaType?: 'image' | 'video' | 'carousel';
+    videoId?: string;
   };
   metrics: {
     impressions: number;
@@ -36,6 +39,8 @@ interface TopCreativesSectionProps {
 }
 
 type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
+
+
 
 export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionProps) {
   const [sortBy, setSortBy] = useState<SortOption>('impressions');
@@ -97,7 +102,9 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
         {sortedAds.map((ad, index) => {
           const rankLabel = getRankBadge(index);
           const bestMetric = getBestMetricBadge(ad, sortedAds);
-          const hasThumb = ad.creative.thumbnail && !failedThumbs[ad.id];
+          const proxiedThumb = proxiedImageUrl(ad.creative.thumbnail);
+          const hasThumb = proxiedThumb && !failedThumbs[ad.id];
+          const mediaType = ad.creative.mediaType || 'image';
 
           return (
             <div
@@ -121,35 +128,62 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
               )}
 
               {/* Creative Preview com blur backdrop */}
-              <div className="relative aspect-video bg-[#0B0F1A] overflow-hidden">
+              <div className="relative aspect-video bg-gradient-to-br from-white/[0.03] to-white/[0.01] overflow-hidden">
                 {hasThumb ? (
                   <>
+                    {/* Skeleton placeholder enquanto carrega */}
+                    <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
                     {/* Backdrop blur */}
                     <img
-                      src={ad.creative.thumbnail}
+                      src={proxiedThumb}
                       alt=""
                       aria-hidden="true"
+                      referrerPolicy="no-referrer"
                       className="absolute inset-0 w-full h-full object-cover scale-110 opacity-50"
                       style={{ filter: "blur(24px)" }}
                     />
                     <div className="absolute inset-0 bg-[#0B0F1A]/40" />
                     {/* Imagem principal centralizada */}
                     <img
-                      src={ad.creative.thumbnail}
+                      src={proxiedThumb}
                       alt={ad.name}
                       loading="lazy"
+                      referrerPolicy="no-referrer"
                       className="relative z-10 w-full h-full object-contain"
                       onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
                     />
+
+                    {/* Overlay para vídeo */}
+                    {mediaType === 'video' && (
+                      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                        <div className="rounded-full bg-black/55 backdrop-blur-md border border-white/20 p-3 shadow-lg">
+                          <Play className="h-6 w-6 text-white fill-white" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Overlay para carrossel */}
+                    {mediaType === 'carousel' && (
+                      <div className="absolute bottom-2 right-2 z-20">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-black/55 backdrop-blur-md border border-white/15 px-2 py-1 text-[10px] font-medium text-white/90">
+                          <Images className="h-3 w-3" /> Carrossel
+                        </span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff6e00]/10 via-transparent to-white/[0.02]">
                     <div className="text-center p-4">
-                      <Target className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
+                      {mediaType === 'video' ? (
+                        <Play className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
+                      ) : (
+                        <Target className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
+                      )}
                       <p className="text-xs text-white/50">Preview não disponível</p>
                     </div>
                   </div>
                 )}
+
 
                 {/* Platform Badge */}
                 <div className="absolute bottom-2 left-2 z-20">

@@ -77,6 +77,9 @@ export interface TopAd {
     title?: string;
     body?: string;
     type?: string;
+    mediaType?: 'image' | 'video' | 'carousel';
+    videoId?: string;
+    thumbnailSource?: string;
   };
   metrics: {
     impressions: number;

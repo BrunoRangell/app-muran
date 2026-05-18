@@ -1,5 +1,115 @@
 import { TopAd } from "./types.ts";
 
+const META_API_VERSION = "v22.0";
+
+/**
+ * Escolhe a melhor URL de imagem disponível para um criativo Meta.
+ * Cascata determinística (alta → baixa fidelidade).
+ */
+function pickBestCreativeImage(creative: any): {
+  url?: string;
+  source: string;
+  mediaType: 'image' | 'video' | 'carousel';
+  videoId?: string;
+  imageHash?: string;
+} {
+  const story = creative?.object_story_spec || {};
+  const feed = creative?.asset_feed_spec || {};
+
+  // Detectar tipo de mídia primeiro
+  let mediaType: 'image' | 'video' | 'carousel' = 'image';
+  if (
+    story.video_data ||
+    creative?.video_id ||
+    (Array.isArray(feed.videos) && feed.videos.length > 0)
+  ) {
+    mediaType = 'video';
+  }
+  if (Array.isArray(story.link_data?.child_attachments) && story.link_data.child_attachments.length > 1) {
+    mediaType = 'carousel';
+  }
+
+  // Cascata de imagem
+  if (Array.isArray(feed.images) && feed.images[0]?.url) {
+    return { url: feed.images[0].url, source: 'asset_feed.images', mediaType, imageHash: feed.images[0].hash };
+  }
+  if (story.video_data?.image_url) {
+    return { url: story.video_data.image_url, source: 'video_data.image_url', mediaType: 'video', videoId: story.video_data.video_id };
+  }
+  if (story.link_data?.picture) {
+    return { url: story.link_data.picture, source: 'link_data.picture', mediaType, imageHash: story.link_data.image_hash };
+  }
+  if (Array.isArray(story.link_data?.child_attachments)) {
+    const firstWithPic = story.link_data.child_attachments.find((c: any) => c?.picture);
+    if (firstWithPic?.picture) {
+      return { url: firstWithPic.picture, source: 'link_data.child_attachments[0].picture', mediaType: 'carousel' };
+    }
+  }
+  if (story.photo_data?.url) {
+    return { url: story.photo_data.url, source: 'photo_data.url', mediaType, imageHash: story.photo_data.image_hash };
+  }
+  if (Array.isArray(feed.videos) && feed.videos[0]?.thumbnail_url) {
+    return { url: feed.videos[0].thumbnail_url, source: 'asset_feed.videos[0].thumbnail_url', mediaType: 'video', videoId: feed.videos[0].video_id };
+  }
+  if (creative?.image_url) {
+    return { url: creative.image_url, source: 'creative.image_url', mediaType };
+  }
+  if (creative?.thumbnail_url) {
+    return { url: creative.thumbnail_url, source: 'creative.thumbnail_url', mediaType };
+  }
+
+  // Sem URL direta — pode ser hash isolado
+  const hash = creative?.image_hash || story.link_data?.image_hash || story.photo_data?.image_hash;
+  return { url: undefined, source: 'none', mediaType, imageHash: hash, videoId: story.video_data?.video_id || creative?.video_id };
+}
+
+/**
+ * Resolve hashes de imagem em URLs reais via /{act_id}/adimages.
+ */
+async function resolveImageHashes(
+  accountId: string,
+  accessToken: string,
+  hashes: string[]
+): Promise<Record<string, string>> {
+  if (hashes.length === 0) return {};
+  const unique = Array.from(new Set(hashes));
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    hashes: JSON.stringify(unique),
+    fields: 'hash,url,permalink_url',
+  });
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${accountId}/adimages?${params}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      console.warn(`[META-ADS] adimages lookup failed: ${r.status}`);
+      return {};
+    }
+    const data = await r.json();
+    const map: Record<string, string> = {};
+    if (data?.data && typeof data.data === 'object') {
+      // Meta retorna como objeto { hash: { url, permalink_url } } ou array
+      if (Array.isArray(data.data)) {
+        for (const img of data.data) {
+          if (img?.hash && (img.url || img.permalink_url)) {
+            map[img.hash] = img.url || img.permalink_url;
+          }
+        }
+      } else {
+        for (const [h, info] of Object.entries<any>(data.data)) {
+          if (info?.url || info?.permalink_url) {
+            map[h] = info.url || info.permalink_url;
+          }
+        }
+      }
+    }
+    return map;
+  } catch (e) {
+    console.warn('[META-ADS] adimages error:', e);
+    return {};
+  }
+}
+
 export async function fetchMetaTopAds(
   accountId: string,
   accessToken: string,
@@ -7,31 +117,52 @@ export async function fetchMetaTopAds(
   until: string,
   limit: number = 10
 ): Promise<TopAd[]> {
+  // Campos expandidos cobrindo todos os tipos de criativo
+  const creativeFields = [
+    'id',
+    'name',
+    'thumbnail_url',
+    'image_url',
+    'image_hash',
+    'video_id',
+    'object_type',
+    'object_story_id',
+    'effective_object_story_id',
+    'object_story_spec{link_data{picture,image_hash,child_attachments{picture,image_hash}},video_data{image_url,video_id},photo_data{url,image_hash}}',
+    'asset_feed_spec{images{url,hash},videos{thumbnail_url,video_id}}',
+  ].join(',');
+
   const fields = [
     'id',
     'name',
-    'creative{title,body,thumbnail_url,image_url,object_story_spec}',
-    'insights.time_range({"since":"' + since + '","until":"' + until + '"}).fields(impressions,clicks,ctr,spend,actions,cost_per_action_type)'
+    `creative{${creativeFields}}`,
+    `insights.time_range({"since":"${since}","until":"${until}"}).fields(impressions,clicks,ctr,spend,actions,cost_per_action_type)`,
   ].join(',');
 
   const params = new URLSearchParams({
     access_token: accessToken,
-    fields: fields,
+    fields,
     limit: '100',
-    effective_status: '["ACTIVE","PAUSED"]'
+    effective_status: '["ACTIVE","PAUSED"]',
+    // Força thumbnails em alta resolução (válido para creative.thumbnail_url)
+    thumbnail_width: '600',
+    thumbnail_height: '600',
   });
 
-  const url = `https://graph.facebook.com/v22.0/${accountId}/ads?${params}`;
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${accountId}/ads?${params}`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`❌ [META-ADS] Error fetching ads:`, response.statusText);
+      const text = await response.text();
+      console.error(`❌ [META-ADS] Error fetching ads: ${response.status} ${response.statusText} - ${text.slice(0, 500)}`);
       return [];
     }
 
     const data = await response.json();
     const ads: TopAd[] = [];
+    const hashesToResolve: string[] = [];
+    const pendingHashLookups: { ad: TopAd; hash: string }[] = [];
 
     if (data.data && Array.isArray(data.data)) {
       for (const ad of data.data) {
@@ -59,41 +190,61 @@ export async function fetchMetaTopAds(
         const cpa = conversions > 0 ? spend / conversions : 0;
         const cpc = clicks > 0 ? spend / clicks : 0;
 
-        // Extract creative info
         const creative = ad.creative || {};
-        // Prefer image_url (higher resolution) over thumbnail_url
-        const thumbnail = creative.image_url || creative.thumbnail_url || undefined;
+        const picked = pickBestCreativeImage(creative);
 
-        ads.push({
+        const topAd: TopAd = {
           id: ad.id,
-          name: ad.name || 'Unnamed Ad',
+          name: ad.name || creative.name || 'Unnamed Ad',
           platform: 'meta',
           creative: {
-            thumbnail,
+            thumbnail: picked.url,
             title: creative.title,
             body: creative.body,
-            type: creative.object_story_spec?.link_data ? 'link' : 'image'
+            type: creative.object_type?.toLowerCase(),
+            mediaType: picked.mediaType,
+            videoId: picked.videoId,
+            thumbnailSource: picked.source,
           },
-          metrics: {
-            impressions,
-            clicks,
-            ctr,
-            conversions,
-            cpa,
-            cpc,
-            spend
-          }
-        });
+          metrics: { impressions, clicks, ctr, conversions, cpa, cpc, spend },
+        };
+
+        // Se não temos URL mas temos hash, agendar resolução
+        if (!picked.url && picked.imageHash) {
+          hashesToResolve.push(picked.imageHash);
+          pendingHashLookups.push({ ad: topAd, hash: picked.imageHash });
+        }
+
+        ads.push(topAd);
       }
     }
 
-    // Sort by impressions and return top N
+    // Resolver hashes pendentes em uma única chamada batch
+    if (hashesToResolve.length > 0) {
+      const hashMap = await resolveImageHashes(accountId, accessToken, hashesToResolve);
+      for (const { ad, hash } of pendingHashLookups) {
+        if (hashMap[hash]) {
+          ad.creative.thumbnail = hashMap[hash];
+          ad.creative.thumbnailSource = 'adimages_hash_lookup';
+        }
+      }
+    }
+
+    // Log telemetria de fontes
+    const sourceStats: Record<string, number> = {};
+    for (const a of ads) {
+      const s = a.creative.thumbnailSource || 'unknown';
+      sourceStats[s] = (sourceStats[s] || 0) + 1;
+    }
+    console.log(`📸 [META-ADS] ${ads.length} ads — thumbnail sources:`, sourceStats);
+
     return ads.sort((a, b) => b.metrics.impressions - a.metrics.impressions).slice(0, limit);
   } catch (error) {
     console.error(`❌ [META-ADS] Error:`, error);
     return [];
   }
 }
+
 
 export async function fetchGoogleTopAds(
   customerId: string,
