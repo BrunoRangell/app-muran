@@ -1,51 +1,39 @@
-# Top Criativos: somente Meta + reprodução de vídeo
+# Vídeos de "Publicação existente" no Top Criativos
 
-Duas mudanças na seção "Top Criativos" dos relatórios de tráfego.
+## Contexto
 
-## 1. Mostrar apenas criativos do Meta
+Anúncios Meta criados "do zero" no Gerenciador trazem o vídeo dentro de `creative.object_story_spec.video_data` (com `video_id` e `image_url`). Para esses, o preview e a reprodução estão funcionando bem.
 
-Hoje a seção mistura Meta e Google. Como Google Ads são (na maioria) anúncios de texto sem preview visual relevante, vamos esconder completamente os itens cuja `platform === 'google'`.
+Anúncios que usam **"Publicação existente"** (dark posts ou posts da página promovidos) **não** preenchem `object_story_spec`. Em vez disso, expõem apenas `object_story_id` ou `effective_object_story_id` no formato `{page_id}_{post_id}`. Resultado: nosso extrator atual (`pickBestCreativeImage`) não encontra `video_id`, cai num thumbnail genérico e o card fica "desformatado" — sem botão de play funcional e, em alguns casos, com a capa errada/cortada.
 
-- Filtrar `topAds` para manter apenas `platform === 'meta'` dentro de `TopCreativesSection`.
-- Se após o filtro a lista ficar vazia, a seção inteira não é renderizada (incluindo o título "Top Criativos").
-- Ajustar o hint do título (em `MasterTrafficReport`) para refletir a contagem de Meta após o filtro.
+## O que vamos fazer
 
-## 2. Reproduzir vídeos do Meta diretamente no card
+Resolver o `object_story_id` desses anúncios no backend para obter:
+- `video_id` (quando o post for vídeo)
+- `full_picture` (thumbnail em alta resolução)
+- `permalink_url` (fallback "Abrir no Facebook")
+- `attachments` (para detectar carrossel/imagem corretamente)
 
-Hoje só vemos a capa (thumbnail). Quando o criativo é vídeo (`mediaType === 'video'` e existe `videoId`), o usuário poderá clicar e assistir.
-
-UX proposta:
-
-- Clicar na capa do vídeo abre um modal (Dialog) com o player rodando no centro, fundo escurecido. O modal mostra também: nome do anúncio, campanha, e métricas principais.
-- Botão "Play" sobreposto fica mais convidativo (já existe o ícone, vamos aumentar e adicionar hover).
-- Loading skeleton enquanto o vídeo é buscado.
-- Se a busca falhar, mostrar mensagem amigável com link "Abrir no Facebook" usando o `permalink_url`.
-
-Para obter o arquivo do vídeo, criamos um endpoint server-side (edge function) que consulta a Graph API com o token Meta da agência e retorna a URL `source` (mp4) — assim o token nunca é exposto no frontend e contornamos CORS.
+Com isso o card volta a se comportar como um vídeo: capa correta, play funcional abrindo o `MetaVideoPlayerDialog`, e se a Graph API não devolver `source` (post antigo/restrito), exibimos o link do Facebook como fallback (já existente).
 
 ## Detalhes técnicos
 
-Arquivos afetados:
+Arquivo principal: `supabase/functions/traffic-insights/ads-processor.ts`
 
-- `src/components/traffic-reports/TopCreativesSection.tsx` — filtro Meta-only, estado do modal, integração com novo hook de vídeo.
-- `src/components/traffic-reports/MasterTrafficReport.tsx` — ajustar contagem exibida no `SectionTitle`.
-- `src/lib/metaVideoSource.ts` (novo) — hook `useMetaVideoSource(videoId)` que chama o endpoint e cacheia via React Query.
-- `supabase/functions/meta-video-source/index.ts` (novo) — recebe `?video_id=`, busca `GET /{video_id}?fields=source,permalink_url,picture` com o token da agência e retorna `{ source, permalink_url }`. Cache HTTP de 6h.
-- `supabase/config.toml` — registrar a nova função como pública.
+1. Em `fetchMetaTopAds`, incluir `object_story_id` e `effective_object_story_id` nos `creativeFields` (já estão).
+2. Após o loop principal, identificar anúncios cujo `picked.source === 'none'` **ou** sem `videoId`/`thumbnail` **e** que possuam `object_story_id`/`effective_object_story_id`.
+3. Para esses, fazer um batch request à Graph API:
+   `GET /{post_id}?fields=full_picture,permalink_url,attachments{media_type,media,subattachments,target}&access_token=...`
+   (usar `?ids=a,b,c` para batch).
+4. Mapear o retorno:
+   - `attachments.data[0].media_type === 'video'` → `mediaType='video'`, `videoId = attachments.data[0].target.id`, `thumbnail = full_picture || media.image.src`.
+   - `subattachments` presentes → `mediaType='carousel'`, thumbnail da primeira.
+   - Caso contrário → `mediaType='image'`, thumbnail = `full_picture`.
+5. Preencher `topAd.creative` com esses dados e marcar `thumbnailSource = 'object_story_id_lookup'` para telemetria.
 
-Componente novo `MetaVideoPlayerDialog`:
+Nenhuma mudança no frontend é necessária — `TopCreativesSection` e `MetaVideoPlayerDialog` já lidam com `videoId` + `thumbnail` corretamente. O endpoint `meta-video-source` continua resolvendo o `source` (mp4) a partir do `video_id`.
 
-```text
-+------------------------------------------+
-|  [X]                                     |
-|                                          |
-|        <video controls autoplay>         |
-|                                          |
-|  Nome do anúncio                         |
-|  Campanha · 1.234 impressões · R$ 567   |
-|                                          |
-|  [Abrir no Facebook]                     |
-+------------------------------------------+
-```
+## Riscos / observações
 
-Sem alterações em RLS, schema, ou no backend `traffic-insights` (que já entrega `videoId`).
+- Posts muito antigos ou de páginas sem permissão podem não retornar `attachments`. Nesse caso mantemos o comportamento atual (thumbnail genérico) e o usuário ainda terá o link "Abrir no Facebook" via `permalink_url`.
+- A chamada extra à Graph API é feita em lote (uma única request por revisão), então o impacto em latência é mínimo.
