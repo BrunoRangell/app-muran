@@ -53,3 +53,6 @@ verify_jwt = false
 [functions.meta-image-proxy]
 verify_jwt = false
 
+[functions.meta-video-source]
+verify_jwt = false
+
