@@ -77,6 +77,14 @@ export function CampaignsDetailContent({ campaigns, platform }: CampaignsDetailC
               <p className="text-[11px] text-gray-500">{platformLabel} · {sorted.length} ativa{sorted.length > 1 ? "s" : ""}</p>
             </div>
           </div>
+          {problemCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-50 border border-red-100">
+              <AlertTriangle className="h-3 w-3 text-red-600" />
+              <span className="text-[11px] font-semibold text-red-700 tabular-nums">
+                {problemCount} sem veiculação
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
