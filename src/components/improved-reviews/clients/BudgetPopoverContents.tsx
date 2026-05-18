@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatCurrency } from "@/utils/formatters";
-import { Layers, Wallet, Eye, DollarSign, TrendingUp } from "lucide-react";
+import { Layers, Wallet, Eye, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface CampaignDetail {
@@ -16,10 +16,22 @@ interface CampaignsDetailContentProps {
 }
 
 export function CampaignsDetailContent({ campaigns, platform }: CampaignsDetailContentProps) {
-  const sorted = useMemo(
-    () => [...(campaigns || [])].sort((a, b) => (b.cost || 0) - (a.cost || 0)),
-    [campaigns]
-  );
+  // Problema = ativa mas sem entrega (0 custo E 0 impressões)
+  const isProblem = (c: CampaignDetail) =>
+    (!c.cost || c.cost === 0) && (!c.impressions || c.impressions === 0);
+
+  const sorted = useMemo(() => {
+    const list = [...(campaigns || [])];
+    // Problemas primeiro, depois maior gasto
+    return list.sort((a, b) => {
+      const pa = isProblem(a) ? 1 : 0;
+      const pb = isProblem(b) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      return (b.cost || 0) - (a.cost || 0);
+    });
+  }, [campaigns]);
+
+  const problemCount = useMemo(() => sorted.filter(isProblem).length, [sorted]);
 
   const totals = useMemo(() => {
     return sorted.reduce(
@@ -65,6 +77,14 @@ export function CampaignsDetailContent({ campaigns, platform }: CampaignsDetailC
               <p className="text-[11px] text-gray-500">{platformLabel} · {sorted.length} ativa{sorted.length > 1 ? "s" : ""}</p>
             </div>
           </div>
+          {problemCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-50 border border-red-100">
+              <AlertTriangle className="h-3 w-3 text-red-600" />
+              <span className="text-[11px] font-semibold text-red-700 tabular-nums">
+                {problemCount} sem veiculação
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -90,14 +110,29 @@ export function CampaignsDetailContent({ campaigns, platform }: CampaignsDetailC
       <div className="max-h-72 overflow-y-auto">
         {sorted.map((c, i) => {
           const pct = totals.cost > 0 ? ((c.cost || 0) / totals.cost) * 100 : 0;
+          const problem = isProblem(c);
           return (
             <div
               key={i}
-              className="px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+              className={`px-4 py-2.5 border-b border-gray-50 last:border-0 transition-colors border-l-2 ${
+                problem
+                  ? "border-l-red-400 bg-red-50/40 hover:bg-red-50/70"
+                  : "border-l-transparent hover:bg-gray-50"
+              }`}
             >
               <div className="flex items-start justify-between gap-3 mb-1.5">
-                <p className="text-xs font-medium text-gray-900 line-clamp-2 flex-1">{c.name}</p>
-                <span className="text-xs font-bold text-gray-900 whitespace-nowrap tabular-nums">
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-medium line-clamp-2 ${problem ? "text-red-900" : "text-gray-900"}`}>
+                    {c.name}
+                  </p>
+                  {problem && (
+                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-red-700">
+                      <AlertTriangle className="h-2.5 w-2.5" />
+                      Ativa sem entrega hoje
+                    </span>
+                  )}
+                </div>
+                <span className={`text-xs font-bold whitespace-nowrap tabular-nums ${problem ? "text-red-700" : "text-gray-900"}`}>
                   {formatCurrency(c.cost || 0)}
                 </span>
               </div>
@@ -105,10 +140,13 @@ export function CampaignsDetailContent({ campaigns, platform }: CampaignsDetailC
                 <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, backgroundColor: platformColor }}
+                    style={{
+                      width: `${problem ? 100 : pct}%`,
+                      backgroundColor: problem ? "#fecaca" : platformColor,
+                    }}
                   />
                 </div>
-                <span className="text-[10px] text-gray-500 tabular-nums whitespace-nowrap">
+                <span className={`text-[10px] tabular-nums whitespace-nowrap ${problem ? "text-red-600" : "text-gray-500"}`}>
                   {(c.impressions || 0).toLocaleString("pt-BR")} impr.
                 </span>
               </div>
