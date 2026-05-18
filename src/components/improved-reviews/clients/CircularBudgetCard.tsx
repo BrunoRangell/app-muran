@@ -606,28 +606,11 @@ export function CircularBudgetCard({
                     </div>
                   </div>
                 </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm">Detalhes das Campanhas</h4>
-                    {veiculationInfo.campaignsDetailed && veiculationInfo.campaignsDetailed.length > 0 ? (
-                      <div className="space-y-2">
-                        {veiculationInfo.campaignsDetailed.map((campaign, index) => (
-                          <div key={index} className="p-2 bg-muted/30 rounded text-xs space-y-1">
-                            <div className="font-medium">{campaign.name}</div>
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>
-                                Custo: R${" "}
-                                {campaign.cost?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) || "0,00"}
-                              </span>
-                              <span>{campaign.impressions?.toLocaleString("pt-BR") || "0"} impr.</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Nenhuma campanha encontrada.</p>
-                    )}
-                  </div>
+                <PopoverContent className="w-[400px] p-0" align="end">
+                  <CampaignsDetailContent
+                    campaigns={veiculationInfo.campaignsDetailed}
+                    platform="google"
+                  />
                 </PopoverContent>
               </Popover>
             </div>
