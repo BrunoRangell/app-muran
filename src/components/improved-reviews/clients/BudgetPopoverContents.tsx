@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatCurrency } from "@/utils/formatters";
-import { Layers, Wallet, Eye, DollarSign, TrendingUp } from "lucide-react";
+import { Layers, Wallet, Eye, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface CampaignDetail {
