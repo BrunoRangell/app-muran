@@ -136,9 +136,10 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
                 </div>
               )}
 
-              {/* Creative Preview com blur backdrop */}
+              {/* Creative Preview */}
               {(() => {
-                const isPlayableVideo = mediaType === 'video' && !!ad.creative.videoId;
+                const isVideo = mediaType === 'video';
+                const isPlayableVideo = isVideo && !!ad.creative.videoId;
                 const PreviewTag = isPlayableVideo ? 'button' : 'div';
                 return (
                   <PreviewTag
@@ -151,53 +152,62 @@ export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionP
                   >
                     {hasThumb ? (
                       <>
-                        <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
-                        <img
-                          src={proxiedThumb}
-                          alt=""
-                          aria-hidden="true"
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 w-full h-full object-cover scale-110 opacity-50"
-                          style={{ filter: "blur(24px)" }}
-                        />
-                        <div className="absolute inset-0 bg-[#0B0F1A]/40" />
-                        <img
-                          src={proxiedThumb}
-                          alt={ad.name}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          className="relative z-10 w-full h-full object-contain transition-transform duration-300 group-hover/play:scale-[1.02]"
-                          onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
-                        />
+                        {isVideo ? (
+                          <>
+                            {/* Vídeo: fundo borrado + object-contain (preserva proporção) */}
+                            <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
+                            <img
+                              src={proxiedThumb}
+                              alt=""
+                              aria-hidden="true"
+                              referrerPolicy="no-referrer"
+                              className="absolute inset-0 w-full h-full object-cover scale-110 opacity-50"
+                              style={{ filter: "blur(24px)" }}
+                            />
+                            <div className="absolute inset-0 bg-[#0B0F1A]/40" />
+                            <img
+                              src={proxiedThumb}
+                              alt={ad.name}
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              className="relative z-10 w-full h-full object-contain transition-transform duration-300 group-hover/play:scale-[1.02]"
+                              onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
+                            />
 
-                        {/* Overlay para vídeo (com hover quando jogável) */}
-                        {mediaType === 'video' && (
-                          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                            <div
-                              className={`rounded-full bg-black/55 backdrop-blur-md border border-white/20 p-3 shadow-lg transition-all duration-300 ${
-                                isPlayableVideo
-                                  ? 'group-hover/play:scale-110 group-hover/play:bg-[#ff6e00]/80 group-hover/play:border-[#ff6e00]'
-                                  : ''
-                              }`}
-                            >
-                              <Play className="h-6 w-6 text-white fill-white" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Overlay para carrossel */}
-                        {mediaType === 'carousel' && (
-                          <div className="absolute bottom-2 right-2 z-20">
-                            <span className="inline-flex items-center gap-1 rounded-md bg-black/55 backdrop-blur-md border border-white/15 px-2 py-1 text-[10px] font-medium text-white/90">
-                              <Images className="h-3 w-3" /> Carrossel
-                            </span>
-                          </div>
+                            {/* Overlay de play apenas para vídeos jogáveis */}
+                            {isPlayableVideo && (
+                              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                                <div className="rounded-full bg-black/55 backdrop-blur-md border border-white/20 p-3 shadow-lg transition-all duration-300 group-hover/play:scale-110 group-hover/play:bg-[#ff6e00]/80 group-hover/play:border-[#ff6e00]">
+                                  <Play className="h-6 w-6 text-white fill-white" />
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {/* Imagem / Carrossel: preenche todo o card */}
+                            <img
+                              src={proxiedThumb}
+                              alt={ad.name}
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={() => setFailedThumbs(prev => ({ ...prev, [ad.id]: true }))}
+                            />
+                            {mediaType === 'carousel' && (
+                              <div className="absolute bottom-2 right-2 z-20">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-black/55 backdrop-blur-md border border-white/15 px-2 py-1 text-[10px] font-medium text-white/90">
+                                  <Images className="h-3 w-3" /> Carrossel
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff6e00]/10 via-transparent to-white/[0.02]">
                         <div className="text-center p-4">
-                          {mediaType === 'video' ? (
+                          {isVideo ? (
                             <Play className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
                           ) : (
                             <Target className="h-10 w-10 text-[#ff6e00]/60 mx-auto mb-2" />
