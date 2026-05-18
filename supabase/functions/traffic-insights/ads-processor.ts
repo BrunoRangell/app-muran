@@ -478,6 +478,7 @@ export async function fetchMetaTopAds(
         storyLookups.map((s) => s.storyId)
       );
       let resolved = 0;
+      const photoLookups: { ad: TopAd; photoId: string }[] = [];
       for (const { ad, storyId } of storyLookups) {
         const post = postMap[storyId];
         if (!post) continue;
@@ -490,9 +491,32 @@ export async function fetchMetaTopAds(
         if (post.permalink && !ad.creative.permalinkUrl) {
           ad.creative.permalinkUrl = post.permalink;
         }
+        if (post.photoId && (post.mediaType === 'image' || post.mediaType === 'carousel')) {
+          photoLookups.push({ ad, photoId: post.photoId });
+        }
         resolved++;
       }
       console.log(`📎 [META-ADS] object_story_id resolved: ${resolved}/${storyLookups.length}`);
+
+      // Resolver versão HD da foto via /{photo_id}?fields=images
+      if (photoLookups.length > 0) {
+        const photoMap = await resolvePhotoImages(
+          accessToken,
+          photoLookups.map((p) => p.photoId)
+        );
+        let upgraded = 0;
+        for (const { ad, photoId } of photoLookups) {
+          const info = photoMap[photoId];
+          if (!info?.url) continue;
+          ad.creative.thumbnail = info.url;
+          ad.creative.thumbnailSource = 'photo_images_lookup';
+          if (info.permalink && !ad.creative.permalinkUrl) {
+            ad.creative.permalinkUrl = info.permalink;
+          }
+          upgraded++;
+        }
+        console.log(`🖼️ [META-ADS] photo images upgraded: ${upgraded}/${photoLookups.length}`);
+      }
     }
 
     // Enriquecer vídeos com picture/permalink HD via /{video_id}
