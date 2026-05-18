@@ -280,6 +280,12 @@ export async function fetchMetaTopAds(
           pendingHashLookups.push({ ad: topAd, hash: picked.imageHash });
         }
 
+        // Anexar object_story_id para resolução posterior (ads de "publicação existente")
+        const storyId = creative.object_story_id || creative.effective_object_story_id;
+        if (storyId) {
+          (topAd as any).__storyId = storyId;
+        }
+
         ads.push(topAd);
       }
     }
@@ -294,6 +300,40 @@ export async function fetchMetaTopAds(
         }
       }
     }
+
+    // Resolver posts via object_story_id (ads de "publicação existente")
+    // Necessário quando o video_id não veio no creative ou thumbnail está ausente/genérico.
+    const storyLookups: { ad: TopAd; storyId: string }[] = [];
+    for (const ad of ads) {
+      const storyId = (ad as any).__storyId as string | undefined;
+      if (!storyId) continue;
+      const needsResolve =
+        (ad.creative.mediaType === 'video' && !ad.creative.videoId) ||
+        !ad.creative.thumbnail ||
+        ad.creative.thumbnailSource === 'creative.thumbnail_url' ||
+        ad.creative.thumbnailSource === 'none';
+      if (needsResolve) storyLookups.push({ ad, storyId });
+    }
+    if (storyLookups.length > 0) {
+      const postMap = await resolveObjectStoryPosts(
+        accessToken,
+        storyLookups.map((s) => s.storyId)
+      );
+      let resolved = 0;
+      for (const { ad, storyId } of storyLookups) {
+        const post = postMap[storyId];
+        if (!post) continue;
+        if (post.mediaType) ad.creative.mediaType = post.mediaType;
+        if (post.videoId && !ad.creative.videoId) ad.creative.videoId = post.videoId;
+        if (post.thumbnail) {
+          ad.creative.thumbnail = post.thumbnail;
+          ad.creative.thumbnailSource = 'object_story_id_lookup';
+        }
+        resolved++;
+      }
+      console.log(`📎 [META-ADS] object_story_id resolved: ${resolved}/${storyLookups.length}`);
+    }
+    for (const ad of ads) delete (ad as any).__storyId;
 
     // Log telemetria de fontes
     const sourceStats: Record<string, number> = {};
