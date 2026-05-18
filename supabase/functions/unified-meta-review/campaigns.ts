@@ -65,7 +65,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     }
 
     
-    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
     
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
@@ -90,7 +90,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const campaignsDetails = [];
     for (const campaign of activeCampaigns) {
       try {
-        const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
         const campaignResponse = await fetch(campaignInsightsUrl);
         const campaignInsights = await campaignResponse.json();
         
