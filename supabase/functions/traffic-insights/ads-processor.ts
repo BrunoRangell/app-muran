@@ -110,6 +110,71 @@ async function resolveImageHashes(
   }
 }
 
+/**
+ * Resolve posts via object_story_id (page_id_post_id) para anúncios de "publicação existente".
+ * Retorna mapa { postId -> { mediaType, videoId, thumbnail, permalink } }.
+ */
+async function resolveObjectStoryPosts(
+  accessToken: string,
+  postIds: string[]
+): Promise<Record<string, { mediaType: 'image' | 'video' | 'carousel'; videoId?: string; thumbnail?: string; permalink?: string }>> {
+  if (postIds.length === 0) return {};
+  const unique = Array.from(new Set(postIds));
+  const out: Record<string, any> = {};
+
+  // Batch via ?ids=a,b,c (Graph aceita até ~50 ids por request)
+  const chunkSize = 40;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      ids: chunk.join(','),
+      fields: 'full_picture,permalink_url,attachments{media_type,media,subattachments,target,url}',
+    });
+    const url = `https://graph.facebook.com/${META_API_VERSION}/?${params}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        const txt = await r.text();
+        console.warn(`[META-ADS] object_story_id lookup failed: ${r.status} ${txt.slice(0, 300)}`);
+        continue;
+      }
+      const data = await r.json();
+      for (const [postId, post] of Object.entries<any>(data)) {
+        if (!post || typeof post !== 'object') continue;
+        const att = post?.attachments?.data?.[0];
+        const mediaType: 'image' | 'video' | 'carousel' =
+          att?.subattachments?.data?.length > 1
+            ? 'carousel'
+            : att?.media_type === 'video' || att?.media_type === 'video_inline' || att?.media_type === 'video_autoplay'
+            ? 'video'
+            : 'image';
+
+        const videoId =
+          mediaType === 'video'
+            ? att?.target?.id || (att?.target?.url?.match(/\/videos\/(\d+)/)?.[1])
+            : undefined;
+
+        const thumbnail =
+          post?.full_picture ||
+          att?.media?.image?.src ||
+          att?.subattachments?.data?.[0]?.media?.image?.src;
+
+        out[postId] = {
+          mediaType,
+          videoId,
+          thumbnail,
+          permalink: post?.permalink_url,
+        };
+      }
+    } catch (e) {
+      console.warn('[META-ADS] object_story_id lookup error:', e);
+    }
+  }
+
+  return out;
+}
+
 export async function fetchMetaTopAds(
   accountId: string,
   accessToken: string,
