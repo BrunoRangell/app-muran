@@ -675,39 +675,12 @@ export function CircularBudgetCard({
                         </p>
                       </div>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80" align="start">
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-sm">Composição do orçamento diário</h4>
-                        {client.review?.campaign_budgets && client.review.campaign_budgets.length > 0 ? (
-                          <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                            {client.review.campaign_budgets.map((item: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between text-xs p-1.5 bg-muted/30 rounded">
-                                {platform === "meta" ? (
-                                  <div className="flex-1 min-w-0">
-                                    {item.source === 'adset' && item.campaign_name && (
-                                      <span className="text-muted-foreground text-[10px] block truncate">{item.campaign_name}</span>
-                                    )}
-                                    <span className={`block truncate ${item.source === 'adset' ? 'pl-2' : 'font-medium'}`}>
-                                      {item.source === 'adset' ? `└ ${item.name}` : item.name}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="font-medium truncate flex-1 min-w-0">{item.name}</span>
-                                )}
-                                <span className="font-medium ml-2 whitespace-nowrap">{formatCurrency(item.budget)}</span>
-                              </div>
-                            ))}
-                            <div className="border-t pt-2 flex justify-between text-xs font-semibold">
-                              <span>Total</span>
-                              <span>{formatCurrency(client.review?.daily_budget_current || 0)}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            Detalhamento não disponível. Analise o cliente para ver a composição.
-                          </p>
-                        )}
-                      </div>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <BudgetCompositionContent
+                        items={client.review?.campaign_budgets || []}
+                        total={client.review?.daily_budget_current || 0}
+                        platform={platform}
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
