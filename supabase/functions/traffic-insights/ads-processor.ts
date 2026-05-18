@@ -280,28 +280,6 @@ async function resolvePhotoImages(
 }
 
 /**
- * Tenta remover transformações de tamanho (p64x64, c0.5x0.5f, dst-emg0) de URLs da CDN da Meta
- * para obter uma versão sem corte/redimensionamento. Mantém o resto da URL intacto.
- */
-function upscaleMetaCdnUrl(rawUrl?: string): string | undefined {
-  if (!rawUrl) return rawUrl;
-  try {
-    const u = new URL(rawUrl);
-    const stp = u.searchParams.get('stp');
-    if (!stp) return rawUrl;
-    // Detecta apenas se há indicativos de thumbnail pequeno
-    if (!/p\d+x\d+|c0\.\d+x0\.\d+f|emg0/.test(stp)) return rawUrl;
-    // Reduz `stp` para apenas o sufixo de formato (ex: dst-jpg_tt6 ou tt6)
-    const ttMatch = stp.match(/tt\d+/);
-    const tt = ttMatch ? ttMatch[0] : 'tt6';
-    u.searchParams.set('stp', `dst-jpg_${tt}`);
-    return u.toString();
-  } catch {
-    return rawUrl;
-  }
-}
-
-/**
  * Busca detalhes de vídeos (thumbnail HD, picture, permalink) por video_id em lote.
  */
 async function resolveVideoDetails(
