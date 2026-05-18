@@ -80,6 +80,7 @@ export interface TopAd {
     mediaType?: 'image' | 'video' | 'carousel';
     videoId?: string;
     thumbnailSource?: string;
+    permalinkUrl?: string;
   };
   metrics: {
     impressions: number;
