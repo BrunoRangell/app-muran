@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Search } from "lucide-react";
+import { Sparkles, TrendingUp, Target, MousePointerClick, DollarSign, Facebook, Search, Play, Images } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/utils/chartUtils";
+import { proxiedImageUrl } from "@/lib/metaImageProxy";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,8 @@ interface TopAd {
     title?: string;
     body?: string;
     type?: string;
+    mediaType?: 'image' | 'video' | 'carousel';
+    videoId?: string;
   };
   metrics: {
     impressions: number;
@@ -29,6 +32,13 @@ interface TopAd {
     spend: number;
   };
 }
+
+interface TopCreativesSectionProps {
+  topAds: TopAd[];
+  limit?: number;
+}
+
+type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
 
 interface TopCreativesSectionProps {
   topAds: TopAd[];
