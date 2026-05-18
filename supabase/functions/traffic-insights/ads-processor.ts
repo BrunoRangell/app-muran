@@ -1,6 +1,18 @@
 import { TopAd } from "./types.ts";
 
-const META_API_VERSION = "v22.0";
+const META_API_VERSION = "v24.0";
+
+const VIDEO_MEDIA_TYPES = new Set([
+  'video',
+  'video_inline',
+  'video_autoplay',
+  'video_direct_response',
+  'video_direct_response_autoplay',
+  'native_video',
+  'animated_image_video',
+  'animated_image_autoplay',
+  'share',
+]);
 
 /**
  * Escolhe a melhor URL de imagem disponível para um criativo Meta.
