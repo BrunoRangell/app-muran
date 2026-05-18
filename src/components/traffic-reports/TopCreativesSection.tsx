@@ -40,12 +40,7 @@ interface TopCreativesSectionProps {
 
 type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
 
-interface TopCreativesSectionProps {
-  topAds: TopAd[];
-  limit?: number;
-}
 
-type SortOption = 'impressions' | 'ctr' | 'conversions' | 'cpa' | 'spend';
 
 export function TopCreativesSection({ topAds, limit = 10 }: TopCreativesSectionProps) {
   const [sortBy, setSortBy] = useState<SortOption>('impressions');
