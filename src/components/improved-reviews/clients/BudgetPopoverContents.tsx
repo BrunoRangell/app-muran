@@ -16,10 +16,22 @@ interface CampaignsDetailContentProps {
 }
 
 export function CampaignsDetailContent({ campaigns, platform }: CampaignsDetailContentProps) {
-  const sorted = useMemo(
-    () => [...(campaigns || [])].sort((a, b) => (b.cost || 0) - (a.cost || 0)),
-    [campaigns]
-  );
+  // Problema = ativa mas sem entrega (0 custo E 0 impressões)
+  const isProblem = (c: CampaignDetail) =>
+    (!c.cost || c.cost === 0) && (!c.impressions || c.impressions === 0);
+
+  const sorted = useMemo(() => {
+    const list = [...(campaigns || [])];
+    // Problemas primeiro, depois maior gasto
+    return list.sort((a, b) => {
+      const pa = isProblem(a) ? 1 : 0;
+      const pb = isProblem(b) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      return (b.cost || 0) - (a.cost || 0);
+    });
+  }, [campaigns]);
+
+  const problemCount = useMemo(() => sorted.filter(isProblem).length, [sorted]);
 
   const totals = useMemo(() => {
     return sorted.reduce(
