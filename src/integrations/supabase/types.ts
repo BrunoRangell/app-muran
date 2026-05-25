@@ -748,6 +748,39 @@ export type Database = {
           },
         ]
       }
+      low_balance_alerts: {
+        Row: {
+          account_id: string
+          client_id: string
+          daily_budget: number
+          dias_restantes: number
+          discord_message_id: string | null
+          id: string
+          saldo: number
+          sent_at: string
+        }
+        Insert: {
+          account_id: string
+          client_id: string
+          daily_budget: number
+          dias_restantes: number
+          discord_message_id?: string | null
+          id?: string
+          saldo: number
+          sent_at?: string
+        }
+        Update: {
+          account_id?: string
+          client_id?: string
+          daily_budget?: number
+          dias_restantes?: number
+          discord_message_id?: string | null
+          id?: string
+          saldo?: number
+          sent_at?: string
+        }
+        Relationships: []
+      }
       meta_token_metadata: {
         Row: {
           created_at: string
