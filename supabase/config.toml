@@ -56,3 +56,7 @@ verify_jwt = false
 [functions.meta-video-source]
 verify_jwt = false
 
+[functions.check-low-balance-alerts]
+verify_jwt = false
+
+
