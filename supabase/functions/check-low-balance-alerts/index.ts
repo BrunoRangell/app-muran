@@ -24,9 +24,18 @@ Deno.serve(async (req) => {
     const discordToken = Deno.env.get("DISCORD_TOKEN");
     const channelId = Deno.env.get("DISCORD_LOW_BALANCE_CHANNEL_ID");
 
+    console.log("[check-low-balance-alerts] secrets presentes:", {
+      DISCORD_TOKEN: !!discordToken,
+      DISCORD_LOW_BALANCE_CHANNEL_ID: !!channelId,
+    });
+
     if (!discordToken || !channelId) {
       return new Response(
-        JSON.stringify({ error: "DISCORD_TOKEN ou DISCORD_LOW_BALANCE_CHANNEL_ID não configurado" }),
+        JSON.stringify({
+          error: "DISCORD_TOKEN ou DISCORD_LOW_BALANCE_CHANNEL_ID não configurado",
+          has_token: !!discordToken,
+          has_channel: !!channelId,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
