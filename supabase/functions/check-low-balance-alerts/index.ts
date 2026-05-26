@@ -6,10 +6,20 @@ const corsHeaders = {
 };
 
 const THRESHOLD_DAYS = 3;
-const DEDUP_WINDOW_HOURS = 11; // não re-alerta a mesma conta se já alertado nas últimas 11h com mesmo nível
+const DEDUP_WINDOW_HOURS = 11;
+
+type Level = "esgotado" | "critico" | "baixo";
 
 function fmtBRL(v: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+}
+
+// Codifica nível como número em dias_restantes para deduplicação:
+// esgotado = -1, critico = dias real (<=1), baixo = dias real (<=3)
+function levelRank(level: Level): number {
+  if (level === "esgotado") return 0;
+  if (level === "critico") return 1;
+  return 2;
 }
 
 Deno.serve(async (req) => {
@@ -40,7 +50,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Buscar contas Meta pré-pagas ativas com saldo
+    // 1. Contas Meta pré-pagas ativas com saldo (inclusive zero/negativo)
     const { data: accounts, error: accErr } = await supabase
       .from("client_accounts")
       .select("id, client_id, account_id, account_name, saldo_restante, is_prepay_account, is_primary")
@@ -60,7 +70,7 @@ Deno.serve(async (req) => {
     const clientIds = [...new Set(accounts.map((a) => a.client_id))];
     const accountIds = accounts.map((a) => a.id);
 
-    // 2. Buscar clientes
+    // 2. Clientes ativos
     const { data: clients } = await supabase
       .from("clients")
       .select("id, company_name, status")
@@ -69,7 +79,7 @@ Deno.serve(async (req) => {
 
     const clientMap = new Map((clients ?? []).map((c) => [c.id, c]));
 
-    // 3. Buscar últimas reviews para daily_budget_current
+    // 3. Última review por conta (daily_budget_current)
     const { data: reviews } = await supabase
       .from("budget_reviews")
       .select("account_id, daily_budget_current, review_date, created_at")
@@ -85,22 +95,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Buscar alertas recentes (deduplicação)
+    // 4. Alertas recentes para dedup
     const dedupSince = new Date(Date.now() - DEDUP_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
     const { data: recentAlerts } = await supabase
       .from("low_balance_alerts")
       .select("account_id, dias_restantes, sent_at")
       .gte("sent_at", dedupSince);
 
+    // Para cada conta, menor (pior) nível já enviado
     const recentByAccount = new Map<string, number>();
     for (const a of recentAlerts ?? []) {
+      const dias = Number(a.dias_restantes);
+      // Reconstroi rank: <0 esgotado(0), <=1 critico(1), <=3 baixo(2)
+      const rank = dias < 0 ? 0 : dias <= 1 ? 1 : 2;
       const prev = recentByAccount.get(a.account_id);
-      if (prev === undefined || Number(a.dias_restantes) < prev) {
-        recentByAccount.set(a.account_id, Number(a.dias_restantes));
-      }
+      if (prev === undefined || rank < prev) recentByAccount.set(a.account_id, rank);
     }
 
-    // 5. Calcular e filtrar
     type AlertItem = {
       account_id_uuid: string;
       client_id: string;
@@ -109,6 +120,7 @@ Deno.serve(async (req) => {
       saldo: number;
       dailyBudget: number;
       dias: number;
+      level: Level;
     };
 
     const toAlert: AlertItem[] = [];
@@ -118,19 +130,26 @@ Deno.serve(async (req) => {
       if (!client) continue;
 
       const saldo = Number(acc.saldo_restante);
-      const dailyBudget = latestBudgetByAccount.get(acc.id);
-      if (!dailyBudget || dailyBudget <= 0 || saldo <= 0) continue;
+      const dailyBudget = latestBudgetByAccount.get(acc.id) ?? 0;
 
-      const dias = saldo / dailyBudget;
-      if (dias > THRESHOLD_DAYS) continue;
+      let level: Level | null = null;
+      let dias = 0;
 
-      // Deduplicação: só alerta se piorou desde último envio (ou nunca foi avisado na janela)
-      const lastDias = recentByAccount.get(acc.id);
-      const diasFloor = Math.floor(dias);
-      if (lastDias !== undefined && diasFloor >= Math.floor(lastDias)) {
-        // Mesmo nível ou melhor — pula
-        continue;
+      if (saldo <= 0) {
+        level = "esgotado";
+        dias = -1;
+      } else if (dailyBudget > 0) {
+        dias = saldo / dailyBudget;
+        if (dias <= 1) level = "critico";
+        else if (dias <= THRESHOLD_DAYS) level = "baixo";
       }
+
+      if (!level) continue;
+
+      // Dedup: só envia se piorou (rank menor) ou nunca enviado na janela
+      const currentRank = levelRank(level);
+      const lastRank = recentByAccount.get(acc.id);
+      if (lastRank !== undefined && currentRank >= lastRank) continue;
 
       toAlert.push({
         account_id_uuid: acc.id,
@@ -140,6 +159,7 @@ Deno.serve(async (req) => {
         saldo,
         dailyBudget,
         dias,
+        level,
       });
     }
 
@@ -154,20 +174,50 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 6. Ordenar (menor dias primeiro)
-    toAlert.sort((a, b) => a.dias - b.dias);
+    // Agrupar por nível
+    const groups: Record<Level, AlertItem[]> = { esgotado: [], critico: [], baixo: [] };
+    for (const a of toAlert) groups[a.level].push(a);
+    groups.critico.sort((a, b) => a.dias - b.dias);
+    groups.baixo.sort((a, b) => a.dias - b.dias);
+    groups.esgotado.sort((a, b) => a.company.localeCompare(b.company));
 
-    // 7. Montar mensagem Discord
-    const lines = toAlert
-      .map(
-        (a) =>
-          `• **${a.company}** · ${a.account_name} — ${fmtBRL(a.saldo)} · ~${a.dias.toFixed(1)} dia(s)`,
-      )
-      .join("\n");
+    const sections: string[] = [];
+    if (groups.esgotado.length > 0) {
+      sections.push(
+        `🔴 **Saldo esgotado**\n` +
+          groups.esgotado
+            .map((a) => `• **${a.company}** · ${a.account_name} — ${fmtBRL(a.saldo)}`)
+            .join("\n"),
+      );
+    }
+    if (groups.critico.length > 0) {
+      sections.push(
+        `🟠 **Crítico (≤ 1 dia)**\n` +
+          groups.critico
+            .map(
+              (a) =>
+                `• **${a.company}** · ${a.account_name} — ${fmtBRL(a.saldo)} · ~${a.dias.toFixed(1)} dia(s)`,
+            )
+            .join("\n"),
+      );
+    }
+    if (groups.baixo.length > 0) {
+      sections.push(
+        `🟡 **Baixo (≤ ${THRESHOLD_DAYS} dias)**\n` +
+          groups.baixo
+            .map(
+              (a) =>
+                `• **${a.company}** · ${a.account_name} — ${fmtBRL(a.saldo)} · ~${a.dias.toFixed(1)} dia(s)`,
+            )
+            .join("\n"),
+      );
+    }
 
-    const content = `@everyone ⚠️ **Alerta de saldo baixo — Meta Ads**\n\n${lines}\n\n_Saldo suficiente para ${THRESHOLD_DAYS} dia(s) ou menos. Verifique e providencie recarga._`;
+    const content =
+      `@everyone ⚠️ **Alerta de saldo — Meta Ads**\n\n` +
+      sections.join("\n\n") +
+      `\n\n_Verifique e providencie recarga._`;
 
-    // 8. Enviar para Discord
     const discordResp = await fetch(
       `https://discord.com/api/v10/channels/${channelId}/messages`,
       {
@@ -201,11 +251,10 @@ Deno.serve(async (req) => {
       messageId = JSON.parse(discordBody).id ?? null;
     } catch (_) {}
 
-    // 9. Registrar alertas no banco
     const rows = toAlert.map((a) => ({
       account_id: a.account_id_uuid,
       client_id: a.client_id,
-      dias_restantes: Number(a.dias.toFixed(2)),
+      dias_restantes: a.level === "esgotado" ? -1 : Number(a.dias.toFixed(2)),
       saldo: a.saldo,
       daily_budget: a.dailyBudget,
       discord_message_id: messageId,
@@ -214,12 +263,31 @@ Deno.serve(async (req) => {
 
     await supabase.from("system_logs").insert({
       event_type: "low_balance_alerts",
-      message: `Enviados ${toAlert.length} alertas de saldo baixo no Discord`,
-      details: { alerts: toAlert.length, checked: accounts.length, message_id: messageId },
+      message: `Enviados ${toAlert.length} alertas de saldo no Discord`,
+      details: {
+        alerts: toAlert.length,
+        checked: accounts.length,
+        message_id: messageId,
+        by_level: {
+          esgotado: groups.esgotado.length,
+          critico: groups.critico.length,
+          baixo: groups.baixo.length,
+        },
+      },
     });
 
     return new Response(
-      JSON.stringify({ ok: true, alerts: toAlert.length, checked: accounts.length, message_id: messageId }),
+      JSON.stringify({
+        ok: true,
+        alerts: toAlert.length,
+        checked: accounts.length,
+        message_id: messageId,
+        by_level: {
+          esgotado: groups.esgotado.length,
+          critico: groups.critico.length,
+          baixo: groups.baixo.length,
+        },
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
