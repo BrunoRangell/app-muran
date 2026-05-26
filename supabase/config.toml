@@ -59,4 +59,8 @@ verify_jwt = false
 [functions.check-low-balance-alerts]
 verify_jwt = false
 
+[functions.check-campaign-health-alerts]
+verify_jwt = false
+
+
 

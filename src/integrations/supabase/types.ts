@@ -281,6 +281,39 @@ export type Database = {
           },
         ]
       }
+      campaign_health_alerts: {
+        Row: {
+          account_id: string
+          client_id: string
+          discord_message_id: string | null
+          id: string
+          sent_at: string
+          snapshot_date: string
+          total_active: number
+          unserved_count: number
+        }
+        Insert: {
+          account_id: string
+          client_id: string
+          discord_message_id?: string | null
+          id?: string
+          sent_at?: string
+          snapshot_date?: string
+          total_active?: number
+          unserved_count?: number
+        }
+        Update: {
+          account_id?: string
+          client_id?: string
+          discord_message_id?: string | null
+          id?: string
+          sent_at?: string
+          snapshot_date?: string
+          total_active?: number
+          unserved_count?: number
+        }
+        Relationships: []
+      }
       client_accounts: {
         Row: {
           account_id: string
