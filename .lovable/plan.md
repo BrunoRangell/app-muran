@@ -1,80 +1,62 @@
 ## Objetivo
 
-Expandir o sistema de alertas no Discord para incluir:
-1. Contas com **saldo esgotado** (saldo ≤ 0) no mesmo alerta de saldo baixo
-2. Novo alerta de **campanhas com erro / sem veiculação** (já existe no app via `campaign_health.unserved_campaigns_count`)
-3. Reagendar **ambos** os crons para rodar às **09:00** e **16:00** (horário de Brasília)
+1. Garantir que **todas** as contas/campanhas que se enquadram nos critérios apareçam em **todo** envio (09h e 16h).
+2. Trocar o formato das mensagens no Discord para o layout solicitado.
+3. Incluir **Google Ads** no alerta de campanhas sem veiculação.
 
 ---
 
-## 1. Alerta de saldo (expandir o existente)
+## Por que ontem ficaram contas/campanhas de fora
 
-Editar `supabase/functions/check-low-balance-alerts/index.ts`:
+- **`check-low-balance-alerts`**: tem uma deduplicação por "nível" (esgotado/crítico/baixo) na janela de 11h. Se a conta já apareceu como "esgotado" no envio das 09h, ela é **suprimida** às 16h porque o nível não piorou. Resultado: lista incompleta no 2º envio.
+- **`check-campaign-health-alerts`**: tem dedup por `(account_id, snapshot_date)` — uma conta aparece **uma única vez por dia**. O envio das 16h fica sem essas contas.
+- **`check-campaign-health-alerts`**: filtra `platform = 'meta'`, então Google fica de fora (já há dados de Google em `campaign_health` hoje, confirmado).
 
-- Remover o filtro `saldo <= 0` que hoje descarta contas zeradas.
-- Classificar cada conta em 3 níveis:
-  - **Esgotado** → `saldo <= 0`
-  - **Crítico** → `dias <= 1`
-  - **Baixo** → `dias <= 3`
-- Mensagem do Discord agrupada por seção, com emojis distintos:
+## Mudanças
+
+### 1. `supabase/functions/check-low-balance-alerts/index.ts`
+
+- **Remover** o sistema de níveis e a dedup por rank. Toda execução envia **todas** as contas Meta pré-pagas ativas com `dias ≤ 3` (saldo esgotado entra naturalmente como 0 dias).
+- Manter `low_balance_alerts` apenas como histórico (insere os registros enviados), sem mais filtrar por janela.
+- Ordenar por `dias` crescente (mais urgente primeiro).
+- Novo formato:
   ```
-  @everyone ⚠️ Alerta de saldo — Meta Ads
+  # 28/05
+  ### 💸 Alerta de saldo baixo - Meta Ads
   
-  🔴 Saldo esgotado
-  • Cliente X · Conta Y — R$ 0,00
+  > • {Cliente} - R$ {saldo} ({x} dias)
+  > • {Cliente} - R$ {saldo} ({x} dias)
   
-  🟠 Crítico (≤ 1 dia)
-  • Cliente Z · Conta W — R$ 45,00 · ~0,8 dia(s)
-  
-  🟡 Baixo (≤ 3 dias)
-  • ...
+  @everyone
   ```
-- Ajustar deduplicação em `low_balance_alerts` para considerar o nível (esgotado = `dias_restantes = 0`, sem reenviar se já enviado nas últimas 11h no mesmo nível).
+- Data no formato `DD/MM` em horário de Brasília.
+- Para saldo esgotado, mostrar `(0 dias)`.
 
-## 2. Novo alerta de campanhas sem veiculação
+### 2. `supabase/functions/check-campaign-health-alerts/index.ts`
 
-Criar nova edge function `supabase/functions/check-campaign-health-alerts/index.ts`:
-
-- Consultar `campaign_health` do dia atual (`snapshot_date = CURRENT_DATE`) com `unserved_campaigns_count > 0` OU `active_campaigns_count = 0` em contas ativas.
-- Para cada cliente/conta, listar de `campaigns_detailed` as campanhas com `cost = 0` e `impressions = 0`.
-- Deduplicação simples: nova tabela `campaign_health_alerts` (account_id, snapshot_date, unserved_count, sent_at) com unique `(account_id, snapshot_date)` — evita reenviar a mesma situação no mesmo dia.
-- Enviar para o mesmo canal Discord (`DISCORD_LOW_BALANCE_CHANNEL_ID`) ou criar secret separado se preferir. **Pergunta:** usar o mesmo canal ou criar um novo?
-- Formato:
+- **Remover** filtro `platform = 'meta'` — buscar Meta **e** Google.
+- **Remover** dedup por `(account_id, snapshot_date)` — toda execução envia o estado atual completo (a tabela `campaign_health_alerts` continua sendo populada para histórico).
+- Listar **todas** as campanhas com `cost = 0` e `impressions = 0` (sem o limite atual de 8).
+- Ordenar por `company_name` ASC e, dentro do cliente, por nome da campanha.
+- Formato pedido — **uma linha por campanha**, não agrupada por cliente:
   ```
-  @everyone 🚨 Campanhas sem veiculação — Meta Ads
+  # 28/05
+  ### 🚨 Alerta de campanhas sem veiculação - Meta e Google
   
-  • Cliente X · Conta Y — 2 campanha(s) sem veiculação hoje
-      - Campanha A
-      - Campanha B
+  > • {Cliente} | Meta Ads | **{Nome da campanha}:** 0 impressões e R$ 0,00 gasto hoje
+  > • {Cliente} | Google Ads | **{Nome da campanha}:** 0 impressões e R$ 0,00 gasto hoje
+  
+  @everyone
   ```
+- Mapear `platform`: `meta → "Meta Ads"`, `google → "Google Ads"`.
+- Se a mensagem ficar maior que ~1900 chars (limite Discord 2000), quebrar em múltiplas mensagens sequenciais.
 
-## 3. Migração
+### 3. Sem mudanças em schema ou crons
 
-Criar tabela `campaign_health_alerts` para deduplicação (similar à `low_balance_alerts`), com RLS.
-
-## 4. Reagendar crons
-
-No SQL Editor (não migração — contém dados do projeto), remover schedules antigos (jobids `37`, `38`) e criar 4 novos:
-
-```sql
-select cron.unschedule(37);
-select cron.unschedule(38);
-
--- Saldo: 09h e 16h BRT (12h e 19h UTC)
-select cron.schedule('check-low-balance-alerts-09h', '0 12 * * *', $$ ... $$);
-select cron.schedule('check-low-balance-alerts-16h', '0 19 * * *', $$ ... $$);
-
--- Campanhas: 09h e 16h BRT
-select cron.schedule('check-campaign-health-alerts-09h', '0 12 * * *', $$ ... $$);
-select cron.schedule('check-campaign-health-alerts-16h', '0 19 * * *', $$ ... $$);
-```
-
-Vou te entregar o SQL pronto para colar.
+Cron das 09h e 16h já está agendado e continua válido.
 
 ---
 
-## Perguntas antes de implementar
+## Pergunta antes de implementar
 
-1. **Canal Discord**: usar o **mesmo canal** (`DISCORD_LOW_BALANCE_CHANNEL_ID`) para os avisos de campanhas sem veiculação, ou prefere um canal separado (novo secret)?
-2. **Critério "sem veiculação"**: considerar apenas contas com `unserved_campaigns_count > 0` (Meta), ou também incluir contas Google Ads (a tabela `campaign_health` tem `platform`)?
-3. **Confirma horários**: 09:00 e 16:00 horário de Brasília (UTC-3)?
+A linha das campanhas mostra `0 impressões e R$ 0,00 gasto hoje` (sempre zerados, pois é o critério). Confirma esse texto fixo? Ou prefere algo mais curto tipo `**{Nome}:** sem veiculação hoje`?
