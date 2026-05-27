@@ -5,14 +5,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function getTodayInBrazil(): string {
+function brazilNow(): Date {
   const now = new Date();
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const brazilTime = new Date(utcTime + -3 * 3600000);
-  const y = brazilTime.getFullYear();
-  const m = String(brazilTime.getMonth() + 1).padStart(2, "0");
-  const d = String(brazilTime.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return new Date(now.getTime() + now.getTimezoneOffset() * 60000 + -3 * 3600000);
+}
+
+function fmtDateBR(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
+}
+
+function todayBR(): string {
+  const d = brazilNow();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function platformLabel(p: string): string {
+  if (p === "meta") return "Meta Ads";
+  if (p === "google") return "Google Ads";
+  return p;
+}
+
+async function sendDiscordMessage(channelId: string, token: string, content: string) {
+  return fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ content, allowed_mentions: { parse: ["everyone"] } }),
+  });
 }
 
 Deno.serve(async (req) => {
@@ -29,25 +49,18 @@ Deno.serve(async (req) => {
 
     if (!discordToken || !channelId) {
       return new Response(
-        JSON.stringify({
-          error: "DISCORD_TOKEN ou DISCORD_LOW_BALANCE_CHANNEL_ID não configurado",
-          has_token: !!discordToken,
-          has_channel: !!channelId,
-        }),
+        JSON.stringify({ error: "DISCORD_TOKEN ou DISCORD_LOW_BALANCE_CHANNEL_ID não configurado" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const today = getTodayInBrazil();
+    const today = todayBR();
 
-    // 1. Buscar snapshots de hoje com problemas (Meta apenas — Google ainda não populado)
+    // Buscar snapshots de hoje com problemas (Meta + Google)
     const { data: snapshots, error: snapErr } = await supabase
       .from("campaign_health")
-      .select(
-        "id, client_id, account_id, platform, has_account, active_campaigns_count, unserved_campaigns_count, campaigns_detailed",
-      )
+      .select("id, client_id, account_id, platform, has_account, active_campaigns_count, unserved_campaigns_count, campaigns_detailed")
       .eq("snapshot_date", today)
-      .eq("platform", "meta")
       .eq("has_account", true)
       .gt("unserved_campaigns_count", 0);
 
@@ -64,152 +77,135 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Dedup: já enviado hoje?
-    const accountIds = snapshots.map((s) => s.account_id);
-    const { data: existingAlerts } = await supabase
-      .from("campaign_health_alerts")
-      .select("account_id")
-      .eq("snapshot_date", today)
-      .in("account_id", accountIds);
-
-    const alreadySent = new Set((existingAlerts ?? []).map((a) => a.account_id));
-    const newSnapshots = snapshots.filter((s) => !alreadySent.has(s.account_id));
-
-    if (newSnapshots.length === 0) {
-      return new Response(
-        JSON.stringify({ ok: true, alerts: 0, checked: snapshots.length, skipped_dedup: snapshots.length }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // 3. Resolver client_accounts e clients
-    const clientIds = [...new Set(newSnapshots.map((s) => s.client_id))];
-    const accountUuids = [...new Set(newSnapshots.map((s) => s.account_id))];
-
-    const [{ data: accounts }, { data: clients }] = await Promise.all([
-      supabase
-        .from("client_accounts")
-        .select("id, account_name, account_id")
-        .in("id", accountUuids),
-      supabase.from("clients").select("id, company_name, status").in("id", clientIds),
-    ]);
-
-    const accMap = new Map((accounts ?? []).map((a) => [a.id, a]));
+    const clientIds = [...new Set(snapshots.map((s) => s.client_id))];
+    const { data: clients } = await supabase
+      .from("clients")
+      .select("id, company_name, status")
+      .in("id", clientIds);
     const clientMap = new Map((clients ?? []).map((c) => [c.id, c]));
 
-    type Item = {
+    type Line = {
+      company: string;
+      platform: string;
+      campaignName: string;
       account_id_uuid: string;
       client_id: string;
-      company: string;
-      account_name: string;
-      unserved: number;
-      total_active: number;
-      unservedNames: string[];
     };
 
-    const items: Item[] = [];
+    const lines: Line[] = [];
+    const accountSummary = new Map<string, { client_id: string; unserved: number; total_active: number }>();
 
-    for (const s of newSnapshots) {
+    for (const s of snapshots) {
       const client = clientMap.get(s.client_id);
-      const acc = accMap.get(s.account_id);
-      if (!client || client.status !== "active" || !acc) continue;
+      if (!client || client.status !== "active") continue;
 
-      const details = Array.isArray(s.campaigns_detailed) ? s.campaigns_detailed : [];
-      const unservedNames = details
-        .filter((c: any) => Number(c?.cost ?? 0) === 0 && Number(c?.impressions ?? 0) === 0)
-        .map((c: any) => String(c?.name ?? "Sem nome"))
-        .slice(0, 8);
-
-      items.push({
-        account_id_uuid: s.account_id,
+      accountSummary.set(s.account_id, {
         client_id: s.client_id,
-        company: client.company_name,
-        account_name: acc.account_name,
         unserved: Number(s.unserved_campaigns_count ?? 0),
         total_active: Number(s.active_campaigns_count ?? 0),
-        unservedNames,
       });
+
+      const details = Array.isArray(s.campaigns_detailed) ? s.campaigns_detailed : [];
+      for (const c of details) {
+        const cost = Number(c?.cost ?? 0);
+        const impressions = Number(c?.impressions ?? 0);
+        if (cost === 0 && impressions === 0) {
+          lines.push({
+            company: client.company_name,
+            platform: s.platform,
+            campaignName: String(c?.name ?? "Sem nome"),
+            account_id_uuid: s.account_id,
+            client_id: s.client_id,
+          });
+        }
+      }
     }
 
-    if (items.length === 0) {
+    if (lines.length === 0) {
       return new Response(JSON.stringify({ ok: true, alerts: 0, checked: snapshots.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    items.sort((a, b) => b.unserved - a.unserved);
+    // Ordenar por cliente, depois plataforma, depois nome
+    lines.sort((a, b) => {
+      const c = a.company.localeCompare(b.company, "pt-BR");
+      if (c !== 0) return c;
+      const p = a.platform.localeCompare(b.platform);
+      if (p !== 0) return p;
+      return a.campaignName.localeCompare(b.campaignName, "pt-BR");
+    });
 
-    const lines = items
-      .map((it) => {
-        const header = `• **${it.company}** · ${it.account_name} — ${it.unserved} de ${it.total_active} campanha(s) sem veiculação`;
-        if (it.unservedNames.length === 0) return header;
-        const sub = it.unservedNames.map((n) => `    - ${n}`).join("\n");
-        return `${header}\n${sub}`;
-      })
-      .join("\n\n");
+    const dateStr = fmtDateBR(brazilNow());
+    const header = `# ${dateStr}\n###  :rotating_light: Alerta de campanhas sem veiculação - Meta e Google\n\n`;
+    const footer = `\n\n@everyone`;
 
-    const content =
-      `@everyone 🚨 **Campanhas sem veiculação — Meta Ads**\n\n` +
-      lines +
-      `\n\n_Campanhas ativas com 0 impressões e 0 gasto hoje. Verifique no Gerenciador._`;
-
-    const discordResp = await fetch(
-      `https://discord.com/api/v10/channels/${channelId}/messages`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bot ${discordToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ content, allowed_mentions: { parse: ["everyone"] } }),
-      },
+    const formatted = lines.map(
+      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | **${l.campaignName}:** 0 impressões e R$ 0,00 gasto hoje`,
     );
 
-    const discordBody = await discordResp.text();
-    if (!discordResp.ok) {
-      await supabase.from("system_logs").insert({
-        event_type: "campaign_health_alerts_error",
-        message: "Falha ao enviar alerta de campanhas no Discord",
-        details: { status: discordResp.status, body: discordBody.slice(0, 500) },
-      });
-      return new Response(
-        JSON.stringify({ error: "Discord API error", status: discordResp.status, body: discordBody }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    // Chunking <1700 chars
+    const chunks: string[] = [];
+    let current = "";
+    for (const line of formatted) {
+      if ((current.length + line.length + 1) > 1700) {
+        chunks.push(current);
+        current = "";
+      }
+      current += (current ? "\n" : "") + line;
+    }
+    if (current) chunks.push(current);
+
+    let firstMessageId: string | null = null;
+    for (let i = 0; i < chunks.length; i++) {
+      const isFirst = i === 0;
+      const isLast = i === chunks.length - 1;
+      const content = (isFirst ? header : "") + chunks[i] + (isLast ? footer : "");
+      const resp = await sendDiscordMessage(channelId, discordToken, content);
+      const body = await resp.text();
+      if (!resp.ok) {
+        await supabase.from("system_logs").insert({
+          event_type: "campaign_health_alerts_error",
+          message: "Falha ao enviar alerta no Discord",
+          details: { status: resp.status, body: body.slice(0, 500), chunk: i },
+        });
+        return new Response(
+          JSON.stringify({ error: "Discord API error", status: resp.status, body }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (isFirst) {
+        try { firstMessageId = JSON.parse(body).id ?? null; } catch (_) {}
+      }
     }
 
-    let messageId: string | null = null;
-    try {
-      messageId = JSON.parse(discordBody).id ?? null;
-    } catch (_) {}
-
-    const rows = items.map((it) => ({
-      account_id: it.account_id_uuid,
-      client_id: it.client_id,
+    // Histórico: insere uma linha por conta alertada (ignora conflitos com unique constraint)
+    const rows = Array.from(accountSummary.entries()).map(([account_id, s]) => ({
+      account_id,
+      client_id: s.client_id,
       snapshot_date: today,
-      unserved_count: it.unserved,
-      total_active: it.total_active,
-      discord_message_id: messageId,
+      unserved_count: s.unserved,
+      total_active: s.total_active,
+      discord_message_id: firstMessageId,
     }));
-    await supabase.from("campaign_health_alerts").insert(rows);
+    if (rows.length > 0) {
+      await supabase.from("campaign_health_alerts").upsert(rows, { onConflict: "account_id,snapshot_date", ignoreDuplicates: false });
+    }
 
     await supabase.from("system_logs").insert({
       event_type: "campaign_health_alerts",
-      message: `Enviados ${items.length} alertas de campanhas sem veiculação`,
-      details: { alerts: items.length, checked: snapshots.length, message_id: messageId },
+      message: `Enviados ${lines.length} alertas de campanhas sem veiculação`,
+      details: { campaigns: lines.length, accounts: rows.length, checked: snapshots.length, message_id: firstMessageId, chunks: chunks.length },
     });
 
     return new Response(
-      JSON.stringify({
-        ok: true,
-        alerts: items.length,
-        checked: snapshots.length,
-        message_id: messageId,
-      }),
+      JSON.stringify({ ok: true, campaigns: lines.length, accounts: rows.length, checked: snapshots.length, message_id: firstMessageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("check-campaign-health-alerts error:", err);
-    return new Response(
-      JSON.stringify({ error: String((err as Error).message ?? err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: String((err as Error).message ?? err) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
