@@ -117,6 +117,7 @@ Deno.serve(async (req) => {
       company: string;
       platform: string;
       campaignName: string;
+      status: string;
       account_id_uuid: string;
       client_id: string;
     };
@@ -143,6 +144,7 @@ Deno.serve(async (req) => {
             company: client.company_name,
             platform: s.platform,
             campaignName: String(c?.name ?? "Sem nome"),
+            status: String(c?.status ?? ""),
             account_id_uuid: s.account_id,
             client_id: s.client_id,
           });
@@ -170,7 +172,7 @@ Deno.serve(async (req) => {
     const footer = `\n\n@everyone`;
 
     const formatted = lines.map(
-      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | **${l.campaignName}:** 0 impressões e R$ 0,00 gasto hoje`,
+      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | ${l.campaignName} - Status: ${translateStatus(l.platform, l.status)}`,
     );
 
     // Chunking <1700 chars
