@@ -1,63 +1,17 @@
-## Mudança
+## Diagnóstico
 
-Alterar apenas o formato de linha no `check-campaign-health-alerts/index.ts` — todo o resto (dedup, ordenação, chunking, plataformas) permanece igual.
+O arquivo `check-campaign-health-alerts/index.ts` já foi editado com o novo formato (`Status: {status traduzido}`), mas a execução manual via curl pegou a versão anterior porque rodou antes do deploy automático completar. A mensagem que chegou no Discord ainda mostra `0 impressões e R$ 0,00 gasto hoje`.
 
-### Formato novo
+## Ação
+
+1. Forçar redeploy da função `check-campaign-health-alerts` com `supabase--deploy_edge_functions`.
+2. Re-disparar a função via curl.
+3. Você confere no Discord se a nova mensagem chegou no formato:
 
 ```
-> • {Cliente} | {Meta Ads|Google Ads} | {Nome da campanha} - Status: {status traduzido}
+> • Cliente | Google Ads | Nome da campanha - Status: Ativa
 ```
 
-### Tradução de status (PT-BR)
-
-Mapa aplicado tanto para Meta quanto para Google Ads (ambos já salvam `status` em `campaigns_detailed`):
-
-**Meta (effective_status):**
-- `ACTIVE` → Ativa
-- `PAUSED` → Pausada
-- `DELETED` → Excluída
-- `ARCHIVED` → Arquivada
-- `IN_PROCESS` → Em análise
-- `WITH_ISSUES` → Com problemas
-- `CAMPAIGN_PAUSED` → Campanha pausada
-- `ADSET_PAUSED` → Conjunto pausado
-- `DISAPPROVED` → Reprovada
-- `PENDING_REVIEW` → Em revisão
-- `PREAPPROVED` → Pré-aprovada
-- `PENDING_BILLING_INFO` → Aguardando faturamento
-
-**Google Ads:**
-- `ENABLED` → Ativa
-- `PAUSED` → Pausada
-- `REMOVED` → Removida
-- `UNKNOWN` → Desconhecido
-- `UNSPECIFIED` → Não especificado
-
-Fallback: se vier um valor fora da lista, mostra o valor cru (sem quebrar).
-
-### Implementação
-
-Adicionar função `translateStatus(platform, status)` no topo do arquivo. Substituir a linha:
-
-```ts
-`> • ${l.company} | ${platformLabel(l.platform)} | **${l.campaignName}:** 0 impressões e R$ 0,00 gasto hoje`
-```
-
-por:
-
-```ts
-`> • ${l.company} | ${platformLabel(l.platform)} | ${l.campaignName} - Status: ${translateStatus(l.platform, l.status)}`
-```
-
-E incluir `status` no objeto `Line` (lendo `c?.status` ao montar as linhas).
-
-### Sem mudanças
-
-- Sem migration.
-- Sem alteração na ingestão (Meta e Google já salvam status).
-- Sem alteração no `check-low-balance-alerts`.
-- Crons 09h/16h continuam iguais.
-
-### Validação
-
-Após deploy, disparo manual via curl para confirmar formato no Discord.
+Sem mudanças adicionais de código — só redeploy e validação.  
+  
+Depois me responda se agora também vamos salvar o status oficial das campanhas de Google também.
