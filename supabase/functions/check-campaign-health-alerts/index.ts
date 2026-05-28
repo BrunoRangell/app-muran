@@ -27,6 +27,35 @@ function platformLabel(p: string): string {
   return p;
 }
 
+const META_STATUS_PT: Record<string, string> = {
+  ACTIVE: "Ativa",
+  PAUSED: "Pausada",
+  DELETED: "Excluída",
+  ARCHIVED: "Arquivada",
+  IN_PROCESS: "Em análise",
+  WITH_ISSUES: "Com problemas",
+  CAMPAIGN_PAUSED: "Campanha pausada",
+  ADSET_PAUSED: "Conjunto pausado",
+  DISAPPROVED: "Reprovada",
+  PENDING_REVIEW: "Em revisão",
+  PREAPPROVED: "Pré-aprovada",
+  PENDING_BILLING_INFO: "Aguardando faturamento",
+};
+
+const GOOGLE_STATUS_PT: Record<string, string> = {
+  ENABLED: "Ativa",
+  PAUSED: "Pausada",
+  REMOVED: "Removida",
+  UNKNOWN: "Desconhecido",
+  UNSPECIFIED: "Não especificado",
+};
+
+function translateStatus(platform: string, status: string): string {
+  if (!status) return "Desconhecido";
+  const map = platform === "google" ? GOOGLE_STATUS_PT : META_STATUS_PT;
+  return map[status] ?? status;
+}
+
 async function sendDiscordMessage(channelId: string, token: string, content: string) {
   return fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
     method: "POST",
@@ -88,6 +117,7 @@ Deno.serve(async (req) => {
       company: string;
       platform: string;
       campaignName: string;
+      status: string;
       account_id_uuid: string;
       client_id: string;
     };
@@ -114,6 +144,7 @@ Deno.serve(async (req) => {
             company: client.company_name,
             platform: s.platform,
             campaignName: String(c?.name ?? "Sem nome"),
+            status: String(c?.status ?? ""),
             account_id_uuid: s.account_id,
             client_id: s.client_id,
           });
@@ -141,7 +172,7 @@ Deno.serve(async (req) => {
     const footer = `\n\n@everyone`;
 
     const formatted = lines.map(
-      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | **${l.campaignName}:** 0 impressões e R$ 0,00 gasto hoje`,
+      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | ${l.campaignName} - Status: ${translateStatus(l.platform, l.status)}`,
     );
 
     // Chunking <1700 chars
