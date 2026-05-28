@@ -27,6 +27,35 @@ function platformLabel(p: string): string {
   return p;
 }
 
+const META_STATUS_PT: Record<string, string> = {
+  ACTIVE: "Ativa",
+  PAUSED: "Pausada",
+  DELETED: "Excluída",
+  ARCHIVED: "Arquivada",
+  IN_PROCESS: "Em análise",
+  WITH_ISSUES: "Com problemas",
+  CAMPAIGN_PAUSED: "Campanha pausada",
+  ADSET_PAUSED: "Conjunto pausado",
+  DISAPPROVED: "Reprovada",
+  PENDING_REVIEW: "Em revisão",
+  PREAPPROVED: "Pré-aprovada",
+  PENDING_BILLING_INFO: "Aguardando faturamento",
+};
+
+const GOOGLE_STATUS_PT: Record<string, string> = {
+  ENABLED: "Ativa",
+  PAUSED: "Pausada",
+  REMOVED: "Removida",
+  UNKNOWN: "Desconhecido",
+  UNSPECIFIED: "Não especificado",
+};
+
+function translateStatus(platform: string, status: string): string {
+  if (!status) return "Desconhecido";
+  const map = platform === "google" ? GOOGLE_STATUS_PT : META_STATUS_PT;
+  return map[status] ?? status;
+}
+
 async function sendDiscordMessage(channelId: string, token: string, content: string) {
   return fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
     method: "POST",
