@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useUnifiedReviewsData } from "./useUnifiedReviewsData";
 import { useGoogleAdsData } from "./useGoogleAdsData";
 import type { AllPlatformsFilter, PlatformFilter } from "../filters/AllPlatformsFilterBar";
+import { computeNeedsAdjustment } from "../utils/needsAdjustment";
 
 export interface PlatformAccount {
   platform: "meta" | "google";
@@ -25,12 +26,18 @@ export interface AllPlatformsMetrics {
   clientsNeedingAdjustment: number;
 }
 
-function matchesFilter(acc: PlatformAccount, filter: AllPlatformsFilter): boolean {
+function matchesFilter(
+  acc: PlatformAccount,
+  filter: AllPlatformsFilter,
+  opts: { considerTaxes: boolean; budgetCalculationMode: "weighted" | "current" }
+): boolean {
   if (!filter) return true;
   const d = acc.clientData;
   switch (filter) {
-    case "adjustments":
-      return !!d.needsAdjustment;
+    case "adjustments": {
+      const r = computeNeedsAdjustment(d, acc.platform, opts);
+      return r.needsAdjustment && !r.warningIgnoredToday;
+    }
     case "campaigns":
       return ["none_running", "no_campaigns", "partial_running"].includes(d.veiculationStatus?.status);
     case "without-account":
@@ -113,7 +120,11 @@ export function useAllPlatformsData() {
         totalBudget += acc.clientData.budget_amount || 0;
         totalSpent += acc.clientData.review?.total_spent || 0;
 
-        if (acc.clientData.needsAdjustment) groupNeedsAdjustment = true;
+        const r = computeNeedsAdjustment(acc.clientData, acc.platform, {
+          considerTaxes,
+          budgetCalculationMode,
+        });
+        if (r.needsAdjustment && !r.warningIgnoredToday) groupNeedsAdjustment = true;
       }
       if (groupNeedsAdjustment) clientsNeedingAdjustment++;
     }
@@ -131,7 +142,7 @@ export function useAllPlatformsData() {
         clientsNeedingAdjustment,
       } as AllPlatformsMetrics,
     };
-  }, [metaData, googleData]);
+  }, [metaData, googleData, considerTaxes, budgetCalculationMode]);
 
   const filteredGroups = useMemo(() => {
     let result = groups;
@@ -148,7 +159,7 @@ export function useAllPlatformsData() {
         .map((group) => {
           const filtered = group.accounts.filter((acc) => {
             if (platformFilter !== "all" && acc.platform !== platformFilter) return false;
-            if (!matchesFilter(acc, activeFilter)) return false;
+            if (!matchesFilter(acc, activeFilter, { considerTaxes, budgetCalculationMode })) return false;
             return true;
           });
           return { ...group, accounts: filtered };
@@ -176,7 +187,7 @@ export function useAllPlatformsData() {
     }
 
     return result;
-  }, [groups, searchQuery, platformFilter, activeFilter]);
+  }, [groups, searchQuery, platformFilter, activeFilter, considerTaxes, budgetCalculationMode]);
 
   return {
     groups: filteredGroups,
