@@ -45,7 +45,11 @@ export function ClientsList({
       // Filtro de activeFilter (seleção exclusiva)
       let matchesActiveFilter = true;
       if (activeFilter === "adjustments") {
-        matchesActiveFilter = client.needsAdjustment;
+        const r = computeNeedsAdjustment(client, platform, {
+          considerTaxes,
+          budgetCalculationMode,
+        });
+        matchesActiveFilter = r.needsAdjustment && !r.warningIgnoredToday;
       } else if (activeFilter === "campaigns") {
         matchesActiveFilter = client.veiculationStatus && 
           (client.veiculationStatus.status === "none_running" || 
