@@ -155,7 +155,7 @@ export function useAllPlatformsData() {
         .map((group) => {
           const filtered = group.accounts.filter((acc) => {
             if (platformFilter !== "all" && acc.platform !== platformFilter) return false;
-            if (!matchesFilter(acc, activeFilter)) return false;
+            if (!matchesFilter(acc, activeFilter, { considerTaxes, budgetCalculationMode })) return false;
             return true;
           });
           return { ...group, accounts: filtered };
