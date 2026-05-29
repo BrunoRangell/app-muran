@@ -120,7 +120,11 @@ export function useAllPlatformsData() {
         totalBudget += acc.clientData.budget_amount || 0;
         totalSpent += acc.clientData.review?.total_spent || 0;
 
-        if (acc.clientData.needsAdjustment) groupNeedsAdjustment = true;
+        const r = computeNeedsAdjustment(acc.clientData, acc.platform, {
+          considerTaxes,
+          budgetCalculationMode,
+        });
+        if (r.needsAdjustment && !r.warningIgnoredToday) groupNeedsAdjustment = true;
       }
       if (groupNeedsAdjustment) clientsNeedingAdjustment++;
     }
