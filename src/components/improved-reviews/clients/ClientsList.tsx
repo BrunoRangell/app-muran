@@ -67,7 +67,7 @@ export function ClientsList({
       
       return matchesSearch && matchesActiveFilter;
     });
-  }, [data, searchQuery, activeFilter, showWithoutAccount, platform]);
+  }, [data, searchQuery, activeFilter, showWithoutAccount, platform, considerTaxes, budgetCalculationMode]);
   
   // Hook para obter IDs recém-revisados (lock de posição)
   const { recentlyReviewedIds } = useRecentlyReviewed();
