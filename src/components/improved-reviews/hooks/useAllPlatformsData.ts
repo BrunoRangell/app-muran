@@ -142,7 +142,7 @@ export function useAllPlatformsData() {
         clientsNeedingAdjustment,
       } as AllPlatformsMetrics,
     };
-  }, [metaData, googleData]);
+  }, [metaData, googleData, considerTaxes, budgetCalculationMode]);
 
   const filteredGroups = useMemo(() => {
     let result = groups;
