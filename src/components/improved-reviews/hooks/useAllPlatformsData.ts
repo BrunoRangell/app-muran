@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useUnifiedReviewsData } from "./useUnifiedReviewsData";
 import { useGoogleAdsData } from "./useGoogleAdsData";
 import type { AllPlatformsFilter, PlatformFilter } from "../filters/AllPlatformsFilterBar";
+import { computeNeedsAdjustment } from "../utils/needsAdjustment";
 
 export interface PlatformAccount {
   platform: "meta" | "google";
