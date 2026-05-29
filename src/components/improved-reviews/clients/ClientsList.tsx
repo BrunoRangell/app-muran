@@ -3,6 +3,7 @@ import { ClientCard } from "./ClientCard";
 import { EmptyState } from "../common/EmptyState";
 import { useMemo } from "react";
 import { useRecentlyReviewed } from "../context/RecentlyReviewedContext";
+import { computeNeedsAdjustment } from "../utils/needsAdjustment";
 
 interface ClientsListProps {
   data: any[] | undefined;
