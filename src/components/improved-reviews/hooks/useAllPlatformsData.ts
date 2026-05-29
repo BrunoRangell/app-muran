@@ -26,12 +26,18 @@ export interface AllPlatformsMetrics {
   clientsNeedingAdjustment: number;
 }
 
-function matchesFilter(acc: PlatformAccount, filter: AllPlatformsFilter): boolean {
+function matchesFilter(
+  acc: PlatformAccount,
+  filter: AllPlatformsFilter,
+  opts: { considerTaxes: boolean; budgetCalculationMode: "weighted" | "current" }
+): boolean {
   if (!filter) return true;
   const d = acc.clientData;
   switch (filter) {
-    case "adjustments":
-      return !!d.needsAdjustment;
+    case "adjustments": {
+      const r = computeNeedsAdjustment(d, acc.platform, opts);
+      return r.needsAdjustment && !r.warningIgnoredToday;
+    }
     case "campaigns":
       return ["none_running", "no_campaigns", "partial_running"].includes(d.veiculationStatus?.status);
     case "without-account":
