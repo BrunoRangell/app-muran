@@ -187,7 +187,7 @@ export function useAllPlatformsData() {
     }
 
     return result;
-  }, [groups, searchQuery, platformFilter, activeFilter]);
+  }, [groups, searchQuery, platformFilter, activeFilter, considerTaxes, budgetCalculationMode]);
 
   return {
     groups: filteredGroups,
