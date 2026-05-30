@@ -6,6 +6,72 @@ const corsHeaders = {
 };
 
 const MIN_ACCEPTABLE_DAYS = 7;
+const ALERT_DEDUP_HOURS = 12;
+
+// Envia alerta no Discord (reaproveita o canal de saldo baixo) quando o token
+// expira, fica indisponível para renovação automática, ou se aproxima do limite.
+// Faz dedup via meta_token_metadata.details.last_alert_sent_at por severidade.
+async function maybeSendDiscordAlert(
+  supabase: any,
+  metadata: any,
+  severity: 'expired' | 'needs_manual_renewal' | 'warning',
+  expiresAt: Date | null,
+  daysRemaining: number | null,
+) {
+  try {
+    const token = Deno.env.get('DISCORD_TOKEN');
+    const channelId = Deno.env.get('DISCORD_LOW_BALANCE_CHANNEL_ID');
+    if (!token || !channelId) {
+      console.warn('⚠️ DISCORD_TOKEN/DISCORD_LOW_BALANCE_CHANNEL_ID não configurados — pulando alerta');
+      return;
+    }
+
+    const details = metadata?.details || {};
+    const lastAlerts = details.last_alert_sent_at || {};
+    const lastForSeverity = lastAlerts[severity] ? new Date(lastAlerts[severity]).getTime() : 0;
+    const dedupMs = ALERT_DEDUP_HOURS * 60 * 60 * 1000;
+    if (Date.now() - lastForSeverity < dedupMs) {
+      console.log(`ℹ️ Alerta Discord (${severity}) já enviado nas últimas ${ALERT_DEDUP_HOURS}h — pulando`);
+      return;
+    }
+
+    const expiresLabel = expiresAt
+      ? expiresAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+      : 'desconhecida';
+    let content = '';
+    if (severity === 'expired') {
+      content = `@everyone 🚨 **Token Meta EXPIROU** em ${expiresLabel}.\nAs revisões automáticas estão falhando. Renove manualmente em **Configurações → API Meta**.`;
+    } else if (severity === 'needs_manual_renewal') {
+      content = `@everyone ⚠️ **Token Meta atingiu o limite de renovação automática** (expira em ${expiresLabel}, faltam ${daysRemaining} dia(s)).\nÉ preciso gerar um novo token manualmente em **Configurações → API Meta** antes da expiração.`;
+    } else {
+      content = `@everyone ⏰ Token Meta expira em **${daysRemaining} dia(s)** (${expiresLabel}) e a renovação automática não está conseguindo estender.\nPrepare a renovação manual em **Configurações → API Meta**.`;
+    }
+
+    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, allowed_mentions: { parse: ['everyone'] } }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error('❌ Falha ao enviar alerta Discord:', res.status, body);
+      return;
+    }
+
+    const newAlerts = { ...lastAlerts, [severity]: new Date().toISOString() };
+    await supabase
+      .from('meta_token_metadata')
+      .update({
+        details: { ...details, last_alert_sent_at: newAlerts },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('token_type', 'access_token');
+    console.log(`✅ Alerta Discord enviado (${severity})`);
+  } catch (err) {
+    console.error('❌ Erro ao enviar alerta Discord:', err);
+  }
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
