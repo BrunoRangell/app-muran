@@ -311,6 +311,14 @@ Deno.serve(async (req) => {
         }
       });
 
+      // Recarregar metadata para garantir dedup correto
+      const { data: refreshedMeta } = await supabaseClient
+        .from('meta_token_metadata')
+        .select('*')
+        .eq('token_type', 'access_token')
+        .single();
+      await maybeSendDiscordAlert(supabaseClient, refreshedMeta, 'needs_manual_renewal', expiresAt, daysRemaining);
+
       return new Response(
         JSON.stringify({
           success: false,
