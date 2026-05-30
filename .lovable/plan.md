@@ -1,50 +1,51 @@
-## Problema
+# Correções necessárias
 
-Na aba **Todas as plataformas**, o filtro "Ajuste de orçamento" mostra clientes que aparecem como **OK** (verde, "Sem ação necessária") no card.
+## 1. Bug do filtro "Ajuste de orçamento" (contas Google aparecendo como OK)
 
-A causa é uma divergência entre dois pontos do código:
+### Causa raiz
+Os tributos de 12,15% só se aplicam a contas Meta Ads. No `ClientGroupCard.tsx` (linha 36), o `considerTaxes` é passado para `CircularBudgetCard` apenas quando a plataforma é Meta — em Google, vai `undefined` (→ tratado como `false`).
 
-- **Card `CircularBudgetCard`** recalcula `needsAdjustment` levando em conta:
-  - `considerTaxes` (tributos 12,15% → reduz orçamento efetivo, recalcula diário ideal).
-  - `budgetCalculationMode` (`weighted` usa média ponderada no Google em vez do diário atual).
-  - `warningIgnoredToday` (se o aviso foi ocultado, o card vira cinza/“Ajuste ocultado hoje”).
-- **`useAllPlatformsData.matchesFilter`** usa o `d.needsAdjustment` cru vindo de `useUnifiedReviewsData`/`useGoogleAdsData`, calculado sempre com tributos desligados, sem média ponderada e sem considerar o "ignorar aviso".
+Já no `useAllPlatformsData.matchesFilter`, o helper `computeNeedsAdjustment` recebe `considerTaxes=true` (estado do toggle) para **todas** as plataformas, inclusive Google. Isso reduz o `effectiveBudget` em 12,15% e zera o `idealDailyBudget` quando o gasto acumulado se aproxima do total — fazendo o filtro incluir contas Google que o card desenha como verdes/OK.
 
-Resultado: clientes ficam OK no card mas continuam batendo no filtro.
+### Exemplos confirmados via DB
+- **Imobel** (Google): budget 1000, gasto 920,20 → sem taxas idealDaily ≈ R$ 39,90 vs diário R$ 35 → diff R$ 4,90 → **OK** ✅. Com taxas (errado): effectiveBudget 878,5 < gasto, idealDaily = 0 → diff −35 → "precisa ajuste" ❌.
+- **Dra. Naiara Bordignon** (Google): mesmo padrão. diff R$ 2,45 → OK; com taxas → falso positivo.
+- **Inpack Embalagens** (Google): diff R$ 0,84 → OK; com taxas → falso positivo.
 
-## Solução
+### Correção
+Aplicar `considerTaxes` **apenas para Meta** dentro do helper, alinhando com a regra visual do `ClientGroupCard`.
 
-Reaproveitar exatamente a mesma lógica do card dentro do `matchesFilter` do hook `useAllPlatformsData`, e também aplicar a mesma correção no `ClientsList` (Meta/Google) para manter consistência.
+**Arquivos:**
 
-### Passos
+- `src/components/improved-reviews/utils/needsAdjustment.ts`
+  - No início da função, forçar `const applyTaxes = considerTaxes && platform === "meta";` e usar `applyTaxes` em vez de `considerTaxes` nos cálculos de `effectiveBudget` e do `idealDailyBudget` recalculado.
 
-1. **Extrair helper** `computeNeedsAdjustment(client, platform, { considerTaxes, budgetCalculationMode })` em um arquivo utilitário novo (`src/components/improved-reviews/utils/needsAdjustment.ts`), replicando:
-   ```text
-   TAX_RATE = 0.1215
-   effectiveBudget = considerTaxes ? budget * (1 - TAX_RATE) : budget
-   idealDailyBudget = considerTaxes
-     ? max(effectiveBudget - spent, 0) / max(remainingDays, 1)
-     : client.budgetCalculation.idealDailyBudget
-   comparisonValue = (platform === "google" && mode === "weighted" && weightedAverage > 0)
-     ? weightedAverage
-     : client.review.daily_budget_current
-   needsAdjustment = abs(idealDailyBudget - comparisonValue) >= 5
-   ```
-   E também devolver `warningIgnoredToday` (de `client.budgetCalculation?.warningIgnoredToday`) para o filtro descartar quem ocultou o aviso.
+- `src/components/improved-reviews/clients/ClientsList.tsx`
+  - Como esse arquivo já chama o helper, nenhuma mudança extra é necessária além da do helper (a aba Meta continua igual; a aba Google passa a ignorar taxas corretamente).
 
-2. **Usar o helper em `CircularBudgetCard.tsx`** no lugar do cálculo inline (mesma fórmula, só centralizada — sem mudança visual).
+- `src/components/improved-reviews/hooks/useAllPlatformsData.ts`
+  - Sem mudanças — a correção no helper já cobre os dois pontos (`matchesFilter` e o cálculo de `clientsNeedingAdjustment`).
 
-3. **Atualizar `useAllPlatformsData.ts`**:
-   - Passar `considerTaxes` e `budgetCalculationMode` para `matchesFilter`.
-   - No case `"adjustments"`: retornar `helper.needsAdjustment && !helper.warningIgnoredToday`.
-   - Recalcular `clientsNeedingAdjustment` da seção de métricas usando o helper para refletir o que o filtro mostra.
+### Validação
+1. Abrir `/revisao-diaria-avancada#all-platforms` com tributos ligados (padrão) + modo "orç. atual".
+2. Confirmar que Imobel, Dra. Naiara Bordignon e Inpack Embalagens **não** aparecem mais no filtro "Ajuste de orçamento".
+3. Verificar paridade: cada card visível no filtro está com borda âmbar (não verde).
 
-4. **Atualizar `ClientsList.tsx`** (abas Meta/Google) para o filtro `"adjustments"` usar o mesmo helper, mantendo a paridade com o card.
+---
 
-5. **Validar** abrindo `/revisao-diaria-avancada#all-platforms`, ativando "Ajuste de orçamento" com tributos ligados/desligados e modo ponderado/atual, e conferindo que só aparecem cards âmbar (não verdes nem cinzas).
+## 2. Erro "Não foi possível revisar este cliente" (não é bug de código)
 
-## Fora do escopo
+Os logs da edge function `unified-meta-review` mostram:
 
-- Sem mudança visual nos cards.
-- Sem mudanças nos demais filtros (campanhas, sem conta, saldo).
-- Sem alteração em edge functions ou banco.
+```
+Meta API error: 400 - Error validating access token:
+Session has expired on Friday, 29-May-26 06:27:35 PDT
+OAuthException code 190
+```
+
+**O token de acesso do Meta Ads expirou em 29/05/26** e a renovação automática (cron `refresh-meta-token`) não atualizou a credencial. Toda revisão Meta (individual ou em massa) falha enquanto o token estiver expirado.
+
+### Ação requerida (manual, fora do escopo de código)
+Renovar o token Meta em **Configurações → API Meta** (ou disparar manualmente a função `refresh-meta-token`). Após renovar, os botões "Analisar" voltam a funcionar.
+
+Se você quiser, num próximo passo posso investigar **por que a renovação automática falhou** desta vez (checar logs do cron, validar `meta_token_metadata.expires_at`, etc.) — mas isso é um trabalho separado deste fix de filtro.
