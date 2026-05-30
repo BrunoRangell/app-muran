@@ -24,6 +24,9 @@ export function computeNeedsAdjustment(
 ): NeedsAdjustmentResult {
   const { considerTaxes = false, budgetCalculationMode = "weighted" } = options;
 
+  // Tributos só se aplicam a contas Meta Ads (alinhado ao ClientGroupCard)
+  const applyTaxes = considerTaxes && platform === "meta";
+
   const budgetAmount = client?.budget_amount || 0;
   const spentAmount = client?.review?.total_spent || 0;
   const remainingDays = client?.budgetCalculation?.remainingDays || 0;
@@ -31,9 +34,9 @@ export function computeNeedsAdjustment(
   const currentDailyBudget = client?.review?.daily_budget_current || 0;
   const weightedAverage = client?.weightedAverage || 0;
 
-  const effectiveBudget = considerTaxes ? budgetAmount * (1 - TAX_RATE) : budgetAmount;
+  const effectiveBudget = applyTaxes ? budgetAmount * (1 - TAX_RATE) : budgetAmount;
 
-  const idealDailyBudget = considerTaxes
+  const idealDailyBudget = applyTaxes
     ? Math.max(effectiveBudget - spentAmount, 0) / Math.max(remainingDays, 1)
     : originalIdealDailyBudget;
 
