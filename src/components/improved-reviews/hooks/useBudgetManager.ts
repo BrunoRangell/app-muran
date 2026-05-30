@@ -331,6 +331,12 @@ export const useBudgetManager = () => {
       is_primary: boolean;
     }
   ) => {
+    // Normalizar account_id: string vazia vira null para liberar o índice parcial
+    // unique_account_per_platform e permitir múltiplos clientes sem ID nessa plataforma.
+    const normalizedAccountId = (accountData.account_id ?? "").trim() === ""
+      ? null
+      : accountData.account_id.trim();
+
     // Verificar se já existe uma conta para este cliente/plataforma/tipo
     const { data: existingAccounts, error: fetchError } = await supabase
       .from("client_accounts")
@@ -348,7 +354,7 @@ export const useBudgetManager = () => {
       const { error: updateError } = await supabase
         .from("client_accounts")
         .update({
-          account_id: accountData.account_id,
+          account_id: normalizedAccountId,
           account_name: accountData.is_primary ? "Conta principal" : "Conta secundária",
           budget_amount: accountData.budget_amount,
           status: 'active'
@@ -358,14 +364,14 @@ export const useBudgetManager = () => {
       if (updateError) {
         throw updateError;
       }
-    } else if (accountData.account_id) {
-      // Criar nova conta apenas se tiver account_id
+    } else if (normalizedAccountId) {
+      // Criar nova conta apenas se tiver account_id válido
       const { error: insertError } = await supabase
         .from("client_accounts")
         .insert({
           client_id: clientId,
           platform,
-          account_id: accountData.account_id,
+          account_id: normalizedAccountId,
           account_name: accountData.is_primary ? "Conta principal" : "Conta secundária",
           budget_amount: accountData.budget_amount,
           is_primary: accountData.is_primary,
