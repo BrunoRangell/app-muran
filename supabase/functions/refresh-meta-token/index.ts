@@ -157,6 +157,9 @@ Deno.serve(async (req) => {
         details: { reason: 'Token expirado - necessário inserir novo token manualmente' }
       });
 
+      const expiredAt = expiresAtTimestamp ? new Date(expiresAtTimestamp * 1000) : null;
+      await maybeSendDiscordAlert(supabaseClient, metadataData, 'expired', expiredAt, 0);
+
       return new Response(
         JSON.stringify({
           success: false,
