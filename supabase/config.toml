@@ -62,5 +62,12 @@ verify_jwt = false
 [functions.check-campaign-health-alerts]
 verify_jwt = false
 
+[functions.discord-interactions]
+verify_jwt = false
+
+[functions.discord-register-commands]
+verify_jwt = false
+
+
 
 
