@@ -125,31 +125,18 @@ async function findClientAccounts(
   return (data || []).filter((row: any) => row.clients?.status === 'active');
 }
 
-function buildAdsMessage(clientName: string, accountName: string, ads: any[]) {
-  if (!ads.length) {
-    return {
-      content: `**${clientName}** — ${accountName}\nNenhum anúncio ativo encontrado.`,
-    };
-  }
+const APP_BASE_URL = 'https://app.muranmarketing.com.br';
 
-  const total = ads.length;
-  const slice = ads.slice(0, 10);
-
-  const embeds = slice.map((ad: any) => {
-    const img = resolveImageUrl(ad);
-    const status = ad.effective_status === 'ACTIVE' ? '🟢 Ativo' : `🟡 ${ad.effective_status}`;
-    const campaign = ad.campaign?.name ? `**Campanha:** ${ad.campaign.name}\n` : '';
-    return {
-      title: ad.name?.slice(0, 250) || 'Sem nome',
-      description: `${campaign}**Status:** ${status}`,
-      color: MURAN_ORANGE,
-      ...(img ? { image: { url: img } } : {}),
-    };
-  });
-
-  const header = `**Anúncios ativos — ${clientName}** (${accountName})\nTotal: **${total}**${total > 10 ? ` (mostrando 10)` : ''}`;
-  return { content: header, embeds };
+function buildAdsMessage(clientId: string, clientName: string, accountName: string, accountRowId: string) {
+  const url = `${APP_BASE_URL}/anuncios-ativos?client=${clientId}&account=${accountRowId}`;
+  return {
+    content:
+      `📣 **${clientName}** — ${accountName}\n` +
+      `Abra a página de anúncios ativos com galeria visual e exportação em PNG:\n` +
+      url,
+  };
 }
+
 
 async function handleAnunciosCommand(
   appId: string,
