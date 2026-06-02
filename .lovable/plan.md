@@ -1,90 +1,71 @@
-## Objetivo
+## Contexto
 
-Criar o comando `/anuncios <nome>` no Discord que retorna a lista de anúncios **ativos** da Meta Ads do cliente, mostrando **imagem do criativo + nome do anúncio + status de veiculação**. Sem necessidade de hospedar bot 24/7 — tudo via Edge Function HTTP.
+O Discord limita bastante a apresentação visual (embeds têm largura fixa, não suportam tabelas reais nem grids de imagens lado a lado). Para "tirar print e enviar pro cliente", o caminho ideal é criar uma **página no app** com layout tipo galeria/tabela, otimizada para screenshot.
 
-## Como vai funcionar (visão do usuário)
+## Plano
 
-1. No Discord, você digita `/anuncios Imobel`
-2. Se houver um único cliente + uma conta → bot responde direto com os anúncios
-3. Se houver ambiguidade (vários clientes parecidos OU múltiplas contas Meta) → bot envia uma mensagem efêmera com **select menu** para você escolher
-4. Após escolha, bot edita a mensagem mostrando cada anúncio ativo como um **embed**: imagem do criativo, nome do anúncio, nome da campanha e status (veiculando / parado)
+### 1. Nova página: `/anuncios-ativos`
 
-## Arquitetura técnica
+Adicionar item no menu lateral em **Relatórios** (ou módulo equivalente), com ícone de megafone.
+
+### 2. Filtros (topo da página)
+
+- **Cliente** (select com busca, lista clientes ativos com conta Meta)
+- **Conta Meta** (aparece se cliente tiver mais de uma conta; auto-seleciona se só tem uma)
+- **Campanha** (multi-select, populado após escolher conta — opcional)
+- **Status** (default: somente Ativos; toggle para incluir pausados)
+- Botão **Atualizar** (refetch da Meta API)
+
+### 3. Visualização principal
+
+Layout em **grid de cards** (3-4 colunas em desktop, responsivo), pensado para print:
 
 ```text
-Discord  ──POST──▶  Edge Function (discord-interactions)
-                        │
-                        ├─ Verifica assinatura Ed25519 (obrigatório)
-                        ├─ Busca cliente(s) no Supabase por nome (ILIKE)
-                        ├─ Se múltiplos → retorna select menu
-                        ├─ Se único → chama Meta Graph API:
-                        │     /act_<id>/ads?effective_status=ACTIVE
-                        │     fields: name, creative{image_url,thumbnail_url,
-                        │             object_story_spec}, campaign{name},
-                        │             status, effective_status
-                        └─ Monta embeds (até 10 por mensagem, pagina se precisar)
+┌──────────────────────────┐ ┌──────────────────────────┐
+│ [imagem do criativo]     │ │ [imagem do criativo]     │
+│                          │ │                          │
+│ Nome do anúncio          │ │ Nome do anúncio          │
+│ Campanha: [MSG][LEAD]... │ │ Campanha: [MSG][LEAD]... │
+│ ● Ativo                  │ │ ● Ativo                  │
+└──────────────────────────┘ └──────────────────────────┘
 ```
 
-### Componentes a criar
+Header do print incluindo: **logo Muran + nome do cliente + data + total de anúncios ativos**, para o screenshot já sair pronto pra mandar.
 
-**1. Edge Function `discord-interactions**` (`supabase/functions/discord-interactions/index.ts`)
+Alternar entre **modo Galeria** (cards com imagem grande) e **modo Tabela** (linhas compactas: thumb + nome + campanha + status), via toggle.
 
-- Verifica `X-Signature-Ed25519` + `X-Signature-Timestamp` com `DISCORD_PUBLIC_KEY` (obrigatório pelo Discord)
-- Responde `PING` (type 1) com `PONG`
-- Trata `APPLICATION_COMMAND` (type 2) → comando `/anuncios`
-- Trata `MESSAGE_COMPONENT` (type 3) → seleção no menu de desambiguação
-- Como o Discord exige resposta em 3s, devolve `DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE` (type 5) e edita depois via `PATCH /webhooks/{app_id}/{token}/messages/@original`
-- `verify_jwt = false` em `config.toml`
+### 4. Ações
 
-**2. Edge Function `discord-register-commands**` (one-shot)
+- Botão **"Exportar como imagem"** (usa `html2canvas` ou `dom-to-image` — gera PNG do grid completo direto pro download, sem o usuário precisar dar print manual)
+- Botão **"Copiar lista"** (texto puro pra colar em WhatsApp)
 
-- Registra o slash command `/anuncios` com option `cliente` (string, required) na API do Discord
-- Você roda 1x manualmente via dashboard ou botão admin
+### 5. Backend
 
-**3. Lógica de busca**
+Reaproveitar a lógica que já está na edge function `discord-interactions`:
+- Extrair a busca de ads da Meta (`act_{accountId}/ads` com fields de criativo) para uma edge function dedicada `meta-active-ads` que retorna JSON estruturado.
+- A página do app chama essa função; o Discord bot também passa a chamá-la (centraliza lógica, evita duplicação).
 
-- `clients` ILIKE `%nome%` AND `status = 'active'`
-- Junta com `client_accounts` WHERE `platform = 'meta'` AND `account_id` não vazio AND `status = 'active'`
-- 0 resultados → mensagem "Nenhum cliente encontrado"
-- 1 cliente + 1 conta → segue direto
-- N>1 → select menu com até 25 opções
+### 6. Discord (opcional, melhoria do bot existente)
 
-**4. Chamada Meta Graph API**
+Manter o `/anuncios` mas trocar a resposta para um **link clicável** que abre a página do app já filtrada pelo cliente:
+`https://app.muranmarketing.com.br/anuncios-ativos?cliente={id}`
 
-- Reutiliza token de `api_tokens.meta_access_token`
-- Endpoint: `GET /v24.0/act_{account_id}/ads?effective_status=["ACTIVE"]&limit=50&fields=name,effective_status,campaign{name},creative{image_url,thumbnail_url,effective_object_story_id,object_story_spec{video_data{image_url},link_data{picture,image_hash},photo_data{url}}}`
-- Resolve URL da imagem com fallback: `image_url` → `thumbnail_url` → `object_story_spec.link_data.picture` → `video_data.image_url`
+Assim o time tem o atalho rápido no Discord e o visual bonito no app.
 
-**5. Formato da resposta no Discord**
+## Arquivos previstos
 
-- Mensagem inicial: `**Anúncios ativos – {Cliente} ({Conta})** • {N} anúncios`
-- 1 embed por anúncio (Discord aceita até 10 embeds por mensagem):
-  - `title`: nome do anúncio
-  - `description`: `Campanha: {nome}` + emoji de status (🟢 veiculando / 🟡 ativo sem entrega)
-  - `image.url`: URL do criativo
-  - `color`: `0xff6e00` (laranja Muran)
-- Se >10 anúncios, envia mensagens follow-up via webhook
+- `src/pages/AnunciosAtivos.tsx` (página principal)
+- `src/components/anuncios-ativos/FiltersBar.tsx`
+- `src/components/anuncios-ativos/AdCard.tsx`
+- `src/components/anuncios-ativos/AdsGrid.tsx`
+- `src/components/anuncios-ativos/ExportButton.tsx` (html2canvas)
+- `src/hooks/useActiveAds.ts`
+- `supabase/functions/meta-active-ads/index.ts`
+- Refatorar `supabase/functions/discord-interactions/index.ts` para consumir a nova função
+- Adicionar rota e item no menu
 
-## Secrets necessários
+## Perguntas
 
-Vou pedir via `add_secret`:
-
-- `DISCORD_PUBLIC_KEY` — para verificar assinatura (Discord Developer Portal → General Information)
-- `DISCORD_APPLICATION_ID` — para registrar comandos
-- `DISCORD_BOT_TOKEN` — já existe como `DISCORD_TOKEN` ✓ (reuso)
-
-## Passos de implementação
-
-1. Criar edge function `discord-interactions` com verificação de assinatura + handler do `/anuncios`
-2. Criar edge function `discord-register-commands` para registrar o slash command
-3. Pedir os 2 secrets novos
-4. Você cola a URL `https://socrnutfpqtcjmetskta.supabase.co/functions/v1/discord-interactions` no campo **Interactions Endpoint URL** do Discord Developer Portal
-5. Roda 1x o `discord-register-commands` (eu chamo via `curl_edge_functions`)
-6. Testamos no Discord
-
-## Fora do escopo
-
-- Hospedagem 24/7 do bot existente (não é necessária)
-- Comandos com prefixo `.anuncios` (incompatível com modelo serverless)
-- Google Ads (não foi solicitado)
-- Métricas (gasto/impressões) — só imagem, nome e status conforme combinado
+1. **Modo padrão**: prefere abrir já em **galeria** (visual, ideal pra print) ou **tabela** (compacto)?
+2. **Exportar imagem**: gerar PNG direto pelo botão é OK, ou prefere só print manual mesmo?
+3. **Discord**: mantenho o `/anuncios` com cards como está hoje, ou troco pra responder com link pra página do app?
