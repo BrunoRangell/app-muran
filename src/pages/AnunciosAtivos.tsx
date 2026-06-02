@@ -386,38 +386,44 @@ export default function AnunciosAtivos() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-border">
-              <table className={cn("w-full", compact ? "text-xs" : "text-sm")}>
+              <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <th className={cn("font-semibold w-px whitespace-nowrap", compact ? "px-2 py-1.5" : "px-3 py-2")}>Status</th>
-                    <th className={cn("w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}></th>
-                    <th className={cn("font-semibold w-px whitespace-nowrap", compact ? "px-2 py-1.5" : "px-3 py-2")}>Anúncio</th>
-                    <th className={cn("font-semibold", compact ? "px-2 py-1.5" : "px-3 py-2")}>Campanha</th>
+                    <th className="px-3 py-2 font-semibold w-px whitespace-nowrap text-muted-foreground">#</th>
+                    <th className="px-3 py-2 font-semibold w-px whitespace-nowrap">Status</th>
+                    {!exporting && <th className="px-3 py-2 w-px"></th>}
+                    <th className="px-3 py-2 font-semibold w-px whitespace-nowrap">Anúncio</th>
+                    {!exporting && <th className="px-3 py-2 font-semibold">Campanha</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAds.map((ad) => (
+                  {filteredAds.map((ad, idx) => (
                     <tr key={ad.id} className="border-t border-border align-middle">
-                      <td className={cn("whitespace-nowrap w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}>{statusBadge(ad.status)}</td>
-                      <td className={cn("w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}>
-                        <div className={cn("rounded bg-muted overflow-hidden", compact ? "h-8 w-8" : "h-10 w-10")}>
-                          {ad.image_url ? (
-                            <img
-                              src={proxiedImageUrl(ad.image_url)}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              crossOrigin="anonymous"
-                            />
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className={cn("font-medium whitespace-nowrap w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}>{ad.name || "—"}</td>
-                      <td
-                        className={cn("text-muted-foreground truncate max-w-0", compact ? "px-2 py-1.5" : "px-3 py-2")}
-                        title={ad.campaign_name || ""}
-                      >
-                        {ad.campaign_name || "—"}
-                      </td>
+                      <td className="px-3 py-2 w-px whitespace-nowrap text-muted-foreground tabular-nums text-right">{idx + 1}</td>
+                      <td className="px-3 py-2 whitespace-nowrap w-px">{statusBadge(ad.status)}</td>
+                      {!exporting && (
+                        <td className="px-3 py-2 w-px">
+                          <div className="h-10 w-10 rounded bg-muted overflow-hidden">
+                            {ad.image_url ? (
+                              <img
+                                src={proxiedImageUrl(ad.image_url)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                crossOrigin="anonymous"
+                              />
+                            ) : null}
+                          </div>
+                        </td>
+                      )}
+                      <td className="px-3 py-2 font-medium whitespace-nowrap w-px">{ad.name || "—"}</td>
+                      {!exporting && (
+                        <td
+                          className="px-3 py-2 text-muted-foreground truncate max-w-0"
+                          title={ad.campaign_name || ""}
+                        >
+                          {ad.campaign_name || "—"}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
