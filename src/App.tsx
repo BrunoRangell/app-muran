@@ -145,6 +145,7 @@ function App() {
           {/* Relatórios de Tráfego — modelo único, sem editor */}
           <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
+          <Route path="/anuncios-ativos" element={<AnunciosAtivos />} />
 
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
 
