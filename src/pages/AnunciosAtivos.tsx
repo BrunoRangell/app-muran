@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Download, RefreshCw, Search, Megaphone, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Download, RefreshCw, Search, Megaphone, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useMetaClientAccounts } from "@/hooks/useMetaClientAccounts";
 import { useActiveAds, type ActiveAd } from "@/hooks/useActiveAds";
