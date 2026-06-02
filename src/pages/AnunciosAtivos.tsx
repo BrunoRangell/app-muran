@@ -453,16 +453,51 @@ export default function AnunciosAtivos() {
                       <td className="px-3 py-2 w-px whitespace-nowrap text-muted-foreground tabular-nums text-right">{idx + 1}</td>
                       <td className="px-3 py-2 whitespace-nowrap w-px">{statusBadge(ad.status)}</td>
                       <td className="px-3 py-2 w-px">
-                        <div className="h-10 w-10 rounded bg-muted overflow-hidden">
-                          {ad.image_url ? (
-                            <img
-                              src={proxiedImageUrl(ad.image_url)}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              crossOrigin="anonymous"
-                            />
-                          ) : null}
-                        </div>
+                        {ad.image_url ? (
+                          exporting ? (
+                            <div className="h-14 w-14 rounded bg-muted overflow-hidden">
+                              <img
+                                src={proxiedImageUrl(ad.image_url)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                crossOrigin="anonymous"
+                              />
+                            </div>
+                          ) : (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="h-14 w-14 rounded bg-muted overflow-hidden block ring-offset-background transition hover:ring-2 hover:ring-muran-primary/60 focus:outline-none focus:ring-2 focus:ring-muran-primary"
+                                  aria-label="Visualizar criativo"
+                                >
+                                  <img
+                                    src={proxiedImageUrl(ad.image_url)}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                    crossOrigin="anonymous"
+                                  />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                side="right"
+                                align="start"
+                                className="p-2 w-auto bg-white border border-border shadow-xl"
+                              >
+                                <img
+                                  src={proxiedImageUrl(ad.image_url)}
+                                  alt={ad.name || "Criativo"}
+                                  className="max-w-[360px] max-h-[360px] w-auto h-auto object-contain rounded"
+                                  crossOrigin="anonymous"
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          )
+                        ) : (
+                          <div className="h-14 w-14 rounded bg-muted overflow-hidden" />
+                        )}
                       </td>
                       <td className="px-3 py-2 font-medium whitespace-nowrap w-px">{ad.name || "—"}</td>
                       {!exporting && (
