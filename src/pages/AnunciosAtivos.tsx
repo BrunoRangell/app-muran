@@ -196,16 +196,50 @@ export default function AnunciosAtivos() {
           {/* Cliente */}
           <div className="md:col-span-4">
             <Label className="text-xs text-muted-foreground">Cliente</Label>
-            <Select value={clientId} onValueChange={onChangeClient} disabled={loadingAccounts}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingAccounts ? "Carregando..." : "Selecione um cliente"} />
-              </SelectTrigger>
-              <SelectContent className="max-h-[320px]">
-                {clientsOptions.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                  disabled={loadingAccounts}
+                >
+                  <span className="truncate">
+                    {clientId
+                      ? clientsOptions.find((c) => c.id === clientId)?.name || "Selecione um cliente"
+                      : loadingAccounts
+                      ? "Carregando..."
+                      : "Selecione um cliente"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {clientsOptions.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={c.name}
+                          onSelect={() => onChangeClient(c.id)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              clientId === c.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {c.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Conta (se múltiplas) */}
