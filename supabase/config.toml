@@ -68,6 +68,9 @@ verify_jwt = false
 [functions.discord-register-commands]
 verify_jwt = false
 
+[functions.meta-active-ads]
+verify_jwt = true
+
 
 
 
