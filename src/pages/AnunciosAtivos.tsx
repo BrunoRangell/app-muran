@@ -302,14 +302,6 @@ export default function AnunciosAtivos() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCompact((v) => !v)}
-            >
-              {compact ? <Maximize2 className="h-4 w-4 mr-1.5" /> : <Minimize2 className="h-4 w-4 mr-1.5" />}
-              {compact ? "Expandir" : "Compactar"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={handleCopyText}
               disabled={!data || filteredAds.length === 0}
             >
