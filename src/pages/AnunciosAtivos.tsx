@@ -7,7 +7,7 @@ import { useActiveAds, type ActiveAd } from "@/hooks/useActiveAds";
 import { proxiedImageUrl } from "@/lib/metaImageProxy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Select,
   SelectContent,
