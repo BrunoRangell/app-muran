@@ -63,6 +63,7 @@ const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
+const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 
 function App() {
   return (
