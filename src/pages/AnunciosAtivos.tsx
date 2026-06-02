@@ -268,6 +268,20 @@ export default function AnunciosAtivos() {
               </PopoverContent>
             </Popover>
           </div>
+
+          {/* Buscar */}
+          <div className="md:col-span-3">
+            <Label className="text-xs text-muted-foreground">Buscar</Label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Nome do anúncio"
+                className="pl-8"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-border">
