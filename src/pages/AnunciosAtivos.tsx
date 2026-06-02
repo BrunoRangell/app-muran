@@ -58,7 +58,7 @@ export default function AnunciosAtivos() {
   const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [exporting, setExporting] = useState(false);
-  const [compact, setCompact] = useState(false);
+  
   const exportRef = useRef<HTMLDivElement>(null);
 
   const clientsOptions = useMemo(() => {
