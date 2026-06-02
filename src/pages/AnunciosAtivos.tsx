@@ -288,24 +288,6 @@ export default function AnunciosAtivos() {
 
           <div className="flex items-center gap-1 ml-auto">
             <Button
-              variant={view === "gallery" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("gallery")}
-              className={view === "gallery" ? "bg-muran-primary hover:bg-muran-primary/90" : ""}
-            >
-              <ImageIcon className="h-4 w-4 mr-1.5" />
-              Galeria
-            </Button>
-            <Button
-              variant={view === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("table")}
-              className={view === "table" ? "bg-muran-primary hover:bg-muran-primary/90" : ""}
-            >
-              Tabela
-            </Button>
-            <div className="w-px h-6 bg-border mx-1" />
-            <Button
               variant="outline"
               size="sm"
               onClick={() => refetch()}
