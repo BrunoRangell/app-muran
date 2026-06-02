@@ -53,6 +53,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: TrendingUp, label: "Relatórios de Tráfego", path: "/relatorios-trafego" },
+  { icon: Megaphone, label: "Anúncios Ativos", path: "/anuncios-ativos" },
 ];
 
 const regularMenuItems: MenuItem[] = [
