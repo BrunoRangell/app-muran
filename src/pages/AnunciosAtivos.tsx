@@ -57,7 +57,6 @@ export default function AnunciosAtivos() {
   const [includePaused, setIncludePaused] = useState(false);
   const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"gallery" | "table">("gallery");
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
