@@ -129,6 +129,8 @@ export default function AnunciosAtivos() {
     if (!exportRef.current) return;
     try {
       setExporting(true);
+      // aguarda render que esconde colunas Imagem/Campanha
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const dataUrl = await toPng(exportRef.current, {
         cacheBust: true,
         pixelRatio: 2,
