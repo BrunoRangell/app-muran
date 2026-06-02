@@ -1,62 +1,90 @@
-# Investigação e correções
+## Objetivo
 
-## 1. Por que o token Meta não renovou automaticamente
+Criar o comando `/anuncios <nome>` no Discord que retorna a lista de anúncios **ativos** da Meta Ads do cliente, mostrando **imagem do criativo + nome do anúncio + status de veiculação**. Sem necessidade de hospedar bot 24/7 — tudo via Edge Function HTTP.
 
-### Diagnóstico (dados reais de `meta_token_metadata`)
-- Última renovação **efetiva**: 22/05/26 13:00.
-- Token expirava em: 29/05/26 13:27 (apenas **7 dias** após a última renovação).
-- Última tentativa de renovação: 29/05/26 13:00 (27 min antes de expirar).
-- Resposta da Meta: novo token expiraria em **0 dias** → marcada como `renewal_ineffective: true`.
-- Status atual: `needs_manual_renewal` desde 29/05.
-- O cron `meta-token-renewal-job` roda de hora em hora — ele continuou rodando, mas a API do Meta passou a devolver tokens sem extensão real.
+## Como vai funcionar (visão do usuário)
 
-### Causa raiz
-**Limite de extensão da Meta:** long-lived tokens têm um teto duro (~60 dias desde a emissão original). Quando o token atinge esse teto, o endpoint `fb_exchange_token` ainda responde 200 OK, mas retorna um token que herda a mesma `expires_at` do atual — `expires_in` cai progressivamente até 0. A função `refresh-meta-token` detecta isso (linha 196: `newDaysRemaining < MIN_ACCEPTABLE_DAYS`) e marca `needs_manual_renewal`, mas **não dispara nenhum alerta visível para o time**, então o token simplesmente expirou sem ninguém saber.
+1. No Discord, você digita `/anuncios Imobel`
+2. Se houver um único cliente + uma conta → bot responde direto com os anúncios
+3. Se houver ambiguidade (vários clientes parecidos OU múltiplas contas Meta) → bot envia uma mensagem efêmera com **select menu** para você escolher
+4. Após escolha, bot edita a mensagem mostrando cada anúncio ativo como um **embed**: imagem do criativo, nome do anúncio, nome da campanha e status (veiculando / parado)
 
-### Solução
-Adicionar **alerta proativo no Discord** quando a renovação ficar ineficaz OU faltarem ≤ 7 dias para expirar, replicando o padrão de `check-low-balance-alerts`.
+## Arquitetura técnica
 
-**Mudanças:**
-
-- `supabase/functions/refresh-meta-token/index.ts`
-  - Quando entrar nos branches `expired`, `needs_manual_renewal` ou status `warning` com `daysRemaining ≤ 7`, enviar mensagem ao canal Discord existente (usar `DISCORD_TOKEN` + um canal — reaproveitar `DISCORD_LOW_BALANCE_CHANNEL_ID` ou pedir um novo `DISCORD_META_TOKEN_CHANNEL_ID`).
-  - Deduplicar: gravar `last_alert_sent_at` em `meta_token_metadata.details` e não reenviar a mesma severidade num intervalo de 12h.
-  - Mensagem: `@everyone 🚨 Token Meta precisa ser renovado MANUALMENTE — expira/expirou em <data>. Renove em Configurações → API Meta.`
-
-- (Opcional, não vou fazer agora) Atualização do schedule do cron para também rodar 1×/dia mesmo se já estiver em `expired`, garantindo o alerta diário.
-
-**Pergunta para você antes de implementar:** uso o canal Discord de saldo baixo (`DISCORD_LOW_BALANCE_CHANNEL_ID`) para esses alertas também, ou prefere criar um secret novo `DISCORD_META_TOKEN_CHANNEL_ID` apontando para um canal dedicado?
-
-> ⚠️ Para o erro atual (token expirou em 29/05), você ainda precisa **renovar o token manualmente** em Configurações → API Meta. A correção acima só evita reincidência nas próximas vezes.
-
----
-
-## 2. Não consigo salvar 2+ clientes com `account_id` vazio
-
-### Causa raiz
-A tabela `client_accounts` tem o constraint:
-```sql
-unique_account_per_platform UNIQUE (platform, account_id)
+```text
+Discord  ──POST──▶  Edge Function (discord-interactions)
+                        │
+                        ├─ Verifica assinatura Ed25519 (obrigatório)
+                        ├─ Busca cliente(s) no Supabase por nome (ILIKE)
+                        ├─ Se múltiplos → retorna select menu
+                        ├─ Se único → chama Meta Graph API:
+                        │     /act_<id>/ads?effective_status=ACTIVE
+                        │     fields: name, creative{image_url,thumbnail_url,
+                        │             object_story_spec}, campaign{name},
+                        │             status, effective_status
+                        └─ Monta embeds (até 10 por mensagem, pagina se precisar)
 ```
-Quando você deixa o ID em branco, o front-end (`useBudgetManager.upsertClientAccount`) atualiza a linha existente gravando `account_id = ''` (string vazia). PostgreSQL trata `''` como valor real, então um segundo cliente com `(platform='meta', account_id='')` viola o UNIQUE. Confirmado no banco: já existe 1 linha Meta e 1 Google com `account_id=''` — qualquer nova tentativa quebra.
 
-### Correção
+### Componentes a criar
 
-**Migration SQL:**
-1. Remover o constraint atual: `ALTER TABLE public.client_accounts DROP CONSTRAINT unique_account_per_platform;`
-2. Criar índice parcial que só impõe unicidade em IDs realmente preenchidos:
-   ```sql
-   CREATE UNIQUE INDEX unique_account_per_platform
-     ON public.client_accounts (platform, account_id)
-     WHERE account_id IS NOT NULL AND account_id <> '';
-   ```
+**1. Edge Function `discord-interactions**` (`supabase/functions/discord-interactions/index.ts`)
 
-Isso permite múltiplos registros com `account_id` vazio/NULL (clientes que pararam de anunciar numa plataforma), mas continua impedindo dois clientes com o mesmo ID Meta/Google real.
+- Verifica `X-Signature-Ed25519` + `X-Signature-Timestamp` com `DISCORD_PUBLIC_KEY` (obrigatório pelo Discord)
+- Responde `PING` (type 1) com `PONG`
+- Trata `APPLICATION_COMMAND` (type 2) → comando `/anuncios`
+- Trata `MESSAGE_COMPONENT` (type 3) → seleção no menu de desambiguação
+- Como o Discord exige resposta em 3s, devolve `DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE` (type 5) e edita depois via `PATCH /webhooks/{app_id}/{token}/messages/@original`
+- `verify_jwt = false` em `config.toml`
 
-**Mudança no app** (`src/components/improved-reviews/hooks/useBudgetManager.ts`):
-- Normalizar `account_id` antes de gravar: se a string for vazia (após trim), enviar `null` no `update`/`insert`. Mantém a coluna mais limpa e o índice parcial 100% efetivo.
+**2. Edge Function `discord-register-commands**` (one-shot)
 
-### Validação
-1. Aplicar migration.
-2. Em "Orçamentos", limpar o ID Meta de 2 clientes diferentes e salvar — deve funcionar sem erro.
-3. Tentar cadastrar o mesmo `account_id` real em 2 clientes — deve continuar bloqueado.
+- Registra o slash command `/anuncios` com option `cliente` (string, required) na API do Discord
+- Você roda 1x manualmente via dashboard ou botão admin
+
+**3. Lógica de busca**
+
+- `clients` ILIKE `%nome%` AND `status = 'active'`
+- Junta com `client_accounts` WHERE `platform = 'meta'` AND `account_id` não vazio AND `status = 'active'`
+- 0 resultados → mensagem "Nenhum cliente encontrado"
+- 1 cliente + 1 conta → segue direto
+- N>1 → select menu com até 25 opções
+
+**4. Chamada Meta Graph API**
+
+- Reutiliza token de `api_tokens.meta_access_token`
+- Endpoint: `GET /v24.0/act_{account_id}/ads?effective_status=["ACTIVE"]&limit=50&fields=name,effective_status,campaign{name},creative{image_url,thumbnail_url,effective_object_story_id,object_story_spec{video_data{image_url},link_data{picture,image_hash},photo_data{url}}}`
+- Resolve URL da imagem com fallback: `image_url` → `thumbnail_url` → `object_story_spec.link_data.picture` → `video_data.image_url`
+
+**5. Formato da resposta no Discord**
+
+- Mensagem inicial: `**Anúncios ativos – {Cliente} ({Conta})** • {N} anúncios`
+- 1 embed por anúncio (Discord aceita até 10 embeds por mensagem):
+  - `title`: nome do anúncio
+  - `description`: `Campanha: {nome}` + emoji de status (🟢 veiculando / 🟡 ativo sem entrega)
+  - `image.url`: URL do criativo
+  - `color`: `0xff6e00` (laranja Muran)
+- Se >10 anúncios, envia mensagens follow-up via webhook
+
+## Secrets necessários
+
+Vou pedir via `add_secret`:
+
+- `DISCORD_PUBLIC_KEY` — para verificar assinatura (Discord Developer Portal → General Information)
+- `DISCORD_APPLICATION_ID` — para registrar comandos
+- `DISCORD_BOT_TOKEN` — já existe como `DISCORD_TOKEN` ✓ (reuso)
+
+## Passos de implementação
+
+1. Criar edge function `discord-interactions` com verificação de assinatura + handler do `/anuncios`
+2. Criar edge function `discord-register-commands` para registrar o slash command
+3. Pedir os 2 secrets novos
+4. Você cola a URL `https://socrnutfpqtcjmetskta.supabase.co/functions/v1/discord-interactions` no campo **Interactions Endpoint URL** do Discord Developer Portal
+5. Roda 1x o `discord-register-commands` (eu chamo via `curl_edge_functions`)
+6. Testamos no Discord
+
+## Fora do escopo
+
+- Hospedagem 24/7 do bot existente (não é necessária)
+- Comandos com prefixo `.anuncios` (incompatível com modelo serverless)
+- Google Ads (não foi solicitado)
+- Métricas (gasto/impressões) — só imagem, nome e status conforme combinado
