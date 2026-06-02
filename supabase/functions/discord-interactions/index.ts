@@ -125,31 +125,18 @@ async function findClientAccounts(
   return (data || []).filter((row: any) => row.clients?.status === 'active');
 }
 
-function buildAdsMessage(clientName: string, accountName: string, ads: any[]) {
-  if (!ads.length) {
-    return {
-      content: `**${clientName}** — ${accountName}\nNenhum anúncio ativo encontrado.`,
-    };
-  }
+const APP_BASE_URL = 'https://app.muranmarketing.com.br';
 
-  const total = ads.length;
-  const slice = ads.slice(0, 10);
-
-  const embeds = slice.map((ad: any) => {
-    const img = resolveImageUrl(ad);
-    const status = ad.effective_status === 'ACTIVE' ? '🟢 Ativo' : `🟡 ${ad.effective_status}`;
-    const campaign = ad.campaign?.name ? `**Campanha:** ${ad.campaign.name}\n` : '';
-    return {
-      title: ad.name?.slice(0, 250) || 'Sem nome',
-      description: `${campaign}**Status:** ${status}`,
-      color: MURAN_ORANGE,
-      ...(img ? { image: { url: img } } : {}),
-    };
-  });
-
-  const header = `**Anúncios ativos — ${clientName}** (${accountName})\nTotal: **${total}**${total > 10 ? ` (mostrando 10)` : ''}`;
-  return { content: header, embeds };
+function buildAdsMessage(clientId: string, clientName: string, accountName: string, accountRowId: string) {
+  const url = `${APP_BASE_URL}/anuncios-ativos?client=${clientId}&account=${accountRowId}`;
+  return {
+    content:
+      `📣 **${clientName}** — ${accountName}\n` +
+      `Abra a página de anúncios ativos com galeria visual e exportação em PNG:\n` +
+      url,
+  };
 }
+
 
 async function handleAnunciosCommand(
   appId: string,
@@ -194,9 +181,7 @@ async function handleAnunciosCommand(
     }
 
     const acc = accounts[0] as any;
-    const accessToken = await getMetaAccessToken(supabase);
-    const ads = await fetchMetaAds(acc.account_id, accessToken);
-    const msg = buildAdsMessage(acc.clients.company_name, acc.account_name || acc.account_id, ads);
+    const msg = buildAdsMessage(acc.clients.id, acc.clients.company_name, acc.account_name || acc.account_id, acc.id);
     await editOriginal(appId, token, msg);
   } catch (e: any) {
     console.error('[handle] erro', e);
@@ -215,17 +200,16 @@ async function handleAccountSelect(
   try {
     const { data: acc, error } = await supabase
       .from('client_accounts')
-      .select('account_id, account_name, clients!inner(company_name)')
+      .select('account_id, account_name, clients!inner(id, company_name)')
       .eq('id', accountRowId)
       .maybeSingle();
     if (error || !acc) throw new Error('Conta não encontrada');
 
-    const accessToken = await getMetaAccessToken(supabase);
-    const ads = await fetchMetaAds((acc as any).account_id, accessToken);
     const msg = buildAdsMessage(
+      (acc as any).clients.id,
       (acc as any).clients.company_name,
       (acc as any).account_name || (acc as any).account_id,
-      ads,
+      accountRowId,
     );
     await editOriginal(appId, token, { ...msg, components: [] });
   } catch (e: any) {

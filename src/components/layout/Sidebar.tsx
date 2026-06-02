@@ -15,7 +15,8 @@ import {
   Settings2,
   Target,
   TrendingUp,
-  UserX
+  UserX,
+  Megaphone
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -52,6 +53,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: TrendingUp, label: "Relatórios de Tráfego", path: "/relatorios-trafego" },
+  { icon: Megaphone, label: "Anúncios Ativos", path: "/anuncios-ativos" },
 ];
 
 const regularMenuItems: MenuItem[] = [
@@ -60,6 +62,7 @@ const regularMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: TrendingUp, label: "Relatórios de Tráfego", path: "/relatorios-trafego" },
+  { icon: Megaphone, label: "Anúncios Ativos", path: "/anuncios-ativos" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {

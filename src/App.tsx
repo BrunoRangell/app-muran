@@ -63,6 +63,7 @@ const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
+const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 
 function App() {
   return (
@@ -144,6 +145,7 @@ function App() {
           {/* Relatórios de Tráfego — modelo único, sem editor */}
           <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
+          <Route path="/anuncios-ativos" element={<AnunciosAtivos />} />
 
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
 
