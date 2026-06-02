@@ -181,9 +181,7 @@ async function handleAnunciosCommand(
     }
 
     const acc = accounts[0] as any;
-    const accessToken = await getMetaAccessToken(supabase);
-    const ads = await fetchMetaAds(acc.account_id, accessToken);
-    const msg = buildAdsMessage(acc.clients.company_name, acc.account_name || acc.account_id, ads);
+    const msg = buildAdsMessage(acc.clients.id, acc.clients.company_name, acc.account_name || acc.account_id, acc.id);
     await editOriginal(appId, token, msg);
   } catch (e: any) {
     console.error('[handle] erro', e);
