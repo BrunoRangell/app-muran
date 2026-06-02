@@ -200,17 +200,16 @@ async function handleAccountSelect(
   try {
     const { data: acc, error } = await supabase
       .from('client_accounts')
-      .select('account_id, account_name, clients!inner(company_name)')
+      .select('account_id, account_name, clients!inner(id, company_name)')
       .eq('id', accountRowId)
       .maybeSingle();
     if (error || !acc) throw new Error('Conta não encontrada');
 
-    const accessToken = await getMetaAccessToken(supabase);
-    const ads = await fetchMetaAds((acc as any).account_id, accessToken);
     const msg = buildAdsMessage(
+      (acc as any).clients.id,
       (acc as any).clients.company_name,
       (acc as any).account_name || (acc as any).account_id,
-      ads,
+      accountRowId,
     );
     await editOriginal(appId, token, { ...msg, components: [] });
   } catch (e: any) {
