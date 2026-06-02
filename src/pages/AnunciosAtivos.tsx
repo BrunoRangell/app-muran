@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Download, RefreshCw, Search, Megaphone, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useMetaClientAccounts } from "@/hooks/useMetaClientAccounts";
-import { useActiveAds, type ActiveAd } from "@/hooks/useActiveAds";
+import { useActiveAds } from "@/hooks/useActiveAds";
 import { proxiedImageUrl } from "@/lib/metaImageProxy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
