@@ -1,71 +1,32 @@
-## Contexto
+## Objetivo
 
-O Discord limita bastante a apresentação visual (embeds têm largura fixa, não suportam tabelas reais nem grids de imagens lado a lado). Para "tirar print e enviar pro cliente", o caminho ideal é criar uma **página no app** com layout tipo galeria/tabela, otimizada para screenshot.
+Voltar a tabela de Anúncios Ativos para largura inteira (sem `max-w-3xl`) e permitir que as colunas Status, Imagem e Anúncio se ajustem ao conteúdo, deixando a coluna Campanha ocupar todo o espaço restante.
 
-## Plano
+## Alterações em `src/pages/AnunciosAtivos.tsx`
 
-### 1. Nova página: `/anuncios-ativos`
+1. **Remover restrição de largura da tabela**
+   - Tirar `max-w-3xl overflow-hidden` do container.
+   - Trocar `table-fixed` por `w-full` simples (auto layout), para que as larguras se adaptem ao conteúdo.
 
-Adicionar item no menu lateral em **Relatórios** (ou módulo equivalente), com ícone de megafone.
+2. **Larguras das colunas**
+   - Status: `w-px whitespace-nowrap` (largura mínima do conteúdo, sem quebra).
+   - Imagem: `w-px` (apenas o thumb de 64px).
+   - Anúncio: `w-px whitespace-nowrap` — mostra o nome completo sem cortar.
+   - Campanha: sem largura definida → ocupa todo o espaço restante; mantém `truncate` com `title` no hover, já que pode ser muito longa.
+   - Truque CSS: `w-px` + `whitespace-nowrap` faz a célula encolher exatamente ao tamanho do conteúdo, e a coluna sem largura definida "estica".
 
-### 2. Filtros (topo da página)
+3. **Botão "Ajustar colunas" (compactar)**
+   - Adicionar estado `compact` (boolean) com botão toggle ao lado dos botões de exportar (ícone `Minimize2`/`Maximize2`, label "Compactar"/"Expandir").
+   - Quando `compact = true`:
+     - Reduz padding das células para `px-2 py-1.5`.
+     - Reduz tamanho da fonte para `text-xs`.
+     - Reduz thumb de imagem de 64px para 40px.
+   - Quando `compact = false` (padrão): padding `px-3 py-2`, fonte `text-sm`, thumb 64px.
+   - Isso "empurra" as colunas para a esquerda ao máximo, dando ainda mais espaço para Campanha quando necessário.
 
-- **Cliente** (select com busca, lista clientes ativos com conta Meta)
-- **Conta Meta** (aparece se cliente tiver mais de uma conta; auto-seleciona se só tem uma)
-- **Campanha** (multi-select, populado após escolher conta — opcional)
-- **Status** (default: somente Ativos; toggle para incluir pausados)
-- Botão **Atualizar** (refetch da Meta API)
+## Resultado esperado
 
-### 3. Visualização principal
-
-Layout em **grid de cards** (3-4 colunas em desktop, responsivo), pensado para print:
-
-```text
-┌──────────────────────────┐ ┌──────────────────────────┐
-│ [imagem do criativo]     │ │ [imagem do criativo]     │
-│                          │ │                          │
-│ Nome do anúncio          │ │ Nome do anúncio          │
-│ Campanha: [MSG][LEAD]... │ │ Campanha: [MSG][LEAD]... │
-│ ● Ativo                  │ │ ● Ativo                  │
-└──────────────────────────┘ └──────────────────────────┘
-```
-
-Header do print incluindo: **logo Muran + nome do cliente + data + total de anúncios ativos**, para o screenshot já sair pronto pra mandar.
-
-Alternar entre **modo Galeria** (cards com imagem grande) e **modo Tabela** (linhas compactas: thumb + nome + campanha + status), via toggle.
-
-### 4. Ações
-
-- Botão **"Exportar como imagem"** (usa `html2canvas` ou `dom-to-image` — gera PNG do grid completo direto pro download, sem o usuário precisar dar print manual)
-- Botão **"Copiar lista"** (texto puro pra colar em WhatsApp)
-
-### 5. Backend
-
-Reaproveitar a lógica que já está na edge function `discord-interactions`:
-- Extrair a busca de ads da Meta (`act_{accountId}/ads` com fields de criativo) para uma edge function dedicada `meta-active-ads` que retorna JSON estruturado.
-- A página do app chama essa função; o Discord bot também passa a chamá-la (centraliza lógica, evita duplicação).
-
-### 6. Discord (opcional, melhoria do bot existente)
-
-Manter o `/anuncios` mas trocar a resposta para um **link clicável** que abre a página do app já filtrada pelo cliente:
-`https://app.muranmarketing.com.br/anuncios-ativos?cliente={id}`
-
-Assim o time tem o atalho rápido no Discord e o visual bonito no app.
-
-## Arquivos previstos
-
-- `src/pages/AnunciosAtivos.tsx` (página principal)
-- `src/components/anuncios-ativos/FiltersBar.tsx`
-- `src/components/anuncios-ativos/AdCard.tsx`
-- `src/components/anuncios-ativos/AdsGrid.tsx`
-- `src/components/anuncios-ativos/ExportButton.tsx` (html2canvas)
-- `src/hooks/useActiveAds.ts`
-- `supabase/functions/meta-active-ads/index.ts`
-- Refatorar `supabase/functions/discord-interactions/index.ts` para consumir a nova função
-- Adicionar rota e item no menu
-
-## Perguntas
-
-1. **Modo padrão**: prefere abrir já em **galeria** (visual, ideal pra print) ou **tabela** (compacto)?
-2. **Exportar imagem**: gerar PNG direto pelo botão é OK, ou prefere só print manual mesmo?
-3. **Discord**: mantenho o `/anuncios` com cards como está hoje, ou troco pra responder com link pra página do app?
+- Tabela volta a usar 100% da largura disponível.
+- Status, Imagem e Anúncio ficam justos ao conteúdo (sem corte).
+- Campanha ocupa todo o espaço restante (com truncate quando muito longa).
+- Botão de compactar permite encolher ainda mais as colunas fixas quando precisar.

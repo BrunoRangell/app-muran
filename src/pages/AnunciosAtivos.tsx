@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Download, RefreshCw, Search, Megaphone, Loader2 } from "lucide-react";
+import { Download, RefreshCw, Search, Megaphone, Loader2, Minimize2, Maximize2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useMetaClientAccounts } from "@/hooks/useMetaClientAccounts";
 import { useActiveAds, type ActiveAd } from "@/hooks/useActiveAds";
@@ -58,6 +58,7 @@ export default function AnunciosAtivos() {
   const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [compact, setCompact] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const clientsOptions = useMemo(() => {
@@ -299,6 +300,14 @@ export default function AnunciosAtivos() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setCompact((v) => !v)}
+            >
+              {compact ? <Maximize2 className="h-4 w-4 mr-1.5" /> : <Minimize2 className="h-4 w-4 mr-1.5" />}
+              {compact ? "Expandir" : "Compactar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleCopyText}
               disabled={!data || filteredAds.length === 0}
             >
@@ -382,28 +391,22 @@ export default function AnunciosAtivos() {
               Nenhum anúncio encontrado com os filtros atuais.
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-border">
-              <table className="w-full text-sm table-fixed">
-                <colgroup>
-                  <col className="w-[110px]" />
-                  <col className="w-[64px]" />
-                  <col />
-                  <col className="w-[34%]" />
-                </colgroup>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className={cn("w-full", compact ? "text-xs" : "text-sm")}>
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <th className="px-3 py-2 font-semibold">Status</th>
-                    <th className="px-3 py-2"></th>
-                    <th className="px-3 py-2 font-semibold">Anúncio</th>
-                    <th className="px-3 py-2 font-semibold">Campanha</th>
+                    <th className={cn("font-semibold w-px whitespace-nowrap", compact ? "px-2 py-1.5" : "px-3 py-2")}>Status</th>
+                    <th className={cn("w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}></th>
+                    <th className={cn("font-semibold w-px whitespace-nowrap", compact ? "px-2 py-1.5" : "px-3 py-2")}>Anúncio</th>
+                    <th className={cn("font-semibold", compact ? "px-2 py-1.5" : "px-3 py-2")}>Campanha</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAds.map((ad) => (
                     <tr key={ad.id} className="border-t border-border align-middle">
-                      <td className="px-3 py-2 whitespace-nowrap">{statusBadge(ad.status)}</td>
-                      <td className="px-3 py-2">
-                        <div className="h-10 w-10 rounded bg-muted overflow-hidden">
+                      <td className={cn("whitespace-nowrap w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}>{statusBadge(ad.status)}</td>
+                      <td className={cn("w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}>
+                        <div className={cn("rounded bg-muted overflow-hidden", compact ? "h-8 w-8" : "h-10 w-10")}>
                           {ad.image_url ? (
                             <img
                               src={proxiedImageUrl(ad.image_url)}
@@ -414,8 +417,13 @@ export default function AnunciosAtivos() {
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-medium truncate">{ad.name || "—"}</td>
-                      <td className="px-3 py-2 text-muted-foreground truncate">{ad.campaign_name || "—"}</td>
+                      <td className={cn("font-medium whitespace-nowrap w-px", compact ? "px-2 py-1.5" : "px-3 py-2")}>{ad.name || "—"}</td>
+                      <td
+                        className={cn("text-muted-foreground truncate max-w-0", compact ? "px-2 py-1.5" : "px-3 py-2")}
+                        title={ad.campaign_name || ""}
+                      >
+                        {ad.campaign_name || "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
