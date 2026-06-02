@@ -348,9 +348,17 @@ export default function AnunciosAtivos() {
       {data && !isLoading && (
         <div
           ref={exportRef}
-          className="bg-white rounded-xl border border-border p-6 space-y-4"
+          className={cn(
+            "bg-white rounded-xl border border-border p-6 space-y-4",
+            exporting && "w-fit max-w-full"
+          )}
         >
-          <div className="flex items-center justify-between border-b border-border pb-4">
+          <div
+            className={cn(
+              "flex items-center border-b border-border pb-4",
+              exporting ? "gap-16" : "justify-between"
+            )}
+          >
             <div className="flex items-center gap-3">
               {data.client.logo_url && (
                 <img
@@ -369,7 +377,7 @@ export default function AnunciosAtivos() {
                 </div>
               </div>
             </div>
-            <div className="text-right">
+            <div className={cn(exporting ? "ml-auto text-right" : "text-right")}>
               <div className="text-2xl font-bold text-muran-primary">{filteredAds.length}</div>
               <div className="text-xs text-muted-foreground uppercase tracking-wide">
                 {includePaused ? "Anúncios" : "Ativos"}
@@ -391,7 +399,7 @@ export default function AnunciosAtivos() {
                   <tr>
                     <th className="px-3 py-2 font-semibold w-px whitespace-nowrap text-muted-foreground">#</th>
                     <th className="px-3 py-2 font-semibold w-px whitespace-nowrap">Status</th>
-                    {!exporting && <th className="px-3 py-2 w-px"></th>}
+                    <th className="px-3 py-2 w-px"></th>
                     <th className="px-3 py-2 font-semibold w-px whitespace-nowrap">Anúncio</th>
                     {!exporting && <th className="px-3 py-2 font-semibold">Campanha</th>}
                   </tr>
@@ -401,20 +409,18 @@ export default function AnunciosAtivos() {
                     <tr key={ad.id} className="border-t border-border align-middle">
                       <td className="px-3 py-2 w-px whitespace-nowrap text-muted-foreground tabular-nums text-right">{idx + 1}</td>
                       <td className="px-3 py-2 whitespace-nowrap w-px">{statusBadge(ad.status)}</td>
-                      {!exporting && (
-                        <td className="px-3 py-2 w-px">
-                          <div className="h-10 w-10 rounded bg-muted overflow-hidden">
-                            {ad.image_url ? (
-                              <img
-                                src={proxiedImageUrl(ad.image_url)}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                crossOrigin="anonymous"
-                              />
-                            ) : null}
-                          </div>
-                        </td>
-                      )}
+                      <td className="px-3 py-2 w-px">
+                        <div className="h-10 w-10 rounded bg-muted overflow-hidden">
+                          {ad.image_url ? (
+                            <img
+                              src={proxiedImageUrl(ad.image_url)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              crossOrigin="anonymous"
+                            />
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="px-3 py-2 font-medium whitespace-nowrap w-px">{ad.name || "—"}</td>
                       {!exporting && (
                         <td
