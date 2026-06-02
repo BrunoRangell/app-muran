@@ -381,28 +381,29 @@ export default function AnunciosAtivos() {
             <div className="text-center text-muted-foreground py-12 text-sm">
               Nenhum anúncio encontrado com os filtros atuais.
             </div>
-          ) : view === "gallery" ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredAds.map((ad) => (
-                <AdCard key={ad.id} ad={ad} />
-              ))}
-            </div>
           ) : (
-            <div className="overflow-hidden rounded-lg border border-border">
-              <table className="w-full text-sm">
+            <div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col className="w-[110px]" />
+                  <col className="w-[64px]" />
+                  <col />
+                  <col className="w-[34%]" />
+                </colgroup>
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <th className="p-2 w-16"></th>
-                    <th className="p-2">Anúncio</th>
-                    <th className="p-2">Campanha</th>
-                    <th className="p-2 w-28">Status</th>
+                    <th className="px-3 py-2 font-semibold">Status</th>
+                    <th className="px-3 py-2"></th>
+                    <th className="px-3 py-2 font-semibold">Anúncio</th>
+                    <th className="px-3 py-2 font-semibold">Campanha</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAds.map((ad) => (
-                    <tr key={ad.id} className="border-t border-border">
-                      <td className="p-2">
-                        <div className="h-12 w-12 rounded bg-muted overflow-hidden">
+                    <tr key={ad.id} className="border-t border-border align-middle">
+                      <td className="px-3 py-2 whitespace-nowrap">{statusBadge(ad.status)}</td>
+                      <td className="px-3 py-2">
+                        <div className="h-10 w-10 rounded bg-muted overflow-hidden">
                           {ad.image_url ? (
                             <img
                               src={proxiedImageUrl(ad.image_url)}
@@ -413,9 +414,8 @@ export default function AnunciosAtivos() {
                           ) : null}
                         </div>
                       </td>
-                      <td className="p-2 font-medium">{ad.name || "—"}</td>
-                      <td className="p-2 text-muted-foreground">{ad.campaign_name || "—"}</td>
-                      <td className="p-2">{statusBadge(ad.status)}</td>
+                      <td className="px-3 py-2 font-medium truncate">{ad.name || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground truncate">{ad.campaign_name || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -428,33 +428,3 @@ export default function AnunciosAtivos() {
   );
 }
 
-function AdCard({ ad }: { ad: ActiveAd }) {
-  const img = proxiedImageUrl(ad.image_url);
-  return (
-    <div className="rounded-lg border border-border overflow-hidden bg-white flex flex-col">
-      <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {img ? (
-          <img
-            src={img}
-            alt={ad.name || ""}
-            className="h-full w-full object-cover"
-            crossOrigin="anonymous"
-          />
-        ) : (
-          <ImageIcon className="h-8 w-8 text-muted-foreground" />
-        )}
-      </div>
-      <div className="p-3 space-y-1.5 flex-1 flex flex-col">
-        <div className="text-sm font-semibold text-muran-complementary line-clamp-2 leading-tight">
-          {ad.name || "Sem nome"}
-        </div>
-        {ad.campaign_name && (
-          <Badge variant="outline" className="text-[10px] font-normal max-w-full truncate inline-block">
-            {ad.campaign_name}
-          </Badge>
-        )}
-        <div className="mt-auto pt-1">{statusBadge(ad.status)}</div>
-      </div>
-    </div>
-  );
-}
