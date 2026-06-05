@@ -137,8 +137,10 @@ Deno.serve(async (req) => {
 
       const details = Array.isArray(s.campaigns_detailed) ? s.campaigns_detailed : [];
       for (const c of details) {
-        const cost = Number(c?.cost ?? 0);
-        const impressions = Number(c?.impressions ?? 0);
+        // Critério: soma de custo e impressões de ontem+hoje (cost_2d/impressions_2d) == 0.
+        // Fallback para snapshots antigos que só tinham cost/impressions (hoje).
+        const cost = Number(c?.cost_2d ?? c?.cost ?? 0);
+        const impressions = Number(c?.impressions_2d ?? c?.impressions ?? 0);
         if (cost === 0 && impressions === 0) {
           lines.push({
             company: client.company_name,
