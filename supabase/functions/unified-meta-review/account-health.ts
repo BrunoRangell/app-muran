@@ -507,10 +507,12 @@ export async function processAccountHealth(accountId: string) {
     
     const today = getTodayInBrazil();
     
-    // Calcular campanhas sem veiculação baseado em impressões = 0 AND custo = 0
-    const unservedCampaigns = campaignData.campaignsDetailed.filter(campaign => 
-      campaign.impressions === 0 && campaign.cost === 0
-    ).length;
+    // Campanhas sem veiculação = soma de impressões E custo nos últimos 2 dias (ontem + hoje) == 0
+    const unservedCampaigns = campaignData.campaignsDetailed.filter((campaign: any) => {
+      const c2d = Number(campaign.cost_2d ?? 0);
+      const i2d = Number(campaign.impressions_2d ?? 0);
+      return c2d === 0 && i2d === 0;
+    }).length;
 
     const healthSnapshot = {
       client_id: account.client_id,
