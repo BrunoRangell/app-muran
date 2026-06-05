@@ -13,8 +13,26 @@ function getTodayInBrazil(): string {
   return `${year}-${month}-${day}`;
 }
 
+// Data de ontem no timezone brasileiro (YYYY-MM-DD)
+function getYesterdayInBrazil(): string {
+  const now = new Date();
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const brazilTime = new Date(utcTime + (-3 * 3600000));
+  brazilTime.setDate(brazilTime.getDate() - 1);
+
+  const year = brazilTime.getFullYear();
+  const month = String(brazilTime.getMonth() + 1).padStart(2, '0');
+  const day = String(brazilTime.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 function getTodayForGoogleAds(): string {
   return getTodayInBrazil().replace(/-/g, '');
+}
+
+function getYesterdayForGoogleAds(): string {
+  return getYesterdayInBrazil().replace(/-/g, '');
 }
 
 // Renovação de tokens do Google Ads
@@ -98,12 +116,15 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     name: string;
     cost: number;
     impressions: number;
+    cost_2d: number;
+    impressions_2d: number;
     status: string;
   }>;
 }> {
   try {
     const today = getTodayInBrazil();
-    console.log(`🔍 DEBUG Meta: Iniciando busca de campanhas para conta ${accountId} - Data: ${today}`);
+    const yesterday = getYesterdayInBrazil();
+    console.log(`🔍 DEBUG Meta: Iniciando busca de campanhas para conta ${accountId} - Hoje: ${today} | Ontem: ${yesterday}`);
     
     // Buscar todas as campanhas com paginação
     let allCampaigns: any[] = [];
@@ -169,63 +190,56 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       const batch = activeCampaigns.slice(i, i + batchSize);
       const batchPromises = batch.map(async (campaign: any) => {
         try {
-          const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-          
-          console.log(`🔍 DEBUG Meta: ==========================================`);
-          console.log(`🔍 DEBUG Meta: Buscando insights para campanha ${campaign.id}`);
-          console.log(`🔍 DEBUG Meta: Nome: ${campaign.name}`);
-          console.log(`🔍 DEBUG Meta: URL: ${campaignInsightsUrl.replace(accessToken, 'TOKEN_OCULTO')}`);
-          
-          const response = await fetch(campaignInsightsUrl);
-          const data = await response.json();
-          
-          console.log(`🔍 DEBUG Meta: Status HTTP: ${response.status}`);
-          console.log(`🔍 DEBUG Meta: Resposta completa:`, JSON.stringify(data, null, 2));
-          
+          const todayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+          const twoDayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${yesterday}","until":"${today}"}&access_token=${accessToken}`;
+
+          console.log(`🔍 DEBUG Meta: Buscando insights (hoje + 2d) para campanha ${campaign.id} (${campaign.name})`);
+
+          const [respToday, resp2d] = await Promise.all([fetch(todayUrl), fetch(twoDayUrl)]);
+          const [dataToday, data2d] = await Promise.all([respToday.json(), resp2d.json()]);
+
           let campaignCost = 0;
           let campaignImpressions = 0;
-          
-          if (response.ok && data.data && Array.isArray(data.data) && data.data.length > 0) {
-            const insights = data.data[0];
-            campaignCost = parseFloat(insights.spend || '0');
-            campaignImpressions = parseInt(insights.impressions || '0');
-            console.log(`✅ DEBUG Meta: Insights encontrados!`);
-            console.log(`💰 DEBUG Meta: Custo: R$ ${campaignCost.toFixed(2)}`);
-            console.log(`👁️ DEBUG Meta: Impressões: ${campaignImpressions.toLocaleString()}`);
+          let cost2d = 0;
+          let impressions2d = 0;
+
+          if (respToday.ok && Array.isArray(dataToday?.data) && dataToday.data.length > 0) {
+            const i0 = dataToday.data[0];
+            campaignCost = parseFloat(i0.spend || '0');
+            campaignImpressions = parseInt(i0.impressions || '0');
           } else {
-            console.warn(`⚠️ DEBUG Meta: SEM INSIGHTS DISPONÍVEIS`);
-            console.warn(`⚠️ DEBUG Meta: response.ok: ${response.ok}`);
-            console.warn(`⚠️ DEBUG Meta: data.data existe: ${!!data.data}`);
-            console.warn(`⚠️ DEBUG Meta: data.data é array: ${Array.isArray(data.data)}`);
-            console.warn(`⚠️ DEBUG Meta: data.data.length: ${data.data?.length || 0}`);
-            console.warn(`⚠️ DEBUG Meta: Resposta data completa:`, JSON.stringify(data, null, 2));
-            console.warn(`⚠️ DEBUG Meta: POSSÍVEL CAUSA: API Meta ainda não processou dados de hoje`);
+            console.warn(`⚠️ Meta: insights de HOJE indisponíveis para ${campaign.id}`, JSON.stringify(dataToday));
           }
-          
+
+          if (resp2d.ok && Array.isArray(data2d?.data) && data2d.data.length > 0) {
+            const i0 = data2d.data[0];
+            cost2d = parseFloat(i0.spend || '0');
+            impressions2d = parseInt(i0.impressions || '0');
+          } else {
+            console.warn(`⚠️ Meta: insights de 2d indisponíveis para ${campaign.id}`, JSON.stringify(data2d));
+          }
+
           const campaignDetail = {
             id: campaign.id,
             name: campaign.name,
             cost: campaignCost,
             impressions: campaignImpressions,
+            cost_2d: cost2d,
+            impressions_2d: impressions2d,
             status: campaign.effective_status
           };
-          
-          console.log(`📋 DEBUG Meta: Detalhes finais da campanha:`, campaignDetail);
-          console.log(`🔍 DEBUG Meta: ==========================================\n`);
-          
+
+          console.log(`📋 Meta ${campaign.name}: hoje R$${campaignCost.toFixed(2)}/${campaignImpressions} | 2d R$${cost2d.toFixed(2)}/${impressions2d}`);
           return campaignDetail;
         } catch (error) {
-          console.error(`❌ Meta: ==========================================`);
-          console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id}`);
-          console.error(`❌ Meta: Nome: ${campaign.name}`);
-          console.error(`❌ Meta: Erro: ${error.message}`);
-          console.error(`❌ Meta: Stack:`, error.stack);
-          console.error(`❌ Meta: ==========================================\n`);
+          console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id} (${campaign.name}): ${error.message}`);
           return {
             id: campaign.id,
             name: campaign.name,
             cost: 0,
             impressions: 0,
+            cost_2d: 0,
+            impressions_2d: 0,
             status: campaign.effective_status
           };
         }
@@ -278,6 +292,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     name: string;
     cost: number;
     impressions: number;
+    cost_2d: number;
+    impressions_2d: number;
     status: string;
   }>;
 }> {
@@ -291,137 +307,141 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     if (tokensError) {
       console.error(`❌ Google: Erro ao buscar tokens:`, tokensError);
-      return { 
-        cost: 0, 
-        impressions: 0, 
-        activeCampaigns: 0,
-        campaignsDetailed: []
-      };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetailed: [] };
     }
 
     const tokens: { [key: string]: string } = {};
-    tokensData.forEach(token => {
-      tokens[token.name] = token.value;
-    });
+    tokensData.forEach(token => { tokens[token.name] = token.value; });
 
     const developerToken = tokens['google_ads_developer_token'];
     const managerId = tokens['google_ads_manager_id'];
 
     if (!developerToken) {
-      return { 
-        cost: 0, 
-        impressions: 0, 
-        activeCampaigns: 0,
-        campaignsDetailed: []
-      };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetailed: [] };
     }
 
     const today = getTodayForGoogleAds();
-    console.log(`🔍 DEBUG Google: Iniciando busca para conta ${clientCustomerId} - Data: ${today}`);
-    
-    const query = `
+    const yesterday = getYesterdayForGoogleAds();
+    console.log(`🔍 DEBUG Google: Iniciando busca para conta ${clientCustomerId} - Hoje: ${today} | Ontem: ${yesterday}`);
+
+    // Query 1: métricas por (campanha, dia) na janela ontem+hoje
+    const metricsQuery = `
       SELECT 
         campaign.id,
         campaign.name,
         campaign.status,
+        segments.date,
         metrics.cost_micros,
         metrics.impressions
       FROM campaign 
       WHERE 
         campaign.status = 'ENABLED'
-        AND segments.date = '${today}'
+        AND segments.date BETWEEN '${yesterday}' AND '${today}'
     `;
-    
+
+    // Query 2: todas as campanhas ENABLED (mesmo sem rows nos 2 dias)
+    const enabledQuery = `
+      SELECT campaign.id, campaign.name, campaign.status
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+    `;
+
     const googleAdsUrl = `https://googleads.googleapis.com/v21/customers/${clientCustomerId}/googleAds:search`;
-    
+
     const headers: { [key: string]: string } = {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'developer-token': developerToken
     };
+    if (managerId && managerId.trim() !== '') headers['login-customer-id'] = managerId;
 
-    if (managerId && managerId.trim() !== '') {
-      headers['login-customer-id'] = managerId;
+    const [respMetrics, respEnabled] = await Promise.all([
+      fetch(googleAdsUrl, { method: 'POST', headers, body: JSON.stringify({ query: metricsQuery }) }),
+      fetch(googleAdsUrl, { method: 'POST', headers, body: JSON.stringify({ query: enabledQuery }) }),
+    ]);
+
+    if (!respEnabled.ok) {
+      const errorText = await respEnabled.text();
+      console.error(`❌ Google: Erro HTTP ${respEnabled.status} (enabled):`, errorText.substring(0, 500));
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetailed: [] };
     }
-    
-    const response = await fetch(googleAdsUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ query })
+    if (!respMetrics.ok) {
+      const errorText = await respMetrics.text();
+      console.error(`❌ Google: Erro HTTP ${respMetrics.status} (metrics):`, errorText.substring(0, 500));
+    }
+
+    const enabledData = await respEnabled.json();
+    const metricsData = respMetrics.ok ? await respMetrics.json() : { results: [] };
+
+    // Mapa de todas as campanhas ENABLED → começa zerado
+    const todayStr = today; // YYYYMMDD
+    const map = new Map<string, { id: string; name: string; status: string; cost: number; impressions: number; cost_2d: number; impressions_2d: number }>();
+
+    (enabledData.results || []).forEach((r: any) => {
+      if (!r.campaign) return;
+      const id = r.campaign.id.toString();
+      map.set(id, {
+        id,
+        name: r.campaign.name || 'Campanha sem nome',
+        status: r.campaign.status || 'ENABLED',
+        cost: 0,
+        impressions: 0,
+        cost_2d: 0,
+        impressions_2d: 0,
+      });
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Google: Erro HTTP ${response.status}:`, errorText.substring(0, 500));
-      return { 
-        cost: 0, 
-        impressions: 0, 
-        activeCampaigns: 0,
-        campaignsDetailed: []
-      };
-    }
-    
-    const data = await response.json();
-    
-    if (!data.results || !Array.isArray(data.results)) {
-      console.log(`⚠️ DEBUG Google: Sem resultados encontrados`);
-      return { 
-        cost: 0, 
-        impressions: 0, 
-        activeCampaigns: 0,
-        campaignsDetailed: []
-      };
-    }
-    
-    console.log(`📋 DEBUG Google: Resultados encontrados:`, data.results.length);
-    
-    let totalCost = 0;
-    let totalImpressions = 0;
-    let activeCampaigns = 0;
-    const campaignsDetailed = [];
-    
-    data.results.forEach((result: any) => {
-      if (result.campaign?.status === 'ENABLED') {
-        activeCampaigns++;
-        const campaignCost = (result.metrics?.costMicros || 0) / 1000000;
-        const campaignImpressions = result.metrics?.impressions || 0;
-        
-        totalCost += campaignCost;
-        totalImpressions += parseInt(campaignImpressions);
-        
-        const campaignDetail = {
-          id: result.campaign.id.toString(),
-          name: result.campaign.name || 'Campanha sem nome',
-          cost: campaignCost,
-          impressions: parseInt(campaignImpressions),
-          status: result.campaign.status
+
+    // Acumular métricas por campanha
+    (metricsData.results || []).forEach((r: any) => {
+      if (!r.campaign) return;
+      const id = r.campaign.id.toString();
+      const date = (r.segments?.date || '').replace(/-/g, '');
+      const cost = (r.metrics?.costMicros || 0) / 1000000;
+      const impressions = parseInt(r.metrics?.impressions || 0);
+
+      let entry = map.get(id);
+      if (!entry) {
+        entry = {
+          id,
+          name: r.campaign.name || 'Campanha sem nome',
+          status: r.campaign.status || 'ENABLED',
+          cost: 0,
+          impressions: 0,
+          cost_2d: 0,
+          impressions_2d: 0,
         };
-        
-        console.log(`📊 DEBUG Google: Campanha ${campaignDetail.name} - Custo: ${campaignCost}, Impressões: ${campaignImpressions}`);
-        
-        campaignsDetailed.push(campaignDetail);
+        map.set(id, entry);
+      }
+      entry.cost_2d += cost;
+      entry.impressions_2d += impressions;
+      if (date === todayStr) {
+        entry.cost += cost;
+        entry.impressions += impressions;
       }
     });
-    
-    console.log(`💰 Google: Custo total R$${totalCost.toFixed(2)}, Impressões totais: ${totalImpressions.toLocaleString()}`);
-    console.log(`📊 Google: Processadas ${campaignsDetailed.length} campanhas com detalhes`);
-    console.log(`📋 DEBUG Google: Campanhas detalhadas finais:`, campaignsDetailed);
-    
+
+    const campaignsDetailed = Array.from(map.values());
+    let totalCost = 0;
+    let totalImpressions = 0;
+    campaignsDetailed.forEach(c => {
+      totalCost += c.cost;
+      totalImpressions += c.impressions;
+      console.log(`📊 Google ${c.name}: hoje R$${c.cost.toFixed(2)}/${c.impressions} | 2d R$${c.cost_2d.toFixed(2)}/${c.impressions_2d}`);
+    });
+
+    console.log(`💰 Google: Custo HOJE R$${totalCost.toFixed(2)}, Impressões HOJE: ${totalImpressions.toLocaleString()}`);
+    console.log(`📊 Google: ${campaignsDetailed.length} campanhas ativas processadas`);
+
     return {
       cost: totalCost,
       impressions: totalImpressions,
-      activeCampaigns: activeCampaigns,
-      campaignsDetailed
+      activeCampaigns: campaignsDetailed.length,
+      campaignsDetailed,
     };
-    
+
   } catch (error) {
     console.error(`❌ Google: Erro para conta ${clientCustomerId}:`, error);
-    return { 
-      cost: 0, 
-      impressions: 0, 
-      activeCampaigns: 0,
-      campaignsDetailed: []
-    };
+    return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetailed: [] };
   }
 }
 
@@ -487,10 +507,12 @@ export async function processAccountHealth(accountId: string) {
     
     const today = getTodayInBrazil();
     
-    // Calcular campanhas sem veiculação baseado em impressões = 0 AND custo = 0
-    const unservedCampaigns = campaignData.campaignsDetailed.filter(campaign => 
-      campaign.impressions === 0 && campaign.cost === 0
-    ).length;
+    // Campanhas sem veiculação = soma de impressões E custo nos últimos 2 dias (ontem + hoje) == 0
+    const unservedCampaigns = campaignData.campaignsDetailed.filter((campaign: any) => {
+      const c2d = Number(campaign.cost_2d ?? 0);
+      const i2d = Number(campaign.impressions_2d ?? 0);
+      return c2d === 0 && i2d === 0;
+    }).length;
 
     const healthSnapshot = {
       client_id: account.client_id,
