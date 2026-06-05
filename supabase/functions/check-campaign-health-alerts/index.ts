@@ -134,9 +134,51 @@ function buildGoogleStatusLabel(c: any): string | null {
   const reasons = Array.isArray(c?.primary_status_reasons) ? c.primary_status_reasons : [];
   if (!primary) return null;
   const base = GOOGLE_PRIMARY_STATUS_PT[primary] ?? primary;
-  // Pega a primeira reason mapeada que adiciona contexto, ignorando ELIGIBLE_* genéricos
   const reason = reasons.find((r: string) => r && GOOGLE_PRIMARY_STATUS_REASON_PT[r]);
   return reason ? `${base} — ${GOOGLE_PRIMARY_STATUS_REASON_PT[reason]}` : base;
+}
+
+// Motivos curtos do Google para o alerta no Discord (priorizar o mais grave)
+const GOOGLE_REASON_SHORT_PT: Record<string, string> = {
+  AD_GROUP_ADS_DISAPPROVED: "Anúncios reprovados",
+  AD_GROUP_ADS_NOT_ELIGIBLE: "Anúncios não elegíveis",
+  NO_ADS: "Sem anúncios elegíveis",
+  NO_AD_GROUPS: "Sem anúncios elegíveis",
+  NO_ELIGIBLE_AD_GROUPS: "Sem anúncios elegíveis",
+  CONVERSION_ACTION_MISSING: "Conversões não configuradas",
+  CONVERSION_TRACKING_MISSING: "Conversões não configuradas",
+  LOW_QUALITY_LANDING_PAGE: "Página de destino baixa qualidade",
+  MERCHANT_CENTER_ACCOUNT_SUSPENDED: "Merchant Center suspenso",
+  PRODUCT_FEED_HAS_NO_PRODUCTS: "Feed sem produtos",
+  BIDDING_STRATEGY_MISCONFIGURED: "Estratégia de lance inválida",
+  BUDGET_MISCONFIGURED: "Orçamento inválido",
+  APP_NOT_RELEASED: "App indisponível",
+  MOBILE_APP_NO_LONGER_AVAILABLE: "App indisponível",
+  STORE_REMOVED: "Loja removida",
+  CAMPAIGN_REMOVED: "Campanha removida",
+  CAMPAIGN_ENDED: "Campanha encerrada",
+};
+
+const GOOGLE_STATUS_SHORT_PT: Record<string, string> = {
+  NOT_ELIGIBLE: "Não elegível",
+  MISCONFIGURED: "Configuração inválida",
+  PENDING: "Pendente",
+  ENDED: "Encerrada",
+};
+
+function buildAlertReason(platform: string, c: any, zeroed2d: boolean): string {
+  if (platform === "meta") return "Sem gasto hoje";
+  // Google: prioridade 1 — reason problemática mapeada
+  const reasons: string[] = Array.isArray(c?.primary_status_reasons) ? c.primary_status_reasons : [];
+  for (const r of reasons) {
+    if (GOOGLE_REASON_SHORT_PT[r]) return GOOGLE_REASON_SHORT_PT[r];
+  }
+  // 2 — primary_status problemático
+  const primary = typeof c?.primary_status === "string" ? c.primary_status : null;
+  if (primary && GOOGLE_STATUS_SHORT_PT[primary]) return GOOGLE_STATUS_SHORT_PT[primary];
+  // 3 — somente zerado 2 dias
+  if (zeroed2d) return "Sem veiculação (2 dias)";
+  return "Sem veiculação";
 }
 
 async function sendDiscordMessage(channelId: string, token: string, content: string) {
