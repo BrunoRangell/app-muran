@@ -50,10 +50,76 @@ const GOOGLE_STATUS_PT: Record<string, string> = {
   UNSPECIFIED: "Não especificado",
 };
 
+const GOOGLE_PRIMARY_STATUS_PT: Record<string, string> = {
+  ELIGIBLE: "Veiculando",
+  PENDING: "Pendente",
+  LEARNING: "Em aprendizado",
+  LIMITED: "Limitada",
+  MISCONFIGURED: "Configuração inválida",
+  NOT_ELIGIBLE: "Não elegível",
+  PAUSED: "Pausada",
+  REMOVED: "Removida",
+  ENDED: "Encerrada",
+  UNKNOWN: "Desconhecido",
+  UNSPECIFIED: "Não especificado",
+};
+
+const GOOGLE_PRIMARY_STATUS_REASON_PT: Record<string, string> = {
+  AD_GROUP_ADS_DISAPPROVED: "Todos os anúncios reprovados",
+  AD_GROUP_ADS_NOT_ELIGIBLE: "Anúncios não elegíveis",
+  AD_GROUPS_PAUSED: "Grupos de anúncios pausados",
+  ALL_AD_GROUPS_PAUSED: "Todos os grupos de anúncios pausados",
+  AD_GROUPS_REMOVED: "Grupos de anúncios removidos",
+  APP_NOT_RELEASED: "App não publicado",
+  APP_PARTIALLY_RELEASED: "App parcialmente publicado",
+  BIDDING_STRATEGY_CONSTRAINED: "Limitada por estratégia de lance",
+  BIDDING_STRATEGY_LIMITED: "Limitada por estratégia de lance",
+  BIDDING_STRATEGY_LEARNING: "Estratégia de lance em aprendizado",
+  BIDDING_STRATEGY_MISCONFIGURED: "Estratégia de lance mal configurada",
+  BUDGET_CONSTRAINED: "Limitada por orçamento",
+  BUDGET_MISCONFIGURED: "Orçamento mal configurado",
+  CAMPAIGN_DRAFT: "Rascunho de campanha",
+  CAMPAIGN_ENDED: "Campanha encerrada",
+  CAMPAIGN_PAUSED: "Campanha pausada",
+  CAMPAIGN_PENDING: "Campanha pendente",
+  CAMPAIGN_REMOVED: "Campanha removida",
+  CONVERSION_ACTION_MISSING: "Ação de conversão ausente",
+  CONVERSION_TRACKING_MISSING: "Acompanhamento de conversões ausente",
+  CUSTOM_GOAL_MISSING: "Meta personalizada ausente",
+  HAS_AD_GROUPS_PAUSED: "Há grupos de anúncios pausados",
+  HAS_PAUSED_OR_REMOVED_GROUP_CRITERIA: "Há palavras-chave pausadas ou removidas",
+  KEYWORDS_PAUSED: "Palavras-chave pausadas",
+  LOW_QUALITY_LANDING_PAGE: "Página de destino com baixa qualidade",
+  MERCHANT_CENTER_ACCOUNT_SUSPENDED: "Conta do Merchant Center suspensa",
+  MISCONFIGURED: "Configuração inválida",
+  MOBILE_APP_NO_LONGER_AVAILABLE: "App não disponível",
+  NO_ADS: "Sem anúncios",
+  NO_AD_GROUPS: "Sem grupos de anúncios",
+  NO_ELIGIBLE_AD_GROUPS: "Sem grupos de anúncios elegíveis",
+  PAUSED: "Pausada",
+  PENDING: "Pendente",
+  PENDING_USER_REVIEW: "Aguardando revisão",
+  PRODUCT_FEED_HAS_NO_PRODUCTS: "Feed de produtos vazio",
+  REMOVED: "Removida",
+  STORE_REMOVED: "Loja removida",
+  UNKNOWN: "Desconhecido",
+  UNSPECIFIED: "Não especificado",
+};
+
 function translateStatus(platform: string, status: string): string {
   if (!status) return "Desconhecido";
   const map = platform === "google" ? GOOGLE_STATUS_PT : META_STATUS_PT;
   return map[status] ?? status;
+}
+
+function buildGoogleStatusLabel(c: any): string | null {
+  const primary = typeof c?.primary_status === "string" ? c.primary_status : null;
+  const reasons = Array.isArray(c?.primary_status_reasons) ? c.primary_status_reasons : [];
+  if (!primary) return null;
+  const base = GOOGLE_PRIMARY_STATUS_PT[primary] ?? primary;
+  // Pega a primeira reason mapeada que adiciona contexto, ignorando ELIGIBLE_* genéricos
+  const reason = reasons.find((r: string) => r && GOOGLE_PRIMARY_STATUS_REASON_PT[r]);
+  return reason ? `${base} — ${GOOGLE_PRIMARY_STATUS_REASON_PT[reason]}` : base;
 }
 
 async function sendDiscordMessage(channelId: string, token: string, content: string) {
