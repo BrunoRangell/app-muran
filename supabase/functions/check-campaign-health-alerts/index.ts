@@ -204,19 +204,20 @@ Deno.serve(async (req) => {
       const details = Array.isArray(s.campaigns_detailed) ? s.campaigns_detailed : [];
       for (const c of details) {
         // Critério de "sem veiculação":
-        //  - Meta: apenas HOJE (cost/impressions)
-        //  - Google: janela 2d (cost_2d/impressions_2d) com fallback para hoje em snapshots antigos
-        let cost: number;
-        let impressions: number;
+        //  - Meta: apenas HOJE (cost/impressions === 0)
+        //  - Google: janela 2d zerada OU primary_status/reason problemático hoje
+        let shouldAlert = false;
         if (s.platform === "meta") {
-          cost = Number(c?.cost ?? 0);
-          impressions = Number(c?.impressions ?? 0);
+          const cost = Number(c?.cost ?? 0);
+          const impressions = Number(c?.impressions ?? 0);
+          shouldAlert = cost === 0 && impressions === 0;
         } else {
-          cost = Number(c?.cost_2d ?? c?.cost ?? 0);
-          impressions = Number(c?.impressions_2d ?? c?.impressions ?? 0);
+          const cost2d = Number(c?.cost_2d ?? c?.cost ?? 0);
+          const impr2d = Number(c?.impressions_2d ?? c?.impressions ?? 0);
+          const zeroed = cost2d === 0 && impr2d === 0;
+          shouldAlert = zeroed || isGoogleProblematic(c);
         }
-        if (cost === 0 && impressions === 0) {
-          // Para Google, preferir primary_status + reason (ex.: "Não elegível — Todos os anúncios reprovados")
+        if (shouldAlert) {
           const googleLabel = s.platform === "google" ? buildGoogleStatusLabel(c) : null;
           const statusDisplay = googleLabel ?? translateStatus(s.platform, String(c?.status ?? ""));
           lines.push({
