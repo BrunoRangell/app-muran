@@ -116,12 +116,15 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     name: string;
     cost: number;
     impressions: number;
+    cost_2d: number;
+    impressions_2d: number;
     status: string;
   }>;
 }> {
   try {
     const today = getTodayInBrazil();
-    console.log(`🔍 DEBUG Meta: Iniciando busca de campanhas para conta ${accountId} - Data: ${today}`);
+    const yesterday = getYesterdayInBrazil();
+    console.log(`🔍 DEBUG Meta: Iniciando busca de campanhas para conta ${accountId} - Hoje: ${today} | Ontem: ${yesterday}`);
     
     // Buscar todas as campanhas com paginação
     let allCampaigns: any[] = [];
