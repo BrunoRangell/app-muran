@@ -266,6 +266,7 @@ Deno.serve(async (req) => {
         //  - Meta: apenas HOJE (cost/impressions === 0)
         //  - Google: janela 2d zerada OU primary_status/reason problemático hoje
         let shouldAlert = false;
+        let zeroed2d = false;
         if (s.platform === "meta") {
           const cost = Number(c?.cost ?? 0);
           const impressions = Number(c?.impressions ?? 0);
@@ -273,17 +274,15 @@ Deno.serve(async (req) => {
         } else {
           const cost2d = Number(c?.cost_2d ?? c?.cost ?? 0);
           const impr2d = Number(c?.impressions_2d ?? c?.impressions ?? 0);
-          const zeroed = cost2d === 0 && impr2d === 0;
-          shouldAlert = zeroed || isGoogleProblematic(c);
+          zeroed2d = cost2d === 0 && impr2d === 0;
+          shouldAlert = zeroed2d || isGoogleProblematic(c);
         }
         if (shouldAlert) {
-          const googleLabel = s.platform === "google" ? buildGoogleStatusLabel(c) : null;
-          const statusDisplay = googleLabel ?? translateStatus(s.platform, String(c?.status ?? ""));
           lines.push({
             company: client.company_name,
             platform: s.platform,
             campaignName: String(c?.name ?? "Sem nome"),
-            status: statusDisplay,
+            status: buildAlertReason(s.platform, c, zeroed2d),
             account_id_uuid: s.account_id,
             client_id: s.client_id,
           });
