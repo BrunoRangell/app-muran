@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
     const footer = `\n\n@everyone`;
 
     const formatted = lines.map(
-      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | ${l.campaignName} - Status: ${translateStatus(l.platform, l.status)}`,
+      (l) => `> • ${l.company} | ${platformLabel(l.platform)} | ${l.campaignName} - Status: ${l.status}`,
     );
 
     // Chunking <1700 chars
