@@ -348,6 +348,8 @@ async function fetchGoogleActiveCampaigns(
           campaign.id,
           campaign.name,
           campaign.status,
+          campaign.primary_status,
+          campaign.primary_status_reasons,
           segments.date,
           metrics.cost_micros,
           metrics.impressions
@@ -360,7 +362,7 @@ async function fetchGoogleActiveCampaigns(
 
     // Query: todas as campanhas ENABLED (mesmo sem rows na janela)
     const enabledQuery = `
-      SELECT campaign.id, campaign.name, campaign.status
+      SELECT campaign.id, campaign.name, campaign.status, campaign.primary_status, campaign.primary_status_reasons
       FROM campaign
       WHERE campaign.status = 'ENABLED'
     `;
