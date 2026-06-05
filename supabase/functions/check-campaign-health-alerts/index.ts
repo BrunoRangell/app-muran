@@ -106,6 +106,23 @@ const GOOGLE_PRIMARY_STATUS_REASON_PT: Record<string, string> = {
   UNSPECIFIED: "Não especificado",
 };
 
+const GOOGLE_PROBLEMATIC_STATUSES = new Set(["NOT_ELIGIBLE", "MISCONFIGURED", "PENDING", "ENDED"]);
+const GOOGLE_PROBLEMATIC_REASONS = new Set([
+  "AD_GROUP_ADS_DISAPPROVED", "AD_GROUP_ADS_NOT_ELIGIBLE", "NO_ADS", "NO_AD_GROUPS",
+  "NO_ELIGIBLE_AD_GROUPS", "APP_NOT_RELEASED", "MOBILE_APP_NO_LONGER_AVAILABLE",
+  "CONVERSION_ACTION_MISSING", "CONVERSION_TRACKING_MISSING", "LOW_QUALITY_LANDING_PAGE",
+  "MERCHANT_CENTER_ACCOUNT_SUSPENDED", "PRODUCT_FEED_HAS_NO_PRODUCTS",
+  "BIDDING_STRATEGY_MISCONFIGURED", "BUDGET_MISCONFIGURED", "STORE_REMOVED",
+  "CAMPAIGN_REMOVED", "CAMPAIGN_ENDED",
+]);
+
+function isGoogleProblematic(c: any): boolean {
+  const primary = typeof c?.primary_status === "string" ? c.primary_status : null;
+  if (primary && GOOGLE_PROBLEMATIC_STATUSES.has(primary)) return true;
+  const reasons = Array.isArray(c?.primary_status_reasons) ? c.primary_status_reasons : [];
+  return reasons.some((r: string) => GOOGLE_PROBLEMATIC_REASONS.has(r));
+}
+
 function translateStatus(platform: string, status: string): string {
   if (!status) return "Desconhecido";
   const map = platform === "google" ? GOOGLE_STATUS_PT : META_STATUS_PT;
