@@ -439,13 +439,27 @@ async function fetchGoogleActiveCampaigns(
     let totalCost = 0;
     let totalImpressions = 0;
     let unservedCount = 0;
-    campaignsDetails.forEach(c => {
+    const PROBLEMATIC_STATUSES = new Set(["NOT_ELIGIBLE", "MISCONFIGURED", "PENDING", "ENDED"]);
+    const PROBLEMATIC_REASONS = new Set([
+      "AD_GROUP_ADS_DISAPPROVED", "AD_GROUP_ADS_NOT_ELIGIBLE", "NO_ADS", "NO_AD_GROUPS",
+      "NO_ELIGIBLE_AD_GROUPS", "APP_NOT_RELEASED", "MOBILE_APP_NO_LONGER_AVAILABLE",
+      "CONVERSION_ACTION_MISSING", "CONVERSION_TRACKING_MISSING", "LOW_QUALITY_LANDING_PAGE",
+      "MERCHANT_CENTER_ACCOUNT_SUSPENDED", "PRODUCT_FEED_HAS_NO_PRODUCTS",
+      "BIDDING_STRATEGY_MISCONFIGURED", "BUDGET_MISCONFIGURED", "STORE_REMOVED",
+      "CAMPAIGN_REMOVED", "CAMPAIGN_ENDED",
+    ]);
+    campaignsDetails.forEach((c: any) => {
       totalCost += c.cost;
       totalImpressions += c.impressions;
-      if (c.cost_2d === 0 && c.impressions_2d === 0) unservedCount++;
+      const zeroed = c.cost_2d === 0 && c.impressions_2d === 0;
+      const reasons: string[] = Array.isArray(c.primary_status_reasons) ? c.primary_status_reasons : [];
+      const problematic =
+        (c.primary_status && PROBLEMATIC_STATUSES.has(c.primary_status)) ||
+        reasons.some((r) => PROBLEMATIC_REASONS.has(r));
+      if (zeroed || problematic) unservedCount++;
     });
 
-    console.log(`📊 [CAMPAIGNS] ${campaignsDetails.length} ativas | ${unservedCount} sem veiculação (2d) | hoje R$${totalCost.toFixed(2)} / ${totalImpressions} impr.`);
+    console.log(`📊 [CAMPAIGNS] ${campaignsDetails.length} ativas | ${unservedCount} sem veiculação (2d+status) | hoje R$${totalCost.toFixed(2)} / ${totalImpressions} impr.`);
 
     return {
       cost: totalCost,
