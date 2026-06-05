@@ -203,16 +203,27 @@ Deno.serve(async (req) => {
 
       const details = Array.isArray(s.campaigns_detailed) ? s.campaigns_detailed : [];
       for (const c of details) {
-        // Critério: soma de custo e impressões de ontem+hoje (cost_2d/impressions_2d) == 0.
-        // Fallback para snapshots antigos que só tinham cost/impressions (hoje).
-        const cost = Number(c?.cost_2d ?? c?.cost ?? 0);
-        const impressions = Number(c?.impressions_2d ?? c?.impressions ?? 0);
+        // Critério de "sem veiculação":
+        //  - Meta: apenas HOJE (cost/impressions)
+        //  - Google: janela 2d (cost_2d/impressions_2d) com fallback para hoje em snapshots antigos
+        let cost: number;
+        let impressions: number;
+        if (s.platform === "meta") {
+          cost = Number(c?.cost ?? 0);
+          impressions = Number(c?.impressions ?? 0);
+        } else {
+          cost = Number(c?.cost_2d ?? c?.cost ?? 0);
+          impressions = Number(c?.impressions_2d ?? c?.impressions ?? 0);
+        }
         if (cost === 0 && impressions === 0) {
+          // Para Google, preferir primary_status + reason (ex.: "Não elegível — Todos os anúncios reprovados")
+          const googleLabel = s.platform === "google" ? buildGoogleStatusLabel(c) : null;
+          const statusDisplay = googleLabel ?? translateStatus(s.platform, String(c?.status ?? ""));
           lines.push({
             company: client.company_name,
             platform: s.platform,
             campaignName: String(c?.name ?? "Sem nome"),
-            status: String(c?.status ?? ""),
+            status: statusDisplay,
             account_id_uuid: s.account_id,
             client_id: s.client_id,
           });
