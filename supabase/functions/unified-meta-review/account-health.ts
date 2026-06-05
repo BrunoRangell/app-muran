@@ -379,7 +379,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     // Mapa de todas as campanhas ENABLED → começa zerado
     const todayStr = today; // YYYYMMDD
-    const map = new Map<string, { id: string; name: string; status: string; cost: number; impressions: number; cost_2d: number; impressions_2d: number }>();
+    const map = new Map<string, { id: string; name: string; status: string; primary_status?: string; primary_status_reasons?: string[]; cost: number; impressions: number; cost_2d: number; impressions_2d: number }>();
 
     (enabledData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
@@ -388,6 +388,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         id,
         name: r.campaign.name || 'Campanha sem nome',
         status: r.campaign.status || 'ENABLED',
+        primary_status: r.campaign.primaryStatus || undefined,
+        primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
         cost: 0,
         impressions: 0,
         cost_2d: 0,
@@ -409,6 +411,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
           id,
           name: r.campaign.name || 'Campanha sem nome',
           status: r.campaign.status || 'ENABLED',
+          primary_status: r.campaign.primaryStatus || undefined,
+          primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
           cost: 0,
           impressions: 0,
           cost_2d: 0,
