@@ -295,6 +295,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     cost_2d: number;
     impressions_2d: number;
     status: string;
+    primary_status?: string;
+    primary_status_reasons?: string[];
   }>;
 }> {
   try {
@@ -330,6 +332,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         campaign.id,
         campaign.name,
         campaign.status,
+        campaign.primary_status,
+        campaign.primary_status_reasons,
         segments.date,
         metrics.cost_micros,
         metrics.impressions
@@ -341,7 +345,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     // Query 2: todas as campanhas ENABLED (mesmo sem rows nos 2 dias)
     const enabledQuery = `
-      SELECT campaign.id, campaign.name, campaign.status
+      SELECT campaign.id, campaign.name, campaign.status, campaign.primary_status, campaign.primary_status_reasons
       FROM campaign
       WHERE campaign.status = 'ENABLED'
     `;
@@ -375,7 +379,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     // Mapa de todas as campanhas ENABLED → começa zerado
     const todayStr = today; // YYYYMMDD
-    const map = new Map<string, { id: string; name: string; status: string; cost: number; impressions: number; cost_2d: number; impressions_2d: number }>();
+    const map = new Map<string, { id: string; name: string; status: string; primary_status?: string; primary_status_reasons?: string[]; cost: number; impressions: number; cost_2d: number; impressions_2d: number }>();
 
     (enabledData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
@@ -384,6 +388,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         id,
         name: r.campaign.name || 'Campanha sem nome',
         status: r.campaign.status || 'ENABLED',
+        primary_status: r.campaign.primaryStatus || undefined,
+        primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
         cost: 0,
         impressions: 0,
         cost_2d: 0,
@@ -405,6 +411,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
           id,
           name: r.campaign.name || 'Campanha sem nome',
           status: r.campaign.status || 'ENABLED',
+          primary_status: r.campaign.primaryStatus || undefined,
+          primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
           cost: 0,
           impressions: 0,
           cost_2d: 0,
@@ -507,8 +515,15 @@ export async function processAccountHealth(accountId: string) {
     
     const today = getTodayInBrazil();
     
-    // Campanhas sem veiculação = soma de impressões E custo nos últimos 2 dias (ontem + hoje) == 0
+    // Campanhas sem veiculação:
+    //  - Meta: apenas HOJE (cost === 0 && impressions === 0)
+    //  - Google: janela de 2 dias (ontem + hoje)
     const unservedCampaigns = campaignData.campaignsDetailed.filter((campaign: any) => {
+      if (account.platform === 'meta') {
+        const c = Number(campaign.cost ?? 0);
+        const i = Number(campaign.impressions ?? 0);
+        return c === 0 && i === 0;
+      }
       const c2d = Number(campaign.cost_2d ?? 0);
       const i2d = Number(campaign.impressions_2d ?? 0);
       return c2d === 0 && i2d === 0;

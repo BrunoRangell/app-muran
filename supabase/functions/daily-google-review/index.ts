@@ -310,6 +310,8 @@ interface CampaignDetail {
   cost_2d: number;
   impressions_2d: number;
   status: string;
+  primary_status?: string;
+  primary_status_reasons?: string[];
 }
 
 interface CampaignHealthData {
@@ -346,6 +348,8 @@ async function fetchGoogleActiveCampaigns(
           campaign.id,
           campaign.name,
           campaign.status,
+          campaign.primary_status,
+          campaign.primary_status_reasons,
           segments.date,
           metrics.cost_micros,
           metrics.impressions
@@ -358,7 +362,7 @@ async function fetchGoogleActiveCampaigns(
 
     // Query: todas as campanhas ENABLED (mesmo sem rows na janela)
     const enabledQuery = `
-      SELECT campaign.id, campaign.name, campaign.status
+      SELECT campaign.id, campaign.name, campaign.status, campaign.primary_status, campaign.primary_status_reasons
       FROM campaign
       WHERE campaign.status = 'ENABLED'
     `;
@@ -392,6 +396,8 @@ async function fetchGoogleActiveCampaigns(
         id,
         name: r.campaign.name || 'Campanha sem nome',
         status: r.campaign.status || 'ENABLED',
+        primary_status: r.campaign.primaryStatus || undefined,
+        primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
         cost: 0,
         impressions: 0,
         cost_2d: 0,
@@ -412,6 +418,8 @@ async function fetchGoogleActiveCampaigns(
           id,
           name: r.campaign.name || 'Campanha sem nome',
           status: r.campaign.status || 'ENABLED',
+          primary_status: r.campaign.primaryStatus || undefined,
+          primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
           cost: 0,
           impressions: 0,
           cost_2d: 0,
