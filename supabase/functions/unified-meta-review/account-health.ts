@@ -190,63 +190,56 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       const batch = activeCampaigns.slice(i, i + batchSize);
       const batchPromises = batch.map(async (campaign: any) => {
         try {
-          const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-          
-          console.log(`🔍 DEBUG Meta: ==========================================`);
-          console.log(`🔍 DEBUG Meta: Buscando insights para campanha ${campaign.id}`);
-          console.log(`🔍 DEBUG Meta: Nome: ${campaign.name}`);
-          console.log(`🔍 DEBUG Meta: URL: ${campaignInsightsUrl.replace(accessToken, 'TOKEN_OCULTO')}`);
-          
-          const response = await fetch(campaignInsightsUrl);
-          const data = await response.json();
-          
-          console.log(`🔍 DEBUG Meta: Status HTTP: ${response.status}`);
-          console.log(`🔍 DEBUG Meta: Resposta completa:`, JSON.stringify(data, null, 2));
-          
+          const todayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+          const twoDayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${yesterday}","until":"${today}"}&access_token=${accessToken}`;
+
+          console.log(`🔍 DEBUG Meta: Buscando insights (hoje + 2d) para campanha ${campaign.id} (${campaign.name})`);
+
+          const [respToday, resp2d] = await Promise.all([fetch(todayUrl), fetch(twoDayUrl)]);
+          const [dataToday, data2d] = await Promise.all([respToday.json(), resp2d.json()]);
+
           let campaignCost = 0;
           let campaignImpressions = 0;
-          
-          if (response.ok && data.data && Array.isArray(data.data) && data.data.length > 0) {
-            const insights = data.data[0];
-            campaignCost = parseFloat(insights.spend || '0');
-            campaignImpressions = parseInt(insights.impressions || '0');
-            console.log(`✅ DEBUG Meta: Insights encontrados!`);
-            console.log(`💰 DEBUG Meta: Custo: R$ ${campaignCost.toFixed(2)}`);
-            console.log(`👁️ DEBUG Meta: Impressões: ${campaignImpressions.toLocaleString()}`);
+          let cost2d = 0;
+          let impressions2d = 0;
+
+          if (respToday.ok && Array.isArray(dataToday?.data) && dataToday.data.length > 0) {
+            const i0 = dataToday.data[0];
+            campaignCost = parseFloat(i0.spend || '0');
+            campaignImpressions = parseInt(i0.impressions || '0');
           } else {
-            console.warn(`⚠️ DEBUG Meta: SEM INSIGHTS DISPONÍVEIS`);
-            console.warn(`⚠️ DEBUG Meta: response.ok: ${response.ok}`);
-            console.warn(`⚠️ DEBUG Meta: data.data existe: ${!!data.data}`);
-            console.warn(`⚠️ DEBUG Meta: data.data é array: ${Array.isArray(data.data)}`);
-            console.warn(`⚠️ DEBUG Meta: data.data.length: ${data.data?.length || 0}`);
-            console.warn(`⚠️ DEBUG Meta: Resposta data completa:`, JSON.stringify(data, null, 2));
-            console.warn(`⚠️ DEBUG Meta: POSSÍVEL CAUSA: API Meta ainda não processou dados de hoje`);
+            console.warn(`⚠️ Meta: insights de HOJE indisponíveis para ${campaign.id}`, JSON.stringify(dataToday));
           }
-          
+
+          if (resp2d.ok && Array.isArray(data2d?.data) && data2d.data.length > 0) {
+            const i0 = data2d.data[0];
+            cost2d = parseFloat(i0.spend || '0');
+            impressions2d = parseInt(i0.impressions || '0');
+          } else {
+            console.warn(`⚠️ Meta: insights de 2d indisponíveis para ${campaign.id}`, JSON.stringify(data2d));
+          }
+
           const campaignDetail = {
             id: campaign.id,
             name: campaign.name,
             cost: campaignCost,
             impressions: campaignImpressions,
+            cost_2d: cost2d,
+            impressions_2d: impressions2d,
             status: campaign.effective_status
           };
-          
-          console.log(`📋 DEBUG Meta: Detalhes finais da campanha:`, campaignDetail);
-          console.log(`🔍 DEBUG Meta: ==========================================\n`);
-          
+
+          console.log(`📋 Meta ${campaign.name}: hoje R$${campaignCost.toFixed(2)}/${campaignImpressions} | 2d R$${cost2d.toFixed(2)}/${impressions2d}`);
           return campaignDetail;
         } catch (error) {
-          console.error(`❌ Meta: ==========================================`);
-          console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id}`);
-          console.error(`❌ Meta: Nome: ${campaign.name}`);
-          console.error(`❌ Meta: Erro: ${error.message}`);
-          console.error(`❌ Meta: Stack:`, error.stack);
-          console.error(`❌ Meta: ==========================================\n`);
+          console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id} (${campaign.name}): ${error.message}`);
           return {
             id: campaign.id,
             name: campaign.name,
             cost: 0,
             impressions: 0,
+            cost_2d: 0,
+            impressions_2d: 0,
             status: campaign.effective_status
           };
         }
