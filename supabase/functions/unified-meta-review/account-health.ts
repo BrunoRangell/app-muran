@@ -507,8 +507,15 @@ export async function processAccountHealth(accountId: string) {
     
     const today = getTodayInBrazil();
     
-    // Campanhas sem veiculação = soma de impressões E custo nos últimos 2 dias (ontem + hoje) == 0
+    // Campanhas sem veiculação:
+    //  - Meta: apenas HOJE (cost === 0 && impressions === 0)
+    //  - Google: janela de 2 dias (ontem + hoje)
     const unservedCampaigns = campaignData.campaignsDetailed.filter((campaign: any) => {
+      if (account.platform === 'meta') {
+        const c = Number(campaign.cost ?? 0);
+        const i = Number(campaign.impressions ?? 0);
+        return c === 0 && i === 0;
+      }
       const c2d = Number(campaign.cost_2d ?? 0);
       const i2d = Number(campaign.impressions_2d ?? 0);
       return c2d === 0 && i2d === 0;
