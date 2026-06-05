@@ -13,8 +13,26 @@ function getTodayInBrazil(): string {
   return `${year}-${month}-${day}`;
 }
 
+// Data de ontem no timezone brasileiro (YYYY-MM-DD)
+function getYesterdayInBrazil(): string {
+  const now = new Date();
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const brazilTime = new Date(utcTime + (-3 * 3600000));
+  brazilTime.setDate(brazilTime.getDate() - 1);
+
+  const year = brazilTime.getFullYear();
+  const month = String(brazilTime.getMonth() + 1).padStart(2, '0');
+  const day = String(brazilTime.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 function getTodayForGoogleAds(): string {
   return getTodayInBrazil().replace(/-/g, '');
+}
+
+function getYesterdayForGoogleAds(): string {
+  return getYesterdayInBrazil().replace(/-/g, '');
 }
 
 // Renovação de tokens do Google Ads
