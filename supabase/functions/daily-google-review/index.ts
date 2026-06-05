@@ -310,6 +310,8 @@ interface CampaignDetail {
   cost_2d: number;
   impressions_2d: number;
   status: string;
+  primary_status?: string;
+  primary_status_reasons?: string[];
 }
 
 interface CampaignHealthData {
