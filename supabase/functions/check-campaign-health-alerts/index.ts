@@ -378,7 +378,7 @@ Deno.serve(async (req) => {
     }
 
     if (lines.length === 0) {
-      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: snapshots.length }), {
+      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: freshSnapshots.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -451,11 +451,11 @@ Deno.serve(async (req) => {
     await supabase.from("system_logs").insert({
       event_type: "campaign_health_alerts",
       message: `Enviados ${lines.length} alertas de campanhas sem veiculação`,
-      details: { campaigns: lines.length, accounts: rows.length, checked: snapshots.length, message_id: firstMessageId, chunks: chunks.length },
+      details: { campaigns: lines.length, accounts: rows.length, checked: freshSnapshots.length, message_id: firstMessageId, chunks: chunks.length },
     });
 
     return new Response(
-      JSON.stringify({ ok: true, campaigns: lines.length, accounts: rows.length, checked: snapshots.length, message_id: firstMessageId }),
+      JSON.stringify({ ok: true, campaigns: lines.length, accounts: rows.length, checked: freshSnapshots.length, message_id: firstMessageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
