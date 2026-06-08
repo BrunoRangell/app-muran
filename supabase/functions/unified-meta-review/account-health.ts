@@ -206,33 +206,54 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       const batch = activeCampaigns.slice(i, i + batchSize);
       const batchPromises = batch.map(async (campaign: any) => {
         try {
-          const todayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-          const twoDayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${yesterday}","until":"${today}"}&access_token=${accessToken}`;
+          const windowStart = shiftIsoDate(today, -META_ZERO_STREAK_WINDOW_DAYS);
+          // Uma única chamada com breakdown diário cobre hoje + 10 dias anteriores
+          const dailyUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
 
-          console.log(`🔍 DEBUG Meta: Buscando insights (hoje + 2d) para campanha ${campaign.id} (${campaign.name})`);
+          console.log(`🔍 DEBUG Meta: Buscando insights diários (${windowStart}..${today}) para campanha ${campaign.id} (${campaign.name})`);
 
-          const [respToday, resp2d] = await Promise.all([fetch(todayUrl), fetch(twoDayUrl)]);
-          const [dataToday, data2d] = await Promise.all([respToday.json(), resp2d.json()]);
+          const respDaily = await fetch(dailyUrl);
+          const dataDaily = await respDaily.json();
 
           let campaignCost = 0;
           let campaignImpressions = 0;
           let cost2d = 0;
           let impressions2d = 0;
+          let zeroDaysStreak = 0;
 
-          if (respToday.ok && Array.isArray(dataToday?.data) && dataToday.data.length > 0) {
-            const i0 = dataToday.data[0];
-            campaignCost = parseFloat(i0.spend || '0');
-            campaignImpressions = parseInt(i0.impressions || '0');
-          } else {
-            console.warn(`⚠️ Meta: insights de HOJE indisponíveis para ${campaign.id}`, JSON.stringify(dataToday));
-          }
+          if (respDaily.ok && Array.isArray(dataDaily?.data)) {
+            // Map por data: { 'YYYY-MM-DD': { cost, impressions } }
+            const daily = new Map<string, { cost: number; impressions: number }>();
+            for (const row of dataDaily.data) {
+              const date = row.date_start || row.date_stop;
+              if (!date) continue;
+              daily.set(date, {
+                cost: parseFloat(row.spend || '0'),
+                impressions: parseInt(row.impressions || '0'),
+              });
+            }
 
-          if (resp2d.ok && Array.isArray(data2d?.data) && data2d.data.length > 0) {
-            const i0 = data2d.data[0];
-            cost2d = parseFloat(i0.spend || '0');
-            impressions2d = parseInt(i0.impressions || '0');
+            const todayEntry = daily.get(today);
+            if (todayEntry) {
+              campaignCost = todayEntry.cost;
+              campaignImpressions = todayEntry.impressions;
+            }
+            const yesterdayEntry = daily.get(yesterday);
+            cost2d = campaignCost + (yesterdayEntry?.cost ?? 0);
+            impressions2d = campaignImpressions + (yesterdayEntry?.impressions ?? 0);
+
+            // Calcular streak (a partir de ontem, andando para trás)
+            for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
+              const day = shiftIsoDate(today, -k);
+              const d = daily.get(day);
+              if (!d || (d.cost === 0 && d.impressions === 0)) {
+                zeroDaysStreak++;
+              } else {
+                break;
+              }
+            }
           } else {
-            console.warn(`⚠️ Meta: insights de 2d indisponíveis para ${campaign.id}`, JSON.stringify(data2d));
+            console.warn(`⚠️ Meta: insights diários indisponíveis para ${campaign.id}`, JSON.stringify(dataDaily));
           }
 
           const campaignDetail = {
@@ -242,10 +263,11 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             impressions: campaignImpressions,
             cost_2d: cost2d,
             impressions_2d: impressions2d,
+            zero_days_streak: zeroDaysStreak,
             status: campaign.effective_status
           };
 
-          console.log(`📋 Meta ${campaign.name}: hoje R$${campaignCost.toFixed(2)}/${campaignImpressions} | 2d R$${cost2d.toFixed(2)}/${impressions2d}`);
+          console.log(`📋 Meta ${campaign.name}: hoje R$${campaignCost.toFixed(2)}/${campaignImpressions} | 2d R$${cost2d.toFixed(2)}/${impressions2d} | streak ${zeroDaysStreak}d`);
           return campaignDetail;
         } catch (error) {
           console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id} (${campaign.name}): ${error.message}`);
@@ -256,10 +278,12 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             impressions: 0,
             cost_2d: 0,
             impressions_2d: 0,
+            zero_days_streak: 0,
             status: campaign.effective_status
           };
         }
       });
+
       
       const batchResults = await Promise.all(batchPromises);
       campaignsDetailed.push(...batchResults);
