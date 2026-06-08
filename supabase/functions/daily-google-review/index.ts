@@ -413,7 +413,8 @@ async function fetchGoogleActiveCampaigns(
     (metricsData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
       const id = (r.campaign.id || 'unknown').toString();
-      const dateStr = (r.segments?.date || '').replace(/-/g, '');
+      // segments.date vem como YYYY-MM-DD; targetDate também está em YYYY-MM-DD.
+      const dateStr = r.segments?.date || '';
       const cost = r.metrics?.costMicros ? r.metrics.costMicros / 1e6 : 0;
       const impressions = r.metrics?.impressions ? parseInt(r.metrics.impressions) : 0;
 
