@@ -355,9 +355,10 @@ async function fetchGoogleActiveCampaigns(
 ): Promise<CampaignHealthData> {
   try {
     const yesterday = yesterdayFromToday(targetDate);
-    console.log(`📊 [CAMPAIGNS] Buscando campanhas para janela ${yesterday}..${targetDate} (conta ${googleAccountId})`);
+    const windowStart = shiftDate(targetDate, -(ZERO_STREAK_WINDOW_DAYS)); // inclui hoje + 10 dias anteriores
+    console.log(`📊 [CAMPAIGNS] Buscando campanhas para janela ${windowStart}..${targetDate} (conta ${googleAccountId})`);
 
-    // Query métricas por (campanha, dia)
+    // Query métricas por (campanha, dia) — janela estendida para calcular dias sem veiculação
     const metricsQuery = `
       SELECT
           campaign.id,
@@ -372,7 +373,7 @@ async function fetchGoogleActiveCampaigns(
           campaign
       WHERE
           campaign.status = 'ENABLED'
-          AND segments.date BETWEEN '${yesterday}' AND '${targetDate}'
+          AND segments.date BETWEEN '${windowStart}' AND '${targetDate}'
     `;
 
     // Query: todas as campanhas ENABLED (mesmo sem rows na janela)
@@ -402,7 +403,8 @@ async function fetchGoogleActiveCampaigns(
     const enabledData = await respEnabled.json();
     const metricsData = respMetrics.ok ? await respMetrics.json() : { results: [] };
 
-    const map = new Map<string, CampaignDetail>();
+    // map: id -> { detail, dailyCost: Map<YYYY-MM-DD, number>, dailyImpr: Map<YYYY-MM-DD, number> }
+    const map = new Map<string, CampaignDetail & { _daily: Map<string, { cost: number; impressions: number }> }>();
 
     (enabledData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
@@ -417,13 +419,14 @@ async function fetchGoogleActiveCampaigns(
         impressions: 0,
         cost_2d: 0,
         impressions_2d: 0,
+        zero_days_streak: 0,
+        _daily: new Map(),
       });
     });
 
     (metricsData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
       const id = (r.campaign.id || 'unknown').toString();
-      // segments.date vem como YYYY-MM-DD; targetDate também está em YYYY-MM-DD.
       const dateStr = r.segments?.date || '';
       const cost = r.metrics?.costMicros ? r.metrics.costMicros / 1e6 : 0;
       const impressions = r.metrics?.impressions ? parseInt(r.metrics.impressions) : 0;
@@ -440,18 +443,46 @@ async function fetchGoogleActiveCampaigns(
           impressions: 0,
           cost_2d: 0,
           impressions_2d: 0,
+          zero_days_streak: 0,
+          _daily: new Map(),
         };
         map.set(id, entry);
       }
-      entry.cost_2d += cost;
-      entry.impressions_2d += impressions;
-      if (dateStr === targetDate) {
+
+      // Acumular diário (chave: YYYY-MM-DD, normalizado)
+      const dayKey = dateStr;
+      const prev = entry._daily.get(dayKey) ?? { cost: 0, impressions: 0 };
+      entry._daily.set(dayKey, { cost: prev.cost + cost, impressions: prev.impressions + impressions });
+
+      // cost_2d = hoje + ontem
+      if (dayKey === targetDate || dayKey === yesterday) {
+        entry.cost_2d += cost;
+        entry.impressions_2d += impressions;
+      }
+      if (dayKey === targetDate) {
         entry.cost += cost;
         entry.impressions += impressions;
       }
     });
 
-    const campaignsDetails = Array.from(map.values());
+    // Calcular zero_days_streak (a partir de ontem, andando para trás). Cap em ZERO_STREAK_WINDOW_DAYS.
+    for (const entry of map.values()) {
+      let streak = 0;
+      for (let i = 1; i <= ZERO_STREAK_WINDOW_DAYS; i++) {
+        const day = shiftDate(targetDate, -i);
+        const d = entry._daily.get(day);
+        if (!d || (d.cost === 0 && d.impressions === 0)) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      entry.zero_days_streak = streak;
+    }
+
+    // Remover campo interno antes de retornar
+    const campaignsDetails: CampaignDetail[] = Array.from(map.values()).map(({ _daily, ...rest }) => rest);
+
     let totalCost = 0;
     let totalImpressions = 0;
     let unservedCount = 0;
@@ -475,7 +506,7 @@ async function fetchGoogleActiveCampaigns(
       if (zeroed || problematic) unservedCount++;
     });
 
-    console.log(`📊 [CAMPAIGNS] ${campaignsDetails.length} ativas | ${unservedCount} sem veiculação (2d+status) | hoje R$${totalCost.toFixed(2)} / ${totalImpressions} impr.`);
+    console.log(`📊 [CAMPAIGNS] ${campaignsDetails.length} ativas | ${unservedCount} sem veiculação | hoje R$${totalCost.toFixed(2)} / ${totalImpressions} impr.`);
 
     return {
       cost: totalCost,
@@ -490,6 +521,7 @@ async function fetchGoogleActiveCampaigns(
     return { cost: 0, impressions: 0, activeCampaigns: 0, unservedCampaigns: 0, campaignsDetails: [] };
   }
 }
+
 
 // Função para salvar dados de saúde das campanhas no campaign_health
 async function updateGoogleCampaignHealth(
