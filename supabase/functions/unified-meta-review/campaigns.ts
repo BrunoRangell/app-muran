@@ -1,5 +1,7 @@
 import { CampaignHealthData } from "./types.ts";
 
+const META_ZERO_STREAK_WINDOW_DAYS = 10;
+
 // Função para obter a data atual no timezone brasileiro
 function getTodayInBrazil(): string {
   const now = new Date();
@@ -14,6 +16,17 @@ function getTodayInBrazil(): string {
   console.log(`🇧🇷 [CAMPAIGNS] Data atual no timezone brasileiro: ${result}`);
   return result;
 }
+
+function shiftIsoDate(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 
 // Buscar dados do Meta Ads para campanhas
 async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number; campaignsDetails: any[] }> {
@@ -86,27 +99,57 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       console.log(`💰 [CAMPAIGNS] Custo: R$ ${totalCost}, Impressões: ${totalImpressions}`);
     }
 
-    // Buscar dados detalhados de cada campanha
+    // Buscar dados detalhados de cada campanha (com janela diária para calcular streak sem veiculação)
+    const yesterday = shiftIsoDate(today, -1);
+    const windowStart = shiftIsoDate(today, -META_ZERO_STREAK_WINDOW_DAYS);
     const campaignsDetails = [];
     for (const campaign of activeCampaigns) {
       try {
-        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
         const campaignResponse = await fetch(campaignInsightsUrl);
         const campaignInsights = await campaignResponse.json();
-        
+
         let campaignCost = 0;
         let campaignImpressions = 0;
-        
-        if (campaignInsights.data && campaignInsights.data.length > 0) {
-          campaignCost = parseFloat(campaignInsights.data[0].spend || '0');
-          campaignImpressions = parseInt(campaignInsights.data[0].impressions || '0');
+        let cost2d = 0;
+        let impressions2d = 0;
+        let zeroDaysStreak = 0;
+
+        if (Array.isArray(campaignInsights?.data)) {
+          const daily = new Map<string, { cost: number; impressions: number }>();
+          for (const row of campaignInsights.data) {
+            const date = row.date_start || row.date_stop;
+            if (!date) continue;
+            daily.set(date, {
+              cost: parseFloat(row.spend || '0'),
+              impressions: parseInt(row.impressions || '0'),
+            });
+          }
+          const todayEntry = daily.get(today);
+          if (todayEntry) {
+            campaignCost = todayEntry.cost;
+            campaignImpressions = todayEntry.impressions;
+          }
+          const yEntry = daily.get(yesterday);
+          cost2d = campaignCost + (yEntry?.cost ?? 0);
+          impressions2d = campaignImpressions + (yEntry?.impressions ?? 0);
+
+          for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
+            const day = shiftIsoDate(today, -k);
+            const d = daily.get(day);
+            if (!d || (d.cost === 0 && d.impressions === 0)) zeroDaysStreak++;
+            else break;
+          }
         }
-        
+
         campaignsDetails.push({
           id: campaign.id,
           name: campaign.name,
           cost: campaignCost,
           impressions: campaignImpressions,
+          cost_2d: cost2d,
+          impressions_2d: impressions2d,
+          zero_days_streak: zeroDaysStreak,
           status: campaign.effective_status
         });
       } catch (error) {
@@ -116,10 +159,14 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
           name: campaign.name,
           cost: 0,
           impressions: 0,
+          cost_2d: 0,
+          impressions_2d: 0,
+          zero_days_streak: 0,
           status: campaign.effective_status
         });
       }
     }
+
     
     return {
       cost: totalCost,

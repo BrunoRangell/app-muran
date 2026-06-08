@@ -106,6 +106,20 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   return newAccessToken;
 }
 
+// Janela para cálculo de "dias sem veiculação"
+const META_ZERO_STREAK_WINDOW_DAYS = 10;
+
+function shiftIsoDate(dateStr: string, deltaDays: number): string {
+  // dateStr esperado em YYYY-MM-DD
+  const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Buscar dados do Meta Ads com detalhes de cada campanha
 async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ 
   cost: number; 
@@ -118,9 +132,11 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     impressions: number;
     cost_2d: number;
     impressions_2d: number;
+    zero_days_streak: number;
     status: string;
   }>;
 }> {
+
   try {
     const today = getTodayInBrazil();
     const yesterday = getYesterdayInBrazil();
@@ -190,33 +206,54 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       const batch = activeCampaigns.slice(i, i + batchSize);
       const batchPromises = batch.map(async (campaign: any) => {
         try {
-          const todayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-          const twoDayUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${yesterday}","until":"${today}"}&access_token=${accessToken}`;
+          const windowStart = shiftIsoDate(today, -META_ZERO_STREAK_WINDOW_DAYS);
+          // Uma única chamada com breakdown diário cobre hoje + 10 dias anteriores
+          const dailyUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
 
-          console.log(`🔍 DEBUG Meta: Buscando insights (hoje + 2d) para campanha ${campaign.id} (${campaign.name})`);
+          console.log(`🔍 DEBUG Meta: Buscando insights diários (${windowStart}..${today}) para campanha ${campaign.id} (${campaign.name})`);
 
-          const [respToday, resp2d] = await Promise.all([fetch(todayUrl), fetch(twoDayUrl)]);
-          const [dataToday, data2d] = await Promise.all([respToday.json(), resp2d.json()]);
+          const respDaily = await fetch(dailyUrl);
+          const dataDaily = await respDaily.json();
 
           let campaignCost = 0;
           let campaignImpressions = 0;
           let cost2d = 0;
           let impressions2d = 0;
+          let zeroDaysStreak = 0;
 
-          if (respToday.ok && Array.isArray(dataToday?.data) && dataToday.data.length > 0) {
-            const i0 = dataToday.data[0];
-            campaignCost = parseFloat(i0.spend || '0');
-            campaignImpressions = parseInt(i0.impressions || '0');
-          } else {
-            console.warn(`⚠️ Meta: insights de HOJE indisponíveis para ${campaign.id}`, JSON.stringify(dataToday));
-          }
+          if (respDaily.ok && Array.isArray(dataDaily?.data)) {
+            // Map por data: { 'YYYY-MM-DD': { cost, impressions } }
+            const daily = new Map<string, { cost: number; impressions: number }>();
+            for (const row of dataDaily.data) {
+              const date = row.date_start || row.date_stop;
+              if (!date) continue;
+              daily.set(date, {
+                cost: parseFloat(row.spend || '0'),
+                impressions: parseInt(row.impressions || '0'),
+              });
+            }
 
-          if (resp2d.ok && Array.isArray(data2d?.data) && data2d.data.length > 0) {
-            const i0 = data2d.data[0];
-            cost2d = parseFloat(i0.spend || '0');
-            impressions2d = parseInt(i0.impressions || '0');
+            const todayEntry = daily.get(today);
+            if (todayEntry) {
+              campaignCost = todayEntry.cost;
+              campaignImpressions = todayEntry.impressions;
+            }
+            const yesterdayEntry = daily.get(yesterday);
+            cost2d = campaignCost + (yesterdayEntry?.cost ?? 0);
+            impressions2d = campaignImpressions + (yesterdayEntry?.impressions ?? 0);
+
+            // Calcular streak (a partir de ontem, andando para trás)
+            for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
+              const day = shiftIsoDate(today, -k);
+              const d = daily.get(day);
+              if (!d || (d.cost === 0 && d.impressions === 0)) {
+                zeroDaysStreak++;
+              } else {
+                break;
+              }
+            }
           } else {
-            console.warn(`⚠️ Meta: insights de 2d indisponíveis para ${campaign.id}`, JSON.stringify(data2d));
+            console.warn(`⚠️ Meta: insights diários indisponíveis para ${campaign.id}`, JSON.stringify(dataDaily));
           }
 
           const campaignDetail = {
@@ -226,10 +263,11 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             impressions: campaignImpressions,
             cost_2d: cost2d,
             impressions_2d: impressions2d,
+            zero_days_streak: zeroDaysStreak,
             status: campaign.effective_status
           };
 
-          console.log(`📋 Meta ${campaign.name}: hoje R$${campaignCost.toFixed(2)}/${campaignImpressions} | 2d R$${cost2d.toFixed(2)}/${impressions2d}`);
+          console.log(`📋 Meta ${campaign.name}: hoje R$${campaignCost.toFixed(2)}/${campaignImpressions} | 2d R$${cost2d.toFixed(2)}/${impressions2d} | streak ${zeroDaysStreak}d`);
           return campaignDetail;
         } catch (error) {
           console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id} (${campaign.name}): ${error.message}`);
@@ -240,10 +278,12 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             impressions: 0,
             cost_2d: 0,
             impressions_2d: 0,
+            zero_days_streak: 0,
             status: campaign.effective_status
           };
         }
       });
+
       
       const batchResults = await Promise.all(batchPromises);
       campaignsDetailed.push(...batchResults);
@@ -282,6 +322,19 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
   }
 }
 
+// Helper para deslocar YYYYMMDD em N dias
+function shiftCompactDate(dateStr: string, deltaDays: number): string {
+  const y = parseInt(dateStr.slice(0, 4), 10);
+  const m = parseInt(dateStr.slice(4, 6), 10) - 1;
+  const d = parseInt(dateStr.slice(6, 8), 10);
+  const dt = new Date(Date.UTC(y, m, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
+}
+
 // Buscar dados do Google Ads com detalhes de cada campanha
 async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ 
   cost: number; 
@@ -294,6 +347,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     impressions: number;
     cost_2d: number;
     impressions_2d: number;
+    zero_days_streak: number;
     status: string;
     primary_status?: string;
     primary_status_reasons?: string[];
@@ -322,11 +376,14 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
       return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetailed: [] };
     }
 
-    const today = getTodayForGoogleAds();
-    const yesterday = getYesterdayForGoogleAds();
-    console.log(`🔍 DEBUG Google: Iniciando busca para conta ${clientCustomerId} - Hoje: ${today} | Ontem: ${yesterday}`);
+    const today = getTodayForGoogleAds(); // YYYYMMDD
+    const yesterday = getYesterdayForGoogleAds(); // YYYYMMDD
+    const windowStart = shiftCompactDate(today, -META_ZERO_STREAK_WINDOW_DAYS); // 10 dias atrás
+    // Formato YYYY-MM-DD para o BETWEEN do GAQL
+    const fmt = (s: string) => `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+    console.log(`🔍 DEBUG Google: Janela ${fmt(windowStart)}..${fmt(today)} (conta ${clientCustomerId})`);
 
-    // Query 1: métricas por (campanha, dia) na janela ontem+hoje
+    // Query 1: métricas diárias na janela de 10 dias
     const metricsQuery = `
       SELECT 
         campaign.id,
@@ -340,10 +397,10 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
       FROM campaign 
       WHERE 
         campaign.status = 'ENABLED'
-        AND segments.date BETWEEN '${yesterday}' AND '${today}'
+        AND segments.date BETWEEN '${fmt(windowStart)}' AND '${fmt(today)}'
     `;
 
-    // Query 2: todas as campanhas ENABLED (mesmo sem rows nos 2 dias)
+    // Query 2: todas as campanhas ENABLED (mesmo sem rows na janela)
     const enabledQuery = `
       SELECT campaign.id, campaign.name, campaign.status, campaign.primary_status, campaign.primary_status_reasons
       FROM campaign
@@ -377,9 +434,14 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     const enabledData = await respEnabled.json();
     const metricsData = respMetrics.ok ? await respMetrics.json() : { results: [] };
 
-    // Mapa de todas as campanhas ENABLED → começa zerado
-    const todayStr = today; // YYYYMMDD
-    const map = new Map<string, { id: string; name: string; status: string; primary_status?: string; primary_status_reasons?: string[]; cost: number; impressions: number; cost_2d: number; impressions_2d: number }>();
+    // map com daily acumulado
+    type Entry = {
+      id: string; name: string; status: string; primary_status?: string; primary_status_reasons?: string[];
+      cost: number; impressions: number; cost_2d: number; impressions_2d: number;
+      zero_days_streak: number;
+      _daily: Map<string, { cost: number; impressions: number }>;
+    };
+    const map = new Map<string, Entry>();
 
     (enabledData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
@@ -390,18 +452,16 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         status: r.campaign.status || 'ENABLED',
         primary_status: r.campaign.primaryStatus || undefined,
         primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
-        cost: 0,
-        impressions: 0,
-        cost_2d: 0,
-        impressions_2d: 0,
+        cost: 0, impressions: 0, cost_2d: 0, impressions_2d: 0,
+        zero_days_streak: 0,
+        _daily: new Map(),
       });
     });
 
-    // Acumular métricas por campanha
     (metricsData.results || []).forEach((r: any) => {
       if (!r.campaign) return;
       const id = r.campaign.id.toString();
-      const date = (r.segments?.date || '').replace(/-/g, '');
+      const date = (r.segments?.date || '').replace(/-/g, ''); // YYYYMMDD
       const cost = (r.metrics?.costMicros || 0) / 1000000;
       const impressions = parseInt(r.metrics?.impressions || 0);
 
@@ -413,28 +473,47 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
           status: r.campaign.status || 'ENABLED',
           primary_status: r.campaign.primaryStatus || undefined,
           primary_status_reasons: Array.isArray(r.campaign.primaryStatusReasons) ? r.campaign.primaryStatusReasons : [],
-          cost: 0,
-          impressions: 0,
-          cost_2d: 0,
-          impressions_2d: 0,
+          cost: 0, impressions: 0, cost_2d: 0, impressions_2d: 0,
+          zero_days_streak: 0,
+          _daily: new Map(),
         };
         map.set(id, entry);
       }
-      entry.cost_2d += cost;
-      entry.impressions_2d += impressions;
-      if (date === todayStr) {
+      const prev = entry._daily.get(date) ?? { cost: 0, impressions: 0 };
+      entry._daily.set(date, { cost: prev.cost + cost, impressions: prev.impressions + impressions });
+
+      if (date === today || date === yesterday) {
+        entry.cost_2d += cost;
+        entry.impressions_2d += impressions;
+      }
+      if (date === today) {
         entry.cost += cost;
         entry.impressions += impressions;
       }
     });
 
-    const campaignsDetailed = Array.from(map.values());
+    // Calcular streak
+    for (const entry of map.values()) {
+      let streak = 0;
+      for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
+        const day = shiftCompactDate(today, -k);
+        const d = entry._daily.get(day);
+        if (!d || (d.cost === 0 && d.impressions === 0)) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      entry.zero_days_streak = streak;
+    }
+
+    const campaignsDetailed = Array.from(map.values()).map(({ _daily, ...rest }) => rest);
     let totalCost = 0;
     let totalImpressions = 0;
     campaignsDetailed.forEach(c => {
       totalCost += c.cost;
       totalImpressions += c.impressions;
-      console.log(`📊 Google ${c.name}: hoje R$${c.cost.toFixed(2)}/${c.impressions} | 2d R$${c.cost_2d.toFixed(2)}/${c.impressions_2d}`);
+      console.log(`📊 Google ${c.name}: hoje R$${c.cost.toFixed(2)}/${c.impressions} | 2d R$${c.cost_2d.toFixed(2)}/${c.impressions_2d} | streak ${c.zero_days_streak}d`);
     });
 
     console.log(`💰 Google: Custo HOJE R$${totalCost.toFixed(2)}, Impressões HOJE: ${totalImpressions.toLocaleString()}`);
@@ -452,6 +531,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetailed: [] };
   }
 }
+
 
 export async function processAccountHealth(accountId: string) {
   const processStartTime = Date.now();
