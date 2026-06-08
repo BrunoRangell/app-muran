@@ -166,8 +166,21 @@ const GOOGLE_STATUS_SHORT_PT: Record<string, string> = {
   ENDED: "Encerrada",
 };
 
+const ZERO_STREAK_CAP = 10;
+
+function formatZeroStreak(c: any): string | null {
+  const raw = Number(c?.zero_days_streak);
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  if (raw >= ZERO_STREAK_CAP) return `Sem veiculação (${ZERO_STREAK_CAP}+ dias)`;
+  if (raw === 1) return "Sem veiculação (1 dia)";
+  return `Sem veiculação (${raw} dias)`;
+}
+
 function buildAlertReason(platform: string, c: any, zeroed2d: boolean): string {
-  if (platform === "meta") return "Sem gasto hoje";
+  if (platform === "meta") {
+    // Meta: usar streak se disponível; senão fallback
+    return formatZeroStreak(c) ?? "Sem gasto hoje";
+  }
   // Google: prioridade 1 — reason problemática mapeada
   const reasons: string[] = Array.isArray(c?.primary_status_reasons) ? c.primary_status_reasons : [];
   for (const r of reasons) {
@@ -176,10 +189,13 @@ function buildAlertReason(platform: string, c: any, zeroed2d: boolean): string {
   // 2 — primary_status problemático
   const primary = typeof c?.primary_status === "string" ? c.primary_status : null;
   if (primary && GOOGLE_STATUS_SHORT_PT[primary]) return GOOGLE_STATUS_SHORT_PT[primary];
-  // 3 — somente zerado 2 dias
+  // 3 — sem veiculação: usar streak quando disponível
+  const streakLabel = formatZeroStreak(c);
+  if (streakLabel) return streakLabel;
   if (zeroed2d) return "Sem veiculação (2 dias)";
   return "Sem veiculação";
 }
+
 
 async function sendDiscordMessage(channelId: string, token: string, content: string) {
   return fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
