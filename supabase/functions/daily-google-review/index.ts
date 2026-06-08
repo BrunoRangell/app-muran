@@ -322,14 +322,19 @@ interface CampaignHealthData {
   campaignsDetails: CampaignDetail[];
 }
 
-// Calcular ontem em YYYYMMDD a partir de hoje em YYYYMMDD
-function yesterdayFromToday(todayYYYYMMDD: string): string {
-  const y = parseInt(todayYYYYMMDD.slice(0, 4));
-  const m = parseInt(todayYYYYMMDD.slice(4, 6)) - 1;
-  const d = parseInt(todayYYYYMMDD.slice(6, 8));
+// Calcular ontem a partir de uma data. Aceita YYYY-MM-DD ou YYYYMMDD e devolve no mesmo formato.
+function yesterdayFromToday(todayStr: string): string {
+  const hasDash = todayStr.includes('-');
+  const compact = hasDash ? todayStr.replace(/-/g, '') : todayStr;
+  const y = parseInt(compact.slice(0, 4), 10);
+  const m = parseInt(compact.slice(4, 6), 10) - 1;
+  const d = parseInt(compact.slice(6, 8), 10);
   const dt = new Date(Date.UTC(y, m, d));
   dt.setUTCDate(dt.getUTCDate() - 1);
-  return `${dt.getUTCFullYear()}${String(dt.getUTCMonth() + 1).padStart(2, '0')}${String(dt.getUTCDate()).padStart(2, '0')}`;
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return hasDash ? `${yyyy}-${mm}-${dd}` : `${yyyy}${mm}${dd}`;
 }
 
 // Buscar campanhas ENABLED com métricas de HOJE e ONTEM (janela 2 dias)
