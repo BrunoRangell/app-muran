@@ -1,5 +1,7 @@
 import { CampaignHealthData } from "./types.ts";
 
+const META_ZERO_STREAK_WINDOW_DAYS = 10;
+
 // Função para obter a data atual no timezone brasileiro
 function getTodayInBrazil(): string {
   const now = new Date();
@@ -14,6 +16,17 @@ function getTodayInBrazil(): string {
   console.log(`🇧🇷 [CAMPAIGNS] Data atual no timezone brasileiro: ${result}`);
   return result;
 }
+
+function shiftIsoDate(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 
 // Buscar dados do Meta Ads para campanhas
 async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number; campaignsDetails: any[] }> {
