@@ -307,18 +307,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!snapshots || snapshots.length === 0) {
+    if (!freshSnapshots || freshSnapshots.length === 0) {
       await supabase.from("system_logs").insert({
         event_type: "campaign_health_alerts",
         message: "Verificação executada — nenhuma campanha sem veiculação",
-        details: { date: today },
+        details: { date: today, refresh: refreshSummary, stale_skipped: staleAccounts.length },
       });
-      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: 0 }), {
+      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: 0, stale_skipped: staleAccounts.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const clientIds = [...new Set(snapshots.map((s) => s.client_id))];
+    const clientIds = [...new Set(freshSnapshots.map((s) => s.client_id))];
     const { data: clients } = await supabase
       .from("clients")
       .select("id, company_name, status")
@@ -337,7 +337,7 @@ Deno.serve(async (req) => {
     const lines: Line[] = [];
     const accountSummary = new Map<string, { client_id: string; unserved: number; total_active: number }>();
 
-    for (const s of snapshots) {
+    for (const s of freshSnapshots) {
       const client = clientMap.get(s.client_id);
       if (!client || client.status !== "active") continue;
 
