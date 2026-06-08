@@ -106,6 +106,20 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   return newAccessToken;
 }
 
+// Janela para cálculo de "dias sem veiculação"
+const META_ZERO_STREAK_WINDOW_DAYS = 10;
+
+function shiftIsoDate(dateStr: string, deltaDays: number): string {
+  // dateStr esperado em YYYY-MM-DD
+  const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Buscar dados do Meta Ads com detalhes de cada campanha
 async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ 
   cost: number; 
@@ -118,9 +132,11 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     impressions: number;
     cost_2d: number;
     impressions_2d: number;
+    zero_days_streak: number;
     status: string;
   }>;
 }> {
+
   try {
     const today = getTodayInBrazil();
     const yesterday = getYesterdayInBrazil();
