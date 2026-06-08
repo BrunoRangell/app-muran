@@ -189,14 +189,80 @@ async function sendDiscordMessage(channelId: string, token: string, content: str
   });
 }
 
+async function refreshSnapshots(
+  supabase: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  serviceKey: string,
+  today: string,
+): Promise<Record<string, unknown>> {
+  const t0 = Date.now();
+  // Clientes ativos com contas Meta/Google ativas
+  const { data: accounts } = await supabase
+    .from("client_accounts")
+    .select("client_id, platform, status, account_id, clients!inner(status)")
+    .eq("status", "active")
+    .neq("account_id", "")
+    .not("account_id", "is", null)
+    .eq("clients.status", "active");
+
+  const metaSet = new Set<string>();
+  const googleSet = new Set<string>();
+  for (const a of accounts ?? []) {
+    if (a.platform === "meta") metaSet.add(a.client_id);
+    else if (a.platform === "google") googleSet.add(a.client_id);
+  }
+  const metaClientIds = [...metaSet];
+  const googleClientIds = [...googleSet];
+
+  const headers = {
+    Authorization: `Bearer ${serviceKey}`,
+    apikey: serviceKey,
+    "Content-Type": "application/json",
+  };
+
+  const runMeta = metaClientIds.length === 0
+    ? Promise.resolve({ ok: true, skipped: true })
+    : fetch(`${supabaseUrl}/functions/v1/unified-meta-review`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ clientIds: metaClientIds, reviewDate: today, source: "automatic" }),
+        signal: AbortSignal.timeout(240000),
+      }).then(async (r) => ({ ok: r.ok, status: r.status, body: (await r.text()).slice(0, 300) }))
+        .catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+
+  const runGoogle = googleClientIds.length === 0
+    ? Promise.resolve({ ok: true, skipped: true })
+    : fetch(`${supabaseUrl}/functions/v1/daily-google-review`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ clientIds: googleClientIds, reviewDate: today, source: "automatic" }),
+        signal: AbortSignal.timeout(240000),
+      }).then(async (r) => ({ ok: r.ok, status: r.status, body: (await r.text()).slice(0, 300) }))
+        .catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+
+  const [metaResult, googleResult] = await Promise.all([runMeta, runGoogle]);
+  const summary = {
+    duration_ms: Date.now() - t0,
+    meta_clients: metaClientIds.length,
+    google_clients: googleClientIds.length,
+    meta: metaResult,
+    google: googleResult,
+  };
+  await supabase.from("system_logs").insert({
+    event_type: "campaign_health_alerts_refresh",
+    message: "Refresh de snapshots antes do alerta concluído",
+    details: summary,
+  });
+  return summary;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     const discordToken = Deno.env.get("DISCORD_TOKEN");
     const channelId = Deno.env.get("DISCORD_LOW_BALANCE_CHANNEL_ID");
@@ -210,28 +276,49 @@ Deno.serve(async (req) => {
 
     const today = todayBR();
 
-    // Buscar snapshots de hoje com problemas (Meta + Google)
+    // 1) Atualizar snapshots antes de ler campaign_health
+    const refreshSummary = await refreshSnapshots(supabase, supabaseUrl, serviceKey, today);
+
+    // 2) Buscar snapshots de hoje com problemas (Meta + Google)
     const { data: snapshots, error: snapErr } = await supabase
       .from("campaign_health")
-      .select("id, client_id, account_id, platform, has_account, active_campaigns_count, unserved_campaigns_count, campaigns_detailed")
+      .select("id, client_id, account_id, platform, has_account, active_campaigns_count, unserved_campaigns_count, campaigns_detailed, updated_at")
       .eq("snapshot_date", today)
       .eq("has_account", true)
       .gt("unserved_campaigns_count", 0);
 
     if (snapErr) throw snapErr;
 
-    if (!snapshots || snapshots.length === 0) {
+    // 3) Filtrar snapshots velhos (>30 min) — só consideramos refrescados pelo passo 1
+    const FRESH_WINDOW_MS = 30 * 60 * 1000;
+    const now = Date.now();
+    const staleAccounts: Array<{ account_id: string; updated_at: string | null }> = [];
+    const freshSnapshots = (snapshots ?? []).filter((s) => {
+      const updatedAt = s.updated_at ? new Date(s.updated_at).getTime() : 0;
+      const isFresh = updatedAt > 0 && (now - updatedAt) <= FRESH_WINDOW_MS;
+      if (!isFresh) staleAccounts.push({ account_id: s.account_id, updated_at: s.updated_at });
+      return isFresh;
+    });
+    if (staleAccounts.length > 0) {
+      await supabase.from("system_logs").insert({
+        event_type: "campaign_health_alerts_stale_skip",
+        message: `Ignoradas ${staleAccounts.length} contas com snapshot defasado (>30min)`,
+        details: { stale_count: staleAccounts.length, stale: staleAccounts.slice(0, 20) },
+      });
+    }
+
+    if (!freshSnapshots || freshSnapshots.length === 0) {
       await supabase.from("system_logs").insert({
         event_type: "campaign_health_alerts",
         message: "Verificação executada — nenhuma campanha sem veiculação",
-        details: { date: today },
+        details: { date: today, refresh: refreshSummary, stale_skipped: staleAccounts.length },
       });
-      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: 0 }), {
+      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: 0, stale_skipped: staleAccounts.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const clientIds = [...new Set(snapshots.map((s) => s.client_id))];
+    const clientIds = [...new Set(freshSnapshots.map((s) => s.client_id))];
     const { data: clients } = await supabase
       .from("clients")
       .select("id, company_name, status")
@@ -250,7 +337,7 @@ Deno.serve(async (req) => {
     const lines: Line[] = [];
     const accountSummary = new Map<string, { client_id: string; unserved: number; total_active: number }>();
 
-    for (const s of snapshots) {
+    for (const s of freshSnapshots) {
       const client = clientMap.get(s.client_id);
       if (!client || client.status !== "active") continue;
 
@@ -291,7 +378,7 @@ Deno.serve(async (req) => {
     }
 
     if (lines.length === 0) {
-      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: snapshots.length }), {
+      return new Response(JSON.stringify({ ok: true, alerts: 0, checked: freshSnapshots.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -364,11 +451,11 @@ Deno.serve(async (req) => {
     await supabase.from("system_logs").insert({
       event_type: "campaign_health_alerts",
       message: `Enviados ${lines.length} alertas de campanhas sem veiculação`,
-      details: { campaigns: lines.length, accounts: rows.length, checked: snapshots.length, message_id: firstMessageId, chunks: chunks.length },
+      details: { campaigns: lines.length, accounts: rows.length, checked: freshSnapshots.length, message_id: firstMessageId, chunks: chunks.length },
     });
 
     return new Response(
-      JSON.stringify({ ok: true, campaigns: lines.length, accounts: rows.length, checked: snapshots.length, message_id: firstMessageId }),
+      JSON.stringify({ ok: true, campaigns: lines.length, accounts: rows.length, checked: freshSnapshots.length, message_id: firstMessageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
