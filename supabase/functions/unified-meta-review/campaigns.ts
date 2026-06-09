@@ -105,19 +105,47 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const campaignsDetails = [];
     for (const campaign of activeCampaigns) {
       try {
-        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
-        const campaignResponse = await fetch(campaignInsightsUrl);
-        const campaignInsights = await campaignResponse.json();
+        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?level=campaign&fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
+
+        const fetchInsights = async () => {
+          const r = await fetch(campaignInsightsUrl);
+          const j = await r.json();
+          return { ok: r.ok, json: j };
+        };
+
+        let { ok, json: campaignInsights } = await fetchInsights();
+
+        // Retry uma vez quando vier vazio em campanha ativa (glitch transitório da Graph API)
+        let retried = false;
+        if (ok && Array.isArray(campaignInsights?.data) && campaignInsights.data.length === 0) {
+          retried = true;
+          await new Promise((res) => setTimeout(res, 400));
+          const second = await fetchInsights();
+          ok = second.ok;
+          campaignInsights = second.json;
+        }
 
         let campaignCost = 0;
         let campaignImpressions = 0;
         let cost2d = 0;
         let impressions2d = 0;
-        let zeroDaysStreak = 0;
+        let zeroDaysStreak: number | null = 0;
+        let dataUnavailable = false;
 
-        if (Array.isArray(campaignInsights?.data)) {
+        const apiError = !ok || campaignInsights?.error;
+        const dataArr = Array.isArray(campaignInsights?.data) ? campaignInsights.data : [];
+
+        if (apiError || dataArr.length === 0) {
+          // Não temos linhas — não inferir "zerado" a partir de ausência
+          dataUnavailable = true;
+          zeroDaysStreak = null;
+          console.warn(
+            `⚠️ [CAMPAIGNS] Insights vazios/erro para campanha ATIVA ${campaign.id} (${campaign.name})`,
+            { retried, apiError: apiError ? (campaignInsights?.error ?? 'http_error') : null, rows: dataArr.length },
+          );
+        } else {
           const daily = new Map<string, { cost: number; impressions: number }>();
-          for (const row of campaignInsights.data) {
+          for (const row of dataArr) {
             const date = row.date_start || row.date_stop;
             if (!date) continue;
             daily.set(date, {
@@ -134,12 +162,17 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
           cost2d = campaignCost + (yEntry?.cost ?? 0);
           impressions2d = campaignImpressions + (yEntry?.impressions ?? 0);
 
+          // Só conta streak quando a Meta DE FATO retornou uma linha pro dia (com valores zerados).
+          // Dias ausentes quebram a contagem (tratados como "desconhecido").
+          let streak = 0;
           for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
             const day = shiftIsoDate(today, -k);
             const d = daily.get(day);
-            if (!d || (d.cost === 0 && d.impressions === 0)) zeroDaysStreak++;
+            if (!d) break;
+            if (d.cost === 0 && d.impressions === 0) streak++;
             else break;
           }
+          zeroDaysStreak = streak;
         }
 
         campaignsDetails.push({
@@ -150,6 +183,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
           cost_2d: cost2d,
           impressions_2d: impressions2d,
           zero_days_streak: zeroDaysStreak,
+          data_unavailable: dataUnavailable,
           status: campaign.effective_status
         });
       } catch (error) {
@@ -161,7 +195,8 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
           impressions: 0,
           cost_2d: 0,
           impressions_2d: 0,
-          zero_days_streak: 0,
+          zero_days_streak: null,
+          data_unavailable: true,
           status: campaign.effective_status
         });
       }
