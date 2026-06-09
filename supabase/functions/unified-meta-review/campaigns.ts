@@ -246,9 +246,9 @@ export async function updateCampaignHealth(
     // Buscar dados das campanhas Meta
     const campaignData = await fetchMetaActiveCampaigns(accessToken, accountData.account_id);
     
-    // Calcular campanhas sem veiculação baseado nos dados detalhados
-    const unservedCampaigns = campaignData.campaignsDetails.filter(campaign => 
-      campaign.cost === 0 && campaign.impressions === 0
+    // Calcular campanhas sem veiculação baseado nos dados detalhados (ignora campanhas com dados indisponíveis)
+    const unservedCampaigns = campaignData.campaignsDetails.filter(campaign =>
+      !campaign.data_unavailable && campaign.cost === 0 && campaign.impressions === 0
     ).length;
 
     const healthSnapshot: CampaignHealthData = {
