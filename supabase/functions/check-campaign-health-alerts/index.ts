@@ -364,13 +364,18 @@ Deno.serve(async (req) => {
       });
 
       const details = Array.isArray(s.campaigns_detailed) ? s.campaigns_detailed : [];
+      let skippedUnavailable = 0;
       for (const c of details) {
         // Critério de "sem veiculação":
-        //  - Meta: apenas HOJE (cost/impressions === 0)
+        //  - Meta: apenas HOJE (cost/impressions === 0), exceto quando data_unavailable=true
         //  - Google: janela 2d zerada OU primary_status/reason problemático hoje
         let shouldAlert = false;
         let zeroed2d = false;
         if (s.platform === "meta") {
+          if (c?.data_unavailable === true) {
+            skippedUnavailable++;
+            continue;
+          }
           const cost = Number(c?.cost ?? 0);
           const impressions = Number(c?.impressions ?? 0);
           shouldAlert = cost === 0 && impressions === 0;
@@ -390,6 +395,13 @@ Deno.serve(async (req) => {
             client_id: s.client_id,
           });
         }
+      }
+      if (skippedUnavailable > 0) {
+        await supabase.from("system_logs").insert({
+          event_type: "campaign_health_alerts_data_unavailable",
+          message: `Ignoradas ${skippedUnavailable} campanhas Meta com insights indisponíveis`,
+          details: { client_id: s.client_id, account_id: s.account_id, count: skippedUnavailable },
+        });
       }
     }
 
