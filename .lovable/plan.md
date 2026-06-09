@@ -1,82 +1,61 @@
-# Correção dos avisos de campanhas sem veiculação
 
-## Diagnóstico confirmado
+## Causa raiz
 
-### CCS Construções no Google
-O dado do banco está errado: `cost_2d=2766.098326` e `impressions_2d=11531`, mas isso não representa corretamente os últimos dias.
+Confirmei no snapshot de hoje (`campaign_health`):
 
-Causa técnica encontrada em `daily-google-review`:
-- `reviewDate` vem como `YYYY-MM-DD`, exemplo `2026-06-08`.
-- O helper `yesterdayFromToday()` espera `YYYYMMDD`, sem hífen.
-- Com hífen, ele fatia a string errado e monta uma data inválida/antiga.
-- Resultado: a query do Google para `cost_2d` usa uma janela incorreta, trazendo métricas que não são de ontem+hoje.
-- Além disso, o código compara `segments.date` convertido para `YYYYMMDD` com `targetDate` em `YYYY-MM-DD`; por isso **todos os snapshots Google de hoje estão com `cost_today=0`**. Confirmei no banco: 21 snapshots Google hoje, 0 com gasto/impressões de hoje.
+- **Personal Brechó / [MSG] [WHATSAPP] [VENDA CONOSCO]** (id 23855583507100033) → `cost=0, impressions=0, cost_2d=0, zero_days_streak=10`
+- **Estética Plexus / [MSG] [WHATSAPP] [GERAL] [V2]** (id 120252805244690405) → mesmo padrão, `zero_days_streak=10`
 
-Portanto, CCS não apareceu porque o critério atual viu um `cost_2d` falso positivo e concluiu que houve veiculação.
+Mas o usuário confirma que ambas tiveram entrega normal nos últimos 10 dias.
 
-### Jardim das Flores no Meta
-O alerta usou um snapshot antigo:
-- Alerta: 16:00 BRT.
-- Snapshot Meta atualizado depois: 17:00 BRT.
-- Depois da atualização, a campanha aparece com gasto e impressões (`cost=23.07`, `impressions=1487`).
+O bug está em `supabase/functions/unified-meta-review/campaigns.ts` (linhas 108–143):
 
-Portanto, Jardim apareceu porque o alerta leu um snapshot defasado, não porque a campanha estava sem veiculação de fato.
+1. Buscamos os insights diários da campanha com `time_increment=1` na janela de 10 dias.
+2. Quando a Meta devolve `data: []` (resposta vazia — comum em casos pontuais: campanhas recém-duplicadas, janelas de atribuição, atraso de processamento ou pequenos glitches da Graph API), o loop:
+   ```ts
+   for (let k = 1; k <= 10; k++) {
+     const d = daily.get(day);
+     if (!d || (d.cost === 0 && d.impressions === 0)) zeroDaysStreak++;
+     else break;
+   }
+   ```
+   trata "dia sem linha" como "dia zerado" e conta **10 dias seguidos** → dispara "Sem veiculação (10+ dias)".
 
-## O que será alterado
+3. Pior: o critério do alerta para Meta (`cost===0 && impressions===0` hoje) também fica `true` quando a resposta é vazia → falso positivo confirmado.
 
-### 1. Corrigir datas no Google (`daily-google-review`)
-- Normalizar `reviewDate` para dois formatos:
-  - `reviewDateSql`: `YYYY-MM-DD` para queries Google Ads e banco.
-  - `reviewDateCompact`: `YYYYMMDD` apenas para comparações internas.
-- Ajustar `yesterdayFromToday()` para aceitar `YYYY-MM-DD` corretamente ou criar helper explícito para subtrair um dia em formato SQL.
-- Corrigir a comparação do dia atual:
-  - antes: `dateStr === targetDate` (`YYYYMMDD` vs `YYYY-MM-DD`, sempre falso)
-  - depois: comparar formatos iguais.
-- Garantir que `cost`, `impressions`, `cost_2d` e `impressions_2d` representem exatamente:
-  - hoje
-  - ontem + hoje
+Ambas as contas têm gasto agregado no dia (vide logs do `unified-meta-review`), o que prova que o problema é por campanha (não por conta).
 
-### 2. Evitar refresh defasado antes do Discord (`check-campaign-health-alerts`)
-Antes de montar o aviso:
-- Buscar clientes ativos com contas Meta/Google ativas.
-- Rodar uma revisão fresca de Google (`daily-google-review`) para clientes com Google.
-- Rodar uma revisão fresca de Meta (`unified-meta-review`) para clientes com Meta.
-- Esperar as revisões finalizarem antes de ler `campaign_health`.
-- Registrar um log `campaign_health_alerts_refresh` com duração, sucessos e falhas.
+## Correção proposta
 
-Se uma plataforma falhar no refresh, o alerta continua com o que estiver disponível, mas o log deixa claro que o refresh falhou.
+### 1. `supabase/functions/unified-meta-review/campaigns.ts`
 
-### 3. Proteger o alerta contra snapshot velho
-Depois do refresh:
-- Ao ler `campaign_health`, ignorar contas cujo `updated_at` não esteja recente o suficiente para o horário do alerta.
-- Usar uma tolerância curta (ex: últimos 30 minutos), porque a revisão será disparada logo antes.
-- Registrar em log contas ignoradas por snapshot velho.
+- Diferenciar "Meta não retornou nenhuma linha" de "Meta retornou linhas zeradas":
+  - Marcar `data_unavailable = true` no detalhe da campanha quando `daily.size === 0` (sem erro de API, mas sem nenhuma linha na janela de 10 dias).
+  - Nesse caso, **não** preencher `zero_days_streak` (deixar `null`) e **não** assumir `cost/impressions = 0` para o dia.
+- Acrescentar `level=campaign` explicitamente na URL de insights por campanha (mais seguro, evita ambiguidade de nível) e logar resposta crua quando vier vazia para campanha `ACTIVE` (diagnóstico).
+- Adicionar 1 retry simples quando `data: []` para campanha ativa (pode ser glitch transitório). Se o retry também vier vazio, marca `data_unavailable`.
 
-Isso evita repetir o caso Jardim das Flores.
+### 2. `supabase/functions/check-campaign-health-alerts/index.ts`
 
-### 4. Manter o formato com motivo
-Não muda o formato atual:
-```text
-> • Cliente | Plataforma | Campanha — Motivo: ...
-```
+Ajustar o filtro de Meta em `buildAlertReason` / loop de `details`:
 
-Mas com os dados corrigidos:
-- Google com 2 dias sem veiculação passa a aparecer como `Motivo: Sem veiculação (2 dias)`.
-- Meta só aparece se o snapshot fresco confirmar zero hoje.
+- Pular a campanha (não gerar linha de alerta) quando `c.data_unavailable === true`.
+- Registrar essas campanhas em `system_logs` (`campaign_health_alerts_data_unavailable`) para acompanharmos a frequência.
+- Manter o resto da lógica intacta: streak real (1–9 dias e 10+) continua valendo quando a Meta realmente devolve linhas zeradas.
 
-## Arquivos afetados
+### 3. (opcional, mesma migração de código) Logar quando `unserved_campaigns_count` em Meta divergir do volume de campanhas com `data_unavailable`
 
-- `supabase/functions/daily-google-review/index.ts`
+Para vermos rapidamente se há contas com problema sistemático de resposta vazia.
+
+## Resultado esperado
+
+- Os dois alertas de hoje (Estética Plexus e Personal Brechó) não voltariam a aparecer.
+- Campanhas que de fato estão paradas continuam sendo alertadas com a contagem correta (1, 2, …, 10+ dias).
+- Ganhamos rastreabilidade nos logs para identificar quando a Graph API devolve vazio.
+
+## Arquivos a modificar
+
+- `supabase/functions/unified-meta-review/campaigns.ts`
 - `supabase/functions/check-campaign-health-alerts/index.ts`
 
-## Validação após implementação
-
-1. Rodar uma revisão Google fresca para CCS.
-2. Conferir no banco que CCS fica com:
-   - `cost_today=0`
-   - `impressions_today=0`
-   - `cost_2d=0` se realmente não teve gasto ontem+hoje
-   - `unserved_campaigns_count=1`
-3. Rodar o alerta manualmente.
-4. Conferir que CCS aparece no Discord.
-5. Conferir que Jardim das Flores não aparece se o refresh Meta confirmar gasto/impressões.
+Sem mudanças de schema. Sem mudanças de frontend.
