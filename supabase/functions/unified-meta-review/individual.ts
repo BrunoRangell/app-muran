@@ -1,5 +1,5 @@
 import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchSpecificMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview, cleanupOldReviews } from "./database.ts";
-import { fetchMetaApiData, fetchMetaBalance, fetchAccountBasicInfo } from "./meta-api.ts";
+import { fetchMetaApiData, fetchMetaBalance, fetchAccountBasicInfo, MetaRateLimitError } from "./meta-api.ts";
 import { updateCampaignHealth } from "./campaigns.ts";
 import { IndividualReviewRequest } from "./types.ts";
 
@@ -353,9 +353,13 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     console.error(`❌ [INDIVIDUAL] Request completo:`, JSON.stringify(request, null, 2));
     console.error(`❌ [INDIVIDUAL] ========================================`);
     
+    const rateLimited = error instanceof MetaRateLimitError || /429|rate.?limit|Too Many Requests/i.test(errorMsg);
     return { 
       success: false, 
-      error: errorMsg,
+      error: rateLimited
+        ? 'A API do Meta está com limite de requisições no momento. Aguarde 1–2 minutos e tente novamente.'
+        : errorMsg,
+      rate_limited: rateLimited,
       stack_trace: errorStack,
       processing_time: totalTime
     };

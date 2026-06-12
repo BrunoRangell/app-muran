@@ -1,4 +1,5 @@
 import { CampaignHealthData } from "./types.ts";
+import { metaFetchWithRetry, MetaRateLimitError } from "./meta-api.ts";
 
 const META_ZERO_STREAK_WINDOW_DAYS = 10;
 
@@ -44,15 +45,18 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
 
     while (nextUrl && pageCount < MAX_PAGES) {
       pageCount++;
-      const resp = await fetch(nextUrl);
+      const resp = await metaFetchWithRetry(nextUrl);
       const json = await resp.json();
 
       if (!resp.ok || json.error) {
         console.error(`❌ [CAMPAIGNS] Erro ao buscar campanhas (página ${pageCount}):`, json.error || resp.status);
+        if (resp.status === 429 || resp.status >= 500) {
+          throw new MetaRateLimitError(resp.status, `Meta rate-limit ao listar campanhas (${resp.status})`);
+        }
         if (allCampaigns.length === 0) {
           return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
         }
-        break; // se já temos algumas páginas, segue com o que conseguimos
+        break;
       }
 
       if (Array.isArray(json.data)) {
@@ -77,141 +81,134 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
 
-    
-    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-    
-    const insightsResponse = await fetch(insightsUrl);
-    const insightsData = await insightsResponse.json();
-    
-    if (!insightsResponse.ok || insightsData.error) {
-      console.error(`❌ [CAMPAIGNS] Erro ao buscar insights:`, insightsData.error || insightsResponse.status);
-      return { cost: 0, impressions: 0, activeCampaigns: activeCampaigns.length, campaignsDetails: [] };
-    }
-    
-    let totalCost = 0;
-    let totalImpressions = 0;
-    
-    if (insightsData.data && Array.isArray(insightsData.data) && insightsData.data.length > 0) {
-      const todayInsights = insightsData.data[0];
-      totalCost = parseFloat(todayInsights.spend || '0');
-      totalImpressions = parseInt(todayInsights.impressions || '0');
-      
-      console.log(`💰 [CAMPAIGNS] Custo: R$ ${totalCost}, Impressões: ${totalImpressions}`);
-    }
-
-    // Buscar dados detalhados de cada campanha (com janela diária para calcular streak sem veiculação)
+    // ============================================================
+    // UMA ÚNICA CHAMADA AGREGADA: insights diários por campanha numa
+    // janela de 10 dias. Antes fazíamos 1 request por campanha (N+1),
+    // o que estourava o rate-limit da Meta em contas com muitas campanhas.
+    // ============================================================
     const yesterday = shiftIsoDate(today, -1);
     const windowStart = shiftIsoDate(today, -META_ZERO_STREAK_WINDOW_DAYS);
-    const campaignsDetails = [];
-    for (const campaign of activeCampaigns) {
-      try {
-        const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?level=campaign&fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
 
-        const fetchInsights = async () => {
-          const r = await fetch(campaignInsightsUrl);
-          const j = await r.json();
-          return { ok: r.ok, json: j };
-        };
+    const aggregatedUrl =
+      `https://graph.facebook.com/v22.0/act_${accountId}/insights` +
+      `?level=campaign&fields=campaign_id,spend,impressions` +
+      `&time_range={"since":"${windowStart}","until":"${today}"}` +
+      `&time_increment=1&limit=500&access_token=${accessToken}`;
 
-        let { ok, json: campaignInsights } = await fetchInsights();
+    // Mapa: campaign_id -> Map<dateISO, {cost, impressions}>
+    const dailyByCampaign = new Map<string, Map<string, { cost: number; impressions: number }>>();
+    let aggregatedFailed = false;
+    let aggregatedRateLimited = false;
 
-        // Retry uma vez quando vier vazio em campanha ativa (glitch transitório da Graph API)
-        let retried = false;
-        if (ok && Array.isArray(campaignInsights?.data) && campaignInsights.data.length === 0) {
-          retried = true;
-          await new Promise((res) => setTimeout(res, 400));
-          const second = await fetchInsights();
-          ok = second.ok;
-          campaignInsights = second.json;
+    try {
+      let aggUrl: string | null = aggregatedUrl;
+      let aggPage = 0;
+      while (aggUrl && aggPage < 20) {
+        aggPage++;
+        const aggResp = await metaFetchWithRetry(aggUrl);
+        if (!aggResp.ok) {
+          const body = await aggResp.text();
+          console.error(`❌ [CAMPAIGNS] Insights agregados falharam (${aggResp.status}):`, body.slice(0, 300));
+          if (aggResp.status === 429 || aggResp.status >= 500) aggregatedRateLimited = true;
+          aggregatedFailed = true;
+          break;
         }
-
-        let campaignCost = 0;
-        let campaignImpressions = 0;
-        let cost2d = 0;
-        let impressions2d = 0;
-        let zeroDaysStreak: number | null = 0;
-        let dataUnavailable = false;
-
-        const apiError = !ok || campaignInsights?.error;
-        const dataArr = Array.isArray(campaignInsights?.data) ? campaignInsights.data : [];
-
-        if (apiError || dataArr.length === 0) {
-          // Não temos linhas — não inferir "zerado" a partir de ausência
-          dataUnavailable = true;
-          zeroDaysStreak = null;
-          console.warn(
-            `⚠️ [CAMPAIGNS] Insights vazios/erro para campanha ATIVA ${campaign.id} (${campaign.name})`,
-            { retried, apiError: apiError ? (campaignInsights?.error ?? 'http_error') : null, rows: dataArr.length },
-          );
-        } else {
-          const daily = new Map<string, { cost: number; impressions: number }>();
-          for (const row of dataArr) {
+        const aggJson = await aggResp.json();
+        if (Array.isArray(aggJson.data)) {
+          for (const row of aggJson.data) {
+            const cid = row.campaign_id;
             const date = row.date_start || row.date_stop;
-            if (!date) continue;
-            daily.set(date, {
+            if (!cid || !date) continue;
+            let m = dailyByCampaign.get(cid);
+            if (!m) {
+              m = new Map();
+              dailyByCampaign.set(cid, m);
+            }
+            m.set(date, {
               cost: parseFloat(row.spend || '0'),
               impressions: parseInt(row.impressions || '0'),
             });
           }
-          const todayEntry = daily.get(today);
-          if (todayEntry) {
-            campaignCost = todayEntry.cost;
-            campaignImpressions = todayEntry.impressions;
-          }
-          const yEntry = daily.get(yesterday);
-          cost2d = campaignCost + (yEntry?.cost ?? 0);
-          impressions2d = campaignImpressions + (yEntry?.impressions ?? 0);
-
-          // Só conta streak quando a Meta DE FATO retornou uma linha pro dia (com valores zerados).
-          // Dias ausentes quebram a contagem (tratados como "desconhecido").
-          let streak = 0;
-          for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
-            const day = shiftIsoDate(today, -k);
-            const d = daily.get(day);
-            if (!d) break;
-            if (d.cost === 0 && d.impressions === 0) streak++;
-            else break;
-          }
-          zeroDaysStreak = streak;
         }
-
-        campaignsDetails.push({
-          id: campaign.id,
-          name: campaign.name,
-          cost: campaignCost,
-          impressions: campaignImpressions,
-          cost_2d: cost2d,
-          impressions_2d: impressions2d,
-          zero_days_streak: zeroDaysStreak,
-          data_unavailable: dataUnavailable,
-          status: campaign.effective_status
-        });
-      } catch (error) {
-        console.error(`❌ [CAMPAIGNS] Erro ao buscar insights da campanha ${campaign.id}:`, error);
-        campaignsDetails.push({
-          id: campaign.id,
-          name: campaign.name,
-          cost: 0,
-          impressions: 0,
-          cost_2d: 0,
-          impressions_2d: 0,
-          zero_days_streak: null,
-          data_unavailable: true,
-          status: campaign.effective_status
-        });
+        aggUrl = aggJson.paging?.next || null;
       }
+    } catch (e) {
+      console.error(`❌ [CAMPAIGNS] Erro ao buscar insights agregados:`, e);
+      aggregatedFailed = true;
     }
 
-    
+    // Se a Meta deu rate-limit no agregado, propaga para o caller marcar a revisão como falha
+    // em vez de gravar "tudo zerado" no campaign_health.
+    if (aggregatedRateLimited) {
+      throw new MetaRateLimitError(429, 'Meta rate-limit nos insights agregados de campanha');
+    }
+
+    let totalCost = 0;
+    let totalImpressions = 0;
+    const campaignsDetails: any[] = [];
+
+    for (const campaign of activeCampaigns) {
+      const daily = dailyByCampaign.get(campaign.id);
+      let campaignCost = 0;
+      let campaignImpressions = 0;
+      let cost2d = 0;
+      let impressions2d = 0;
+      let zeroDaysStreak: number | null = 0;
+      let dataUnavailable = false;
+
+      if (aggregatedFailed || !daily || daily.size === 0) {
+        // Sem dados para essa campanha — não inferimos "zerado"
+        dataUnavailable = true;
+        zeroDaysStreak = null;
+      } else {
+        const todayEntry = daily.get(today);
+        if (todayEntry) {
+          campaignCost = todayEntry.cost;
+          campaignImpressions = todayEntry.impressions;
+        }
+        const yEntry = daily.get(yesterday);
+        cost2d = campaignCost + (yEntry?.cost ?? 0);
+        impressions2d = campaignImpressions + (yEntry?.impressions ?? 0);
+
+        let streak = 0;
+        for (let k = 1; k <= META_ZERO_STREAK_WINDOW_DAYS; k++) {
+          const day = shiftIsoDate(today, -k);
+          const d = daily.get(day);
+          if (!d) break;
+          if (d.cost === 0 && d.impressions === 0) streak++;
+          else break;
+        }
+        zeroDaysStreak = streak;
+      }
+
+      totalCost += campaignCost;
+      totalImpressions += campaignImpressions;
+
+      campaignsDetails.push({
+        id: campaign.id,
+        name: campaign.name,
+        cost: campaignCost,
+        impressions: campaignImpressions,
+        cost_2d: cost2d,
+        impressions_2d: impressions2d,
+        zero_days_streak: zeroDaysStreak,
+        data_unavailable: dataUnavailable,
+        status: campaign.effective_status,
+      });
+    }
+
+    console.log(`💰 [CAMPAIGNS] Hoje: R$ ${totalCost.toFixed(2)} | ${totalImpressions} impr | ${campaignsDetails.length} ativas`);
+
     return {
       cost: totalCost,
       impressions: totalImpressions,
       activeCampaigns: activeCampaigns.length,
-      campaignsDetails: campaignsDetails
+      campaignsDetails,
     };
-    
+
   } catch (error) {
     console.error(`❌ [CAMPAIGNS] Erro para conta ${accountId}:`, error);
+    if (error instanceof MetaRateLimitError) throw error;
     return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
   }
 }

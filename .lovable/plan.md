@@ -1,61 +1,57 @@
+## Diagnóstico
 
-## Causa raiz
+Os logs mostram que a Meta está retornando **429 (Too Many Requests)** e **500/code:1 (OAuthException genérica)** para `unified-meta-review` e `meta-active-ads`. O token está válido (46 dias restantes, checado hoje 13:00) — **não é problema de token**. É **rate limit** da Graph API.
 
-Confirmei no snapshot de hoje (`campaign_health`):
+A causa provável é o aumento recente de chamadas por revisão:
+- `unified-meta-review/campaigns.ts` agora faz **1 chamada de insights por campanha ativa** com `time_increment=1` (janela de 10 dias) para calcular `zero_days_streak`. Em contas com muitas campanhas isso multiplica drasticamente o volume.
+- Houve **duas execuções** do batch Meta no mesmo minuto às 12:00 (logs `batch_review_completed` 12:00:22 e 12:00:30), dobrando a carga.
+- Quando a Meta devolve 429/500, todas as funções **lançam exceção e abortam a revisão inteira**, sem retry/backoff.
 
-- **Personal Brechó / [MSG] [WHATSAPP] [VENDA CONOSCO]** (id 23855583507100033) → `cost=0, impressions=0, cost_2d=0, zero_days_streak=10`
-- **Estética Plexus / [MSG] [WHATSAPP] [GERAL] [V2]** (id 120252805244690405) → mesmo padrão, `zero_days_streak=10`
+Resultado: o usuário vê "revisão falhou" e "anúncios ativos não carregam" porque cada request individual cai na janela de throttle.
 
-Mas o usuário confirma que ambas tiveram entrega normal nos últimos 10 dias.
+## Plano
 
-O bug está em `supabase/functions/unified-meta-review/campaigns.ts` (linhas 108–143):
+### 1. Retry com backoff em chamadas críticas à Meta
+Em `unified-meta-review/meta-api.ts` (`fetchAccountBasicInfo`, `fetchMetaApiData`, `fetchMetaBalance`) e em `meta-active-ads/index.ts` (`fetchAllAds`):
+- Detectar 429 e 5xx, ler `X-Business-Use-Case-Usage` / `X-App-Usage` quando presente.
+- Retry até 3 vezes com backoff exponencial (1s, 4s, 10s) + jitter.
+- Em 429 persistente, retornar erro estruturado `{ rate_limited: true }` em vez de exceção crua, para a UI mostrar "API da Meta limitada, tente em alguns minutos" e não quebrar o card.
 
-1. Buscamos os insights diários da campanha com `time_increment=1` na janela de 10 dias.
-2. Quando a Meta devolve `data: []` (resposta vazia — comum em casos pontuais: campanhas recém-duplicadas, janelas de atribuição, atraso de processamento ou pequenos glitches da Graph API), o loop:
-   ```ts
-   for (let k = 1; k <= 10; k++) {
-     const d = daily.get(day);
-     if (!d || (d.cost === 0 && d.impressions === 0)) zeroDaysStreak++;
-     else break;
-   }
-   ```
-   trata "dia sem linha" como "dia zerado" e conta **10 dias seguidos** → dispara "Sem veiculação (10+ dias)".
+### 2. Reduzir volume de chamadas em `campaigns.ts`
+- Trocar o loop "1 request por campanha" por **um único request agregado** em `/act_{id}/insights` com `level=campaign&time_increment=1&time_range=10d&fields=campaign_id,spend,impressions`, retornando todas as campanhas de uma vez (1 chamada em vez de N).
+- Manter `data_unavailable=true` quando a Meta não devolver linha para uma campanha ativa específica.
 
-3. Pior: o critério do alerta para Meta (`cost===0 && impressions===0` hoje) também fica `true` quando a resposta é vazia → falso positivo confirmado.
+### 3. Impedir execução dupla do cron de batch
+- Investigar por que `daily-meta-review` (batch) rodou duas vezes às 12:00 e adicionar lock simples via `system_logs` ou `pg_advisory_lock` para garantir execução única por janela.
 
-Ambas as contas têm gasto agregado no dia (vide logs do `unified-meta-review`), o que prova que o problema é por campanha (não por conta).
+### 4. UI/UX
+- Em `useActiveAds` e nos hooks de revisão, exibir toast específico "Meta está com limite de requisições, aguarde 1–2 minutos" quando o backend retornar `rate_limited: true`, em vez do erro genérico atual.
 
-## Correção proposta
+## Arquivos afetados
 
-### 1. `supabase/functions/unified-meta-review/campaigns.ts`
+- `supabase/functions/unified-meta-review/meta-api.ts` — helper `metaFetchWithRetry`, usar em todas as chamadas
+- `supabase/functions/unified-meta-review/campaigns.ts` — substituir loop por chamada agregada
+- `supabase/functions/unified-meta-review/individual.ts` — propagar `rate_limited` na resposta
+- `supabase/functions/meta-active-ads/index.ts` — usar `metaFetchWithRetry`
+- `supabase/cron.sql` (ou função do cron) — lock contra execução duplicada
+- `src/hooks/useActiveAds.ts` e hook de revisão individual — mensagem de erro específica
 
-- Diferenciar "Meta não retornou nenhuma linha" de "Meta retornou linhas zeradas":
-  - Marcar `data_unavailable = true` no detalhe da campanha quando `daily.size === 0` (sem erro de API, mas sem nenhuma linha na janela de 10 dias).
-  - Nesse caso, **não** preencher `zero_days_streak` (deixar `null`) e **não** assumir `cost/impressions = 0` para o dia.
-- Acrescentar `level=campaign` explicitamente na URL de insights por campanha (mais seguro, evita ambiguidade de nível) e logar resposta crua quando vier vazia para campanha `ACTIVE` (diagnóstico).
-- Adicionar 1 retry simples quando `data: []` para campanha ativa (pode ser glitch transitório). Se o retry também vier vazio, marca `data_unavailable`.
+## Detalhes técnicos
 
-### 2. `supabase/functions/check-campaign-health-alerts/index.ts`
+```ts
+async function metaFetchWithRetry(url: string, opts = {}, maxRetries = 3) {
+  for (let i = 0; i <= maxRetries; i++) {
+    const res = await fetch(url, opts);
+    if (res.ok) return res;
+    if (res.status === 429 || res.status >= 500) {
+      if (i === maxRetries) return res; // devolve para o caller tratar
+      const backoff = Math.min(10000, 1000 * Math.pow(3, i)) + Math.random() * 500;
+      await new Promise(r => setTimeout(r, backoff));
+      continue;
+    }
+    return res;
+  }
+}
+```
 
-Ajustar o filtro de Meta em `buildAlertReason` / loop de `details`:
-
-- Pular a campanha (não gerar linha de alerta) quando `c.data_unavailable === true`.
-- Registrar essas campanhas em `system_logs` (`campaign_health_alerts_data_unavailable`) para acompanharmos a frequência.
-- Manter o resto da lógica intacta: streak real (1–9 dias e 10+) continua valendo quando a Meta realmente devolve linhas zeradas.
-
-### 3. (opcional, mesma migração de código) Logar quando `unserved_campaigns_count` em Meta divergir do volume de campanhas com `data_unavailable`
-
-Para vermos rapidamente se há contas com problema sistemático de resposta vazia.
-
-## Resultado esperado
-
-- Os dois alertas de hoje (Estética Plexus e Personal Brechó) não voltariam a aparecer.
-- Campanhas que de fato estão paradas continuam sendo alertadas com a contagem correta (1, 2, …, 10+ dias).
-- Ganhamos rastreabilidade nos logs para identificar quando a Graph API devolve vazio.
-
-## Arquivos a modificar
-
-- `supabase/functions/unified-meta-review/campaigns.ts`
-- `supabase/functions/check-campaign-health-alerts/index.ts`
-
-Sem mudanças de schema. Sem mudanças de frontend.
+Posso implementar tudo de uma vez ou só o item 1+2 primeiro (que já resolve o sintoma agudo) e o resto depois — me avise.
