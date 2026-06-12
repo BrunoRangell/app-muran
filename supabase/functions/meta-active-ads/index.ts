@@ -29,6 +29,21 @@ function resolveImageUrl(ad: any): string | null {
   return null;
 }
 
+async function metaFetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url);
+    if (res.ok) return res;
+    last = res;
+    const retriable = res.status === 429 || res.status >= 500;
+    if (!retriable || attempt === maxRetries) return res;
+    const backoff = Math.min(10000, 1000 * Math.pow(3, attempt)) + Math.floor(Math.random() * 500);
+    console.warn(`[meta-active-ads] ${res.status} — retry ${attempt + 1}/${maxRetries} em ${backoff}ms`);
+    await new Promise((r) => setTimeout(r, backoff));
+  }
+  return last!;
+}
+
 async function fetchAllAds(accountId: string, accessToken: string, statuses: string[]) {
   const fields = [
     'name',
@@ -49,16 +64,34 @@ async function fetchAllAds(accountId: string, accessToken: string, statuses: str
   let safety = 0;
   while (url && safety < 20) {
     safety++;
-    const res = await fetch(url);
-    const data = await res.json();
+    const res = await metaFetchWithRetry(url);
     if (!res.ok) {
-      console.error('[meta-active-ads] erro', JSON.stringify(data));
-      throw new Error(data?.error?.message || 'Falha ao buscar anúncios');
+      const body = await res.text();
+      console.error('[meta-active-ads] erro', res.status, body.slice(0, 300));
+      const rateLimited = res.status === 429 || res.status >= 500;
+      const err: any = new Error(
+        rateLimited
+          ? 'A API do Meta está com limite de requisições. Aguarde 1–2 minutos e tente novamente.'
+          : (safeParseError(body) || 'Falha ao buscar anúncios'),
+      );
+      err.rateLimited = rateLimited;
+      err.status = res.status;
+      throw err;
     }
+    const data = await res.json();
     if (Array.isArray(data.data)) all.push(...data.data);
     url = data?.paging?.next || null;
   }
   return all;
+}
+
+function safeParseError(body: string): string | null {
+  try {
+    const j = JSON.parse(body);
+    return j?.error?.message || null;
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
