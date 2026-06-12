@@ -1,4 +1,5 @@
 import { CampaignHealthData } from "./types.ts";
+import { metaFetchWithRetry, MetaRateLimitError } from "./meta-api.ts";
 
 const META_ZERO_STREAK_WINDOW_DAYS = 10;
 
