@@ -626,16 +626,51 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
 }
 
 // Função para buscar informações básicas da conta Meta
+// Helper: fetch com retry/backoff para 429 e 5xx (Meta Graph rate-limit / outage).
+// Retorna a Response final (mesmo se ainda for erro após os retries) para o caller decidir.
+export async function metaFetchWithRetry(
+  url: string,
+  init: RequestInit = {},
+  maxRetries = 3,
+): Promise<Response> {
+  let lastRes: Response | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    lastRes = res;
+    const retriable = res.status === 429 || res.status >= 500;
+    if (!retriable || attempt === maxRetries) return res;
+    const backoff = Math.min(10000, 1000 * Math.pow(3, attempt)) + Math.floor(Math.random() * 500);
+    console.warn(`⏳ [META-API] ${res.status} em ${url.split('?')[0]} — retry ${attempt + 1}/${maxRetries} em ${backoff}ms`);
+    await new Promise((r) => setTimeout(r, backoff));
+  }
+  return lastRes!;
+}
+
+export class MetaRateLimitError extends Error {
+  status: number;
+  rateLimited: true;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.rateLimited = true;
+    this.name = 'MetaRateLimitError';
+  }
+}
+
 export async function fetchAccountBasicInfo(accountId: string, accessToken: string) {
   console.log(`🔍 [META-API] Buscando informações básicas da conta ${accountId}`);
   
   try {
     const basicInfoUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,currency,account_status,is_prepay_account&access_token=${accessToken}`;
     
-    const response = await fetch(basicInfoUrl);
+    const response = await metaFetchWithRetry(basicInfoUrl);
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`❌ [META-API] Erro da API Meta (${response.status}) - Body:`, errorBody);
+      console.error(`❌ [META-API] Erro da API Meta (${response.status}) - Body:`, errorBody.slice(0, 500));
+      if (response.status === 429 || response.status >= 500) {
+        throw new MetaRateLimitError(response.status, `Meta API rate-limit/erro temporário (${response.status})`);
+      }
       throw new Error(`Meta API error: ${response.status} - ${response.statusText} | ${errorBody}`);
     }
     
