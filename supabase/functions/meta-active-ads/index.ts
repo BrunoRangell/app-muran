@@ -155,6 +155,10 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     console.error('[meta-active-ads] erro', e);
-    return json({ success: false, error: e?.message || 'Erro desconhecido' }, 500);
+    const rateLimited = !!e?.rateLimited;
+    return json(
+      { success: false, error: e?.message || 'Erro desconhecido', rate_limited: rateLimited },
+      rateLimited ? 503 : 500,
+    );
   }
 });
