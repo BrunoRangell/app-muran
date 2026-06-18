@@ -78,7 +78,11 @@ function SectionTitle({ icon: Icon, label, hint }: { icon: any; label: string; h
   );
 }
 
-export function MasterTrafficReport({ data, platform, clientName, dateRange, embedded = false }: MasterTrafficReportProps) {
+export function MasterTrafficReport({
+  data, platform, clientName, dateRange, embedded = false,
+  compareLastMonth = false, onToggleCompareLastMonth,
+  previousData, isLoadingPrevious = false,
+}: MasterTrafficReportProps) {
   const [activeSection, setActiveSection] = useState<string>("overview");
 
   useEffect(() => {
