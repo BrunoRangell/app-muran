@@ -17,6 +17,10 @@ interface ReportContentProps {
   clientName?: string;
   dateRange?: { start: string; end: string };
   embedded?: boolean;
+  compareLastMonth?: boolean;
+  onToggleCompareLastMonth?: (value: boolean) => void;
+  previousInsightsData?: any;
+  isLoadingPrevious?: boolean;
 }
 
 export function ReportContent({
@@ -29,6 +33,10 @@ export function ReportContent({
   clientName,
   dateRange,
   embedded,
+  compareLastMonth,
+  onToggleCompareLastMonth,
+  previousInsightsData,
+  isLoadingPrevious,
 }: ReportContentProps) {
   // Determinar quais dados usar baseado no viewMode (apenas relevante quando platform='both')
   const activeData = useMemo(() => {
