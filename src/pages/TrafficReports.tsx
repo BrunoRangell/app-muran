@@ -22,12 +22,26 @@ import {
 } from "@/components/ui/select";
 
 const PERIOD_OPTIONS = [
+  { value: 'this-month', label: 'Este mês' },
+  { value: 'last-month', label: 'Mês passado' },
   { value: '7', label: 'Últimos 7 dias' },
   { value: '15', label: 'Últimos 15 dias' },
   { value: '30', label: 'Últimos 30 dias' },
   { value: '60', label: 'Últimos 60 dias' },
   { value: '90', label: 'Últimos 90 dias' },
 ];
+
+const resolvePeriodRange = (value: string): { start: Date; end: Date } => {
+  if (value === 'this-month') {
+    return { start: startOfMonth(new Date()), end: new Date() };
+  }
+  if (value === 'last-month') {
+    const prev = subMonths(new Date(), 1);
+    return { start: startOfMonth(prev), end: endOfMonth(prev) };
+  }
+  const days = parseInt(value, 10);
+  return { start: subDays(new Date(), isNaN(days) ? 30 : days), end: new Date() };
+};
 
 const TrafficReports = () => {
   const { accessToken } = useParams<{ accessToken?: string }>();
