@@ -25,6 +25,11 @@ interface MasterTrafficReportProps {
   accountId?: string;
   /** Quando true, não renderiza o background/shell próprio — o container pai já provê. */
   embedded?: boolean;
+  /** Comparação com mês anterior no gráfico Performance ao longo do tempo */
+  compareLastMonth?: boolean;
+  onToggleCompareLastMonth?: (value: boolean) => void;
+  previousData?: any;
+  isLoadingPrevious?: boolean;
 }
 
 const fmtNum = (v: number) => new Intl.NumberFormat("pt-BR").format(Math.round(v || 0));
