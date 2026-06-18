@@ -208,6 +208,51 @@ export function MasterTrafficReport({
     return Array.from(map.values());
   }, [metaSeries, googleSeries, combinedSeries, showCrossPlatform]);
 
+  // Série do mês anterior (quando toggle ativo) — merge por dia do mês
+  const mergedSeriesWithPrev = useMemo(() => {
+    if (!compareLastMonth || !previousData) return mergedSeries;
+
+    const prevMeta = previousData.metaData?.timeSeries || previousData.metaSeries || [];
+    const prevGoogle = previousData.googleData?.timeSeries || previousData.googleSeries || [];
+    const prevCombined = previousData.combinedSeries || previousData.timeSeries || [];
+
+    const getDay = (d: string) => {
+      // Trata 'YYYY-MM-DD' como data local para evitar shift de timezone
+      const parts = d?.split('-');
+      if (parts?.length === 3) return parseInt(parts[2], 10);
+      const dt = new Date(d);
+      return dt.getDate();
+    };
+
+    const prevByDay = new Map<number, { spendPrev: number; conversionsPrev: number }>();
+    const accumulate = (arr: any[]) => {
+      arr.forEach((p) => {
+        const day = getDay(p.date);
+        if (!day) return;
+        const existing = prevByDay.get(day) || { spendPrev: 0, conversionsPrev: 0 };
+        existing.spendPrev += (p.spend || 0);
+        existing.conversionsPrev += (p.conversions || 0);
+        prevByDay.set(day, existing);
+      });
+    };
+    if (prevCombined.length) accumulate(prevCombined);
+    else {
+      accumulate(prevMeta);
+      accumulate(prevGoogle);
+    }
+
+    return mergedSeries.map((p: any) => {
+      const day = getDay(p.date);
+      const prev = prevByDay.get(day);
+      return {
+        ...p,
+        spendPrev: prev?.spendPrev ?? null,
+        conversionsPrev: prev?.conversionsPrev ?? null,
+      };
+    });
+  }, [compareLastMonth, previousData, mergedSeries]);
+
+
   const genderColors: Record<string, string> = {
     male: C.blue, masculino: C.blue, m: C.blue,
     female: C.pink, feminino: C.pink, f: C.pink,
