@@ -364,6 +364,10 @@ const TrafficReports = () => {
               end: effectiveDateRange.end.toISOString().split('T')[0],
             }}
             embedded={showPortalElements}
+            compareLastMonth={compareLastMonth}
+            onToggleCompareLastMonth={setCompareLastMonth}
+            previousInsightsData={previousInsightsData}
+            isLoadingPrevious={isLoadingPreviousInsights}
           />
         )}
       </div>
