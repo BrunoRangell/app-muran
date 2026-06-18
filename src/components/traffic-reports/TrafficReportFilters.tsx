@@ -154,11 +154,11 @@ export function TrafficReportFilters({
               <div className="p-3 border-b space-y-2">
                 {quickRanges.map((range) => (
                   <Button
-                    key={range.days}
+                    key={range.label}
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start"
-                    onClick={() => handleQuickRange(range.days)}
+                    onClick={() => applyQuickRange(range.getRange)}
                   >
                     {range.label}
                   </Button>
