@@ -39,18 +39,33 @@ export function TrafficReportFilters({
   isLoading,
   hideClientSelector = false
 }: TrafficReportFiltersProps) {
-  const quickRanges = [
-    { label: 'Últimos 7 dias', days: 7 },
-    { label: 'Últimos 15 dias', days: 15 },
-    { label: 'Últimos 30 dias', days: 30 },
-    { label: 'Últimos 90 dias', days: 90 }
+  const quickRanges: Array<{ label: string; getRange: () => { start: Date; end: Date } }> = [
+    {
+      label: 'Este mês',
+      getRange: () => ({ start: startOfMonth(new Date()), end: new Date() }),
+    },
+    {
+      label: 'Mês passado',
+      getRange: () => {
+        const prev = subMonths(new Date(), 1);
+        return { start: startOfMonth(prev), end: endOfMonth(prev) };
+      },
+    },
+    { label: 'Últimos 7 dias', getRange: () => rangeFromDays(7) },
+    { label: 'Últimos 15 dias', getRange: () => rangeFromDays(15) },
+    { label: 'Últimos 30 dias', getRange: () => rangeFromDays(30) },
+    { label: 'Últimos 90 dias', getRange: () => rangeFromDays(90) },
   ];
 
-  const handleQuickRange = (days: number) => {
+  function rangeFromDays(days: number) {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    onDateRangeChange({ start, end });
+    return { start, end };
+  }
+
+  const applyQuickRange = (getRange: () => { start: Date; end: Date }) => {
+    onDateRangeChange(getRange());
   };
 
   return (
