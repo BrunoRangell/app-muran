@@ -6,7 +6,7 @@ import {
   Users as UsersIcon, MapPin, PieChart as PieIcon,
 } from "lucide-react";
 import {
-  Area, BarChart, Bar,
+  Area, BarChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ComposedChart,
 } from "recharts";
