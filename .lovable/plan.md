@@ -1,57 +1,38 @@
-## Diagnóstico
+# Plano: Filtros de período + comparação com mês anterior
 
-Os logs mostram que a Meta está retornando **429 (Too Many Requests)** e **500/code:1 (OAuthException genérica)** para `unified-meta-review` e `meta-active-ads`. O token está válido (46 dias restantes, checado hoje 13:00) — **não é problema de token**. É **rate limit** da Graph API.
+## 1. Filtros de período rápido
 
-A causa provável é o aumento recente de chamadas por revisão:
-- `unified-meta-review/campaigns.ts` agora faz **1 chamada de insights por campanha ativa** com `time_increment=1` (janela de 10 dias) para calcular `zero_days_streak`. Em contas com muitas campanhas isso multiplica drasticamente o volume.
-- Houve **duas execuções** do batch Meta no mesmo minuto às 12:00 (logs `batch_review_completed` 12:00:22 e 12:00:30), dobrando a carga.
-- Quando a Meta devolve 429/500, todas as funções **lançam exceção e abortam a revisão inteira**, sem retry/backoff.
+**`src/components/traffic-reports/TrafficReportFilters.tsx`**
+- Adicionar 2 novas opções ao array `quickRanges`: `Este mês` (do dia 1 do mês atual até hoje) e `Mês passado` (dia 1 até último dia do mês anterior).
+- Reescrever `handleQuickRange` para aceitar uma função que retorne `{ start, end }` em vez de número de dias, suportando os novos presets de mês.
+- Ordem final dos botões: **Este mês**, **Mês passado**, Últimos 7 dias, Últimos 15 dias, Últimos 30 dias, Últimos 90 dias.
 
-Resultado: o usuário vê "revisão falhou" e "anúncios ativos não carregam" porque cada request individual cai na janela de throttle.
+**`src/pages/TrafficReports.tsx`**
+- Alterar o estado inicial `dateRange` (linha 41-44) para começar no dia 1 do mês atual (default = "Este mês") em vez de `subDays(new Date(), 30)`.
+- Adicionar ao `PERIOD_OPTIONS` (usado no modo portal): `{ value: 'this-month', label: 'Este mês' }` e `{ value: 'last-month', label: 'Mês passado' }`. Tornar `this-month` o default do `useState('30')` → `useState('this-month')`.
+- Ajustar onde `period` é convertido em range para tratar os novos valores string.
 
-## Plano
+## 2. Botão de comparação "Mesmos dias do mês anterior"
 
-### 1. Retry com backoff em chamadas críticas à Meta
-Em `unified-meta-review/meta-api.ts` (`fetchAccountBasicInfo`, `fetchMetaApiData`, `fetchMetaBalance`) e em `meta-active-ads/index.ts` (`fetchAllAds`):
-- Detectar 429 e 5xx, ler `X-Business-Use-Case-Usage` / `X-App-Usage` quando presente.
-- Retry até 3 vezes com backoff exponencial (1s, 4s, 10s) + jitter.
-- Em 429 persistente, retornar erro estruturado `{ rate_limited: true }` em vez de exceção crua, para a UI mostrar "API da Meta limitada, tente em alguns minutos" e não quebrar o card.
-
-### 2. Reduzir volume de chamadas em `campaigns.ts`
-- Trocar o loop "1 request por campanha" por **um único request agregado** em `/act_{id}/insights` com `level=campaign&time_increment=1&time_range=10d&fields=campaign_id,spend,impressions`, retornando todas as campanhas de uma vez (1 chamada em vez de N).
-- Manter `data_unavailable=true` quando a Meta não devolver linha para uma campanha ativa específica.
-
-### 3. Impedir execução dupla do cron de batch
-- Investigar por que `daily-meta-review` (batch) rodou duas vezes às 12:00 e adicionar lock simples via `system_logs` ou `pg_advisory_lock` para garantir execução única por janela.
-
-### 4. UI/UX
-- Em `useActiveAds` e nos hooks de revisão, exibir toast específico "Meta está com limite de requisições, aguarde 1–2 minutos" quando o backend retornar `rate_limited: true`, em vez do erro genérico atual.
-
-## Arquivos afetados
-
-- `supabase/functions/unified-meta-review/meta-api.ts` — helper `metaFetchWithRetry`, usar em todas as chamadas
-- `supabase/functions/unified-meta-review/campaigns.ts` — substituir loop por chamada agregada
-- `supabase/functions/unified-meta-review/individual.ts` — propagar `rate_limited` na resposta
-- `supabase/functions/meta-active-ads/index.ts` — usar `metaFetchWithRetry`
-- `supabase/cron.sql` (ou função do cron) — lock contra execução duplicada
-- `src/hooks/useActiveAds.ts` e hook de revisão individual — mensagem de erro específica
+**`src/components/traffic-reports/MasterTrafficReport.tsx`** (seção "Performance ao longo do tempo", linhas 296-335)
+- Adicionar um `useState<boolean>('compareLastMonth')` local ao componente.
+- Adicionar um botão toggle no `SectionTitle` desse card (canto direito) com label "Comparar com mês anterior" e estado ativo destacado em laranja `#ff6e00`.
+- Quando ativo, calcular o range equivalente do mês anterior: `prevStart = subMonths(dateRange.start, 1)` e `prevEnd = subMonths(dateRange.end, 1)`, e disparar uma chamada paralela ao mesmo hook (`useTrafficInsights`) com esse range.
+- Fazer um merge da série anterior por **dia do mês** (não por data absoluta) com `mergedSeries`, adicionando os campos `spendPrev` e `conversionsPrev`.
+- No `ComposedChart`, quando o toggle estiver ativo, renderizar:
+  - Uma `Line` tracejada cinza claro (`stroke-dasharray: 4 4`) para `spendPrev` no eixo esquerdo, label "Investimento (mês anterior)".
+  - Uma `Line` tracejada para `conversionsPrev` no eixo direito, label "Conversões (mês anterior)".
+- O `Tooltip` formatter precisa mapear os novos `dataKey`s para rótulos em PT-BR.
 
 ## Detalhes técnicos
 
-```ts
-async function metaFetchWithRetry(url: string, opts = {}, maxRetries = 3) {
-  for (let i = 0; i <= maxRetries; i++) {
-    const res = await fetch(url, opts);
-    if (res.ok) return res;
-    if (res.status === 429 || res.status >= 500) {
-      if (i === maxRetries) return res; // devolve para o caller tratar
-      const backoff = Math.min(10000, 1000 * Math.pow(3, i)) + Math.random() * 500;
-      await new Promise(r => setTimeout(r, backoff));
-      continue;
-    }
-    return res;
-  }
-}
-```
+- Reutilizar `subMonths`, `startOfMonth`, `endOfMonth` de `date-fns` (já usado no projeto).
+- A chamada paralela ao hook deve ter `enabled: compareLastMonth && !!selectedClient` para evitar request desnecessária.
+- O merge por dia do mês usa `new Date(date).getDate()` como chave, garantindo alinhamento visual mesmo quando os meses têm tamanhos diferentes (dias 29-31 inexistentes simplesmente ficam sem valor `Prev`).
+- Nenhuma alteração em edge functions ou no backend — apenas frontend/presentation.
 
-Posso implementar tudo de uma vez ou só o item 1+2 primeiro (que já resolve o sintoma agudo) e o resto depois — me avise.
+## Arquivos afetados
+
+- `src/components/traffic-reports/TrafficReportFilters.tsx`
+- `src/pages/TrafficReports.tsx`
+- `src/components/traffic-reports/MasterTrafficReport.tsx`

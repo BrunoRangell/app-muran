@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { subDays } from "date-fns";
+import { subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { TrafficReportFilters } from "@/components/traffic-reports/TrafficReportFilters";
 import { ClientPortalButton } from "@/components/traffic-reports/ClientPortalButton";
 import { ReportContent, ViewMode } from "@/components/traffic-reports/ReportContent";
@@ -22,12 +22,26 @@ import {
 } from "@/components/ui/select";
 
 const PERIOD_OPTIONS = [
+  { value: 'this-month', label: 'Este mês' },
+  { value: 'last-month', label: 'Mês passado' },
   { value: '7', label: 'Últimos 7 dias' },
   { value: '15', label: 'Últimos 15 dias' },
   { value: '30', label: 'Últimos 30 dias' },
   { value: '60', label: 'Últimos 60 dias' },
   { value: '90', label: 'Últimos 90 dias' },
 ];
+
+const resolvePeriodRange = (value: string): { start: Date; end: Date } => {
+  if (value === 'this-month') {
+    return { start: startOfMonth(new Date()), end: new Date() };
+  }
+  if (value === 'last-month') {
+    const prev = subMonths(new Date(), 1);
+    return { start: startOfMonth(prev), end: endOfMonth(prev) };
+  }
+  const days = parseInt(value, 10);
+  return { start: subDays(new Date(), isNaN(days) ? 30 : days), end: new Date() };
+};
 
 const TrafficReports = () => {
   const { accessToken } = useParams<{ accessToken?: string }>();
@@ -39,7 +53,7 @@ const TrafficReports = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<'meta' | 'google' | 'both'>('both');
   const [viewMode, setViewMode] = useState<ViewMode>('combined');
   const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 30),
+    start: startOfMonth(new Date()),
     end: new Date()
   });
 
@@ -47,8 +61,11 @@ const TrafficReports = () => {
   const [previewMode, setPreviewMode] = useState(false);
 
   // Estado para modo portal
-  const [period, setPeriod] = useState<string>('30');
+  const [period, setPeriod] = useState<string>('this-month');
   const [hasTrackedAccess, setHasTrackedAccess] = useState(false);
+
+  // Toggle de comparação com mês anterior (gráfico "Performance ao longo do tempo")
+  const [compareLastMonth, setCompareLastMonth] = useState(false);
 
   const showPortalElements = isPortalMode || previewMode;
 
@@ -72,13 +89,17 @@ const TrafficReports = () => {
 
   const effectiveDateRange = useMemo(() => {
     if (isPortalMode) {
-      return {
-        start: subDays(new Date(), parseInt(period)),
-        end: new Date()
-      };
+      return resolvePeriodRange(period);
     }
     return dateRange;
   }, [isPortalMode, period, dateRange]);
+
+  // Range equivalente do mês anterior (para comparação)
+  const previousMonthRange = useMemo(() => ({
+    start: subMonths(effectiveDateRange.start, 1),
+    end: subMonths(effectiveDateRange.end, 1),
+  }), [effectiveDateRange]);
+
 
   const { data: clientsData } = useUnifiedData();
 
@@ -117,6 +138,23 @@ const TrafficReports = () => {
     },
     compareWithPrevious: true,
     portalAccessToken: isPortalMode ? accessToken : undefined,
+  });
+
+  // Segunda chamada: dados do mês anterior (apenas quando toggle ativo)
+  const {
+    data: previousInsightsData,
+    isLoading: isLoadingPreviousInsights,
+  } = useTrafficInsights({
+    clientId: effectiveClientId,
+    accountIds: effectiveAccounts,
+    platform: effectivePlatform,
+    dateRange: {
+      start: previousMonthRange.start.toISOString().split('T')[0],
+      end: previousMonthRange.end.toISOString().split('T')[0]
+    },
+    compareWithPrevious: false,
+    portalAccessToken: isPortalMode ? accessToken : undefined,
+    enabled: compareLastMonth,
   });
 
   const handleClientChange = (clientId: string) => {
@@ -326,6 +364,10 @@ const TrafficReports = () => {
               end: effectiveDateRange.end.toISOString().split('T')[0],
             }}
             embedded={showPortalElements}
+            compareLastMonth={compareLastMonth}
+            onToggleCompareLastMonth={setCompareLastMonth}
+            previousInsightsData={previousInsightsData}
+            isLoadingPrevious={isLoadingPreviousInsights}
           />
         )}
       </div>

@@ -6,7 +6,7 @@ import {
   Users as UsersIcon, MapPin, PieChart as PieIcon,
 } from "lucide-react";
 import {
-  Area, BarChart, Bar,
+  Area, BarChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ComposedChart,
 } from "recharts";
@@ -25,6 +25,11 @@ interface MasterTrafficReportProps {
   accountId?: string;
   /** Quando true, não renderiza o background/shell próprio — o container pai já provê. */
   embedded?: boolean;
+  /** Comparação com mês anterior no gráfico Performance ao longo do tempo */
+  compareLastMonth?: boolean;
+  onToggleCompareLastMonth?: (value: boolean) => void;
+  previousData?: any;
+  isLoadingPrevious?: boolean;
 }
 
 const fmtNum = (v: number) => new Intl.NumberFormat("pt-BR").format(Math.round(v || 0));
@@ -73,7 +78,11 @@ function SectionTitle({ icon: Icon, label, hint }: { icon: any; label: string; h
   );
 }
 
-export function MasterTrafficReport({ data, platform, clientName, dateRange, embedded = false }: MasterTrafficReportProps) {
+export function MasterTrafficReport({
+  data, platform, clientName, dateRange, embedded = false,
+  compareLastMonth = false, onToggleCompareLastMonth,
+  previousData, isLoadingPrevious = false,
+}: MasterTrafficReportProps) {
   const [activeSection, setActiveSection] = useState<string>("overview");
 
   useEffect(() => {
@@ -199,6 +208,51 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
     return Array.from(map.values());
   }, [metaSeries, googleSeries, combinedSeries, showCrossPlatform]);
 
+  // Série do mês anterior (quando toggle ativo) — merge por dia do mês
+  const mergedSeriesWithPrev = useMemo(() => {
+    if (!compareLastMonth || !previousData) return mergedSeries;
+
+    const prevMeta = previousData.metaData?.timeSeries || previousData.metaSeries || [];
+    const prevGoogle = previousData.googleData?.timeSeries || previousData.googleSeries || [];
+    const prevCombined = previousData.combinedSeries || previousData.timeSeries || [];
+
+    const getDay = (d: string) => {
+      // Trata 'YYYY-MM-DD' como data local para evitar shift de timezone
+      const parts = d?.split('-');
+      if (parts?.length === 3) return parseInt(parts[2], 10);
+      const dt = new Date(d);
+      return dt.getDate();
+    };
+
+    const prevByDay = new Map<number, { spendPrev: number; conversionsPrev: number }>();
+    const accumulate = (arr: any[]) => {
+      arr.forEach((p) => {
+        const day = getDay(p.date);
+        if (!day) return;
+        const existing = prevByDay.get(day) || { spendPrev: 0, conversionsPrev: 0 };
+        existing.spendPrev += (p.spend || 0);
+        existing.conversionsPrev += (p.conversions || 0);
+        prevByDay.set(day, existing);
+      });
+    };
+    if (prevCombined.length) accumulate(prevCombined);
+    else {
+      accumulate(prevMeta);
+      accumulate(prevGoogle);
+    }
+
+    return mergedSeries.map((p: any) => {
+      const day = getDay(p.date);
+      const prev = prevByDay.get(day);
+      return {
+        ...p,
+        spendPrev: prev?.spendPrev ?? null,
+        conversionsPrev: prev?.conversionsPrev ?? null,
+      };
+    });
+  }, [compareLastMonth, previousData, mergedSeries]);
+
+
   const genderColors: Record<string, string> = {
     male: C.blue, masculino: C.blue, m: C.blue,
     female: C.pink, feminino: C.pink, f: C.pink,
@@ -296,10 +350,35 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
           {/* ============ PERFORMANCE TEMPORAL ============ */}
           {(mergedSeries.length > 0) && (
             <GlassCard id={SECTION_ID('performance')}>
-              <SectionTitle icon={BarChart3} label="Performance ao longo do tempo" hint={`${mergedSeries.length} dias`} />
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-[#ff6e00]/10 border border-[#ff6e00]/20 flex items-center justify-center">
+                    <BarChart3 className="h-4 w-4 text-[#ff6e00]" />
+                  </div>
+                  <h2 className="text-base font-semibold text-white tracking-tight">Performance ao longo do tempo</h2>
+                  <span className="text-[11px] text-white/30 uppercase tracking-wider ml-1">{mergedSeries.length} dias</span>
+                </div>
+                {onToggleCompareLastMonth && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleCompareLastMonth(!compareLastMonth)}
+                    className={
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors " +
+                      (compareLastMonth
+                        ? "bg-[#ff6e00] border-[#ff6e00] text-white"
+                        : "bg-white/[0.02] border-white/[0.08] text-white/60 hover:text-white hover:border-white/20")
+                    }
+                  >
+                    <Repeat className="h-3 w-3" />
+                    {compareLastMonth
+                      ? (isLoadingPrevious ? "Carregando mês anterior…" : "Comparando com mês anterior")
+                      : "Comparar com mês anterior"}
+                  </button>
+                )}
+              </div>
               <div className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={mergedSeries}>
+                  <ComposedChart data={mergedSeriesWithPrev}>
                     <defs>
                       <linearGradient id="convGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={C.green} stopOpacity={0.4} />
@@ -315,6 +394,8 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
                       formatter={(v: any, n: any) => {
                         if (n === 'meta' || n === 'google' || n === 'spend') return [fmtCurrency(v), n === 'meta' ? 'Meta' : n === 'google' ? 'Google' : 'Investimento'];
                         if (n === 'conversions') return [fmtNum(v), 'Conversões'];
+                        if (n === 'spendPrev') return [fmtCurrency(v), 'Investimento (mês anterior)'];
+                        if (n === 'conversionsPrev') return [fmtNum(v), 'Conversões (mês anterior)'];
                         return [v, n];
                       }}
                     />
@@ -327,12 +408,39 @@ export function MasterTrafficReport({ data, platform, clientName, dateRange, emb
                       <Bar yAxisId="left" dataKey="spend" fill={C.primary} radius={[6, 6, 0, 0]} />
                     )}
                     <Area yAxisId="right" type="monotone" dataKey="conversions" stroke={C.green} strokeWidth={2} fill="url(#convGrad)" />
+                    {compareLastMonth && (
+                      <>
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="spendPrev"
+                          name="Investimento (mês anterior)"
+                          stroke="rgba(255,255,255,0.55)"
+                          strokeWidth={2}
+                          strokeDasharray="4 4"
+                          dot={false}
+                          connectNulls
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="conversionsPrev"
+                          name="Conversões (mês anterior)"
+                          stroke={C.amber}
+                          strokeWidth={2}
+                          strokeDasharray="4 4"
+                          dot={false}
+                          connectNulls
+                        />
+                      </>
+                    )}
                     <Legend wrapperStyle={{ paddingTop: 12 }} iconType="circle" />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </GlassCard>
           )}
+
 
           {/* ============ PLATAFORMAS LADO A LADO ============ */}
           {(metaSeries.length > 0 || googleSeries.length > 0) && (

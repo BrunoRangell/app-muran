@@ -12,19 +12,22 @@ export interface TrafficInsightsParams {
   compareWithPrevious?: boolean;
   /** Quando presente, autoriza chamadas públicas via portal do cliente */
   portalAccessToken?: string;
+  /** Permite desabilitar a query externamente (default: true) */
+  enabled?: boolean;
 }
 
 export const useTrafficInsights = (params: TrafficInsightsParams) => {
+  const { enabled = true, ...rest } = params;
   return useQuery({
-    queryKey: ['traffic-insights', params],
+    queryKey: ['traffic-insights', rest],
     queryFn: async () => {
       console.log('🔍 [useTrafficInsights] Fetching data:', {
-        ...params,
-        portalAccessToken: params.portalAccessToken ? '[present]' : undefined,
+        ...rest,
+        portalAccessToken: rest.portalAccessToken ? '[present]' : undefined,
       });
 
       const { data, error } = await supabase.functions.invoke('traffic-insights', {
-        body: params
+        body: rest
       });
 
       if (error) {
@@ -39,7 +42,7 @@ export const useTrafficInsights = (params: TrafficInsightsParams) => {
       console.log('✅ [useTrafficInsights] Data received');
       return data;
     },
-    enabled: !!params.clientId && params.accountIds.length > 0 && !!params.platform,
+    enabled: enabled && !!rest.clientId && rest.accountIds.length > 0 && !!rest.platform,
     staleTime: 5 * 60 * 1000, // 5 minutos
     retry: 2
   });
