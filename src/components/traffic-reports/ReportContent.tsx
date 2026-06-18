@@ -98,6 +98,10 @@ export function ReportContent({
       dateRange={dateRange}
       accountId={accountId}
       embedded={embedded}
+      compareLastMonth={compareLastMonth}
+      onToggleCompareLastMonth={onToggleCompareLastMonth}
+      previousData={previousInsightsData}
+      isLoadingPrevious={isLoadingPrevious}
     />
   );
 }
