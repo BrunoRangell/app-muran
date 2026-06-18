@@ -140,6 +140,23 @@ const TrafficReports = () => {
     portalAccessToken: isPortalMode ? accessToken : undefined,
   });
 
+  // Segunda chamada: dados do mês anterior (apenas quando toggle ativo)
+  const {
+    data: previousInsightsData,
+    isLoading: isLoadingPreviousInsights,
+  } = useTrafficInsights({
+    clientId: effectiveClientId,
+    accountIds: effectiveAccounts,
+    platform: effectivePlatform,
+    dateRange: {
+      start: previousMonthRange.start.toISOString().split('T')[0],
+      end: previousMonthRange.end.toISOString().split('T')[0]
+    },
+    compareWithPrevious: false,
+    portalAccessToken: isPortalMode ? accessToken : undefined,
+    enabled: compareLastMonth,
+  });
+
   const handleClientChange = (clientId: string) => {
     setSelectedClient(clientId);
     setSelectedAccounts([]);
