@@ -53,7 +53,7 @@ const TrafficReports = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<'meta' | 'google' | 'both'>('both');
   const [viewMode, setViewMode] = useState<ViewMode>('combined');
   const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 30),
+    start: startOfMonth(new Date()),
     end: new Date()
   });
 
@@ -61,8 +61,11 @@ const TrafficReports = () => {
   const [previewMode, setPreviewMode] = useState(false);
 
   // Estado para modo portal
-  const [period, setPeriod] = useState<string>('30');
+  const [period, setPeriod] = useState<string>('this-month');
   const [hasTrackedAccess, setHasTrackedAccess] = useState(false);
+
+  // Toggle de comparação com mês anterior (gráfico "Performance ao longo do tempo")
+  const [compareLastMonth, setCompareLastMonth] = useState(false);
 
   const showPortalElements = isPortalMode || previewMode;
 
@@ -86,13 +89,17 @@ const TrafficReports = () => {
 
   const effectiveDateRange = useMemo(() => {
     if (isPortalMode) {
-      return {
-        start: subDays(new Date(), parseInt(period)),
-        end: new Date()
-      };
+      return resolvePeriodRange(period);
     }
     return dateRange;
   }, [isPortalMode, period, dateRange]);
+
+  // Range equivalente do mês anterior (para comparação)
+  const previousMonthRange = useMemo(() => ({
+    start: subMonths(effectiveDateRange.start, 1),
+    end: subMonths(effectiveDateRange.end, 1),
+  }), [effectiveDateRange]);
+
 
   const { data: clientsData } = useUnifiedData();
 
