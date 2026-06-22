@@ -144,7 +144,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     
     // Buscar todas as campanhas com paginação
     let allCampaigns: any[] = [];
-    let nextUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=1000&access_token=${accessToken}`;
+    let nextUrl = `https://graph.facebook.com/v24.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=1000&access_token=${accessToken}`;
     let pageCount = 0;
     
     while (nextUrl && pageCount < 10) {
@@ -208,7 +208,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
         try {
           const windowStart = shiftIsoDate(today, -META_ZERO_STREAK_WINDOW_DAYS);
           // Uma única chamada com breakdown diário cobre hoje + 10 dias anteriores
-          const dailyUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
+          const dailyUrl = `https://graph.facebook.com/v24.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${windowStart}","until":"${today}"}&time_increment=1&access_token=${accessToken}`;
 
           console.log(`🔍 DEBUG Meta: Buscando insights diários (${windowStart}..${today}) para campanha ${campaign.id} (${campaign.name})`);
 

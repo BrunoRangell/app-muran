@@ -46,7 +46,7 @@ export async function fetchAdSets(campaignId: string, accessToken: string, campa
   console.log(`🔍 [META-API] Iniciando busca de adsets para campanha ${campaignId} (${campaignName})`);
   
   try {
-    const adsetsUrl = `https://graph.facebook.com/v22.0/${campaignId}/adsets?fields=id,name,daily_budget,status,effective_status,end_time&access_token=${accessToken}&limit=1000`;
+    const adsetsUrl = `https://graph.facebook.com/v24.0/${campaignId}/adsets?fields=id,name,daily_budget,status,effective_status,end_time&access_token=${accessToken}&limit=1000`;
     console.log(`📞 [META-API] Chamando Meta API para campanha ${campaignId}`);
     
     const response = await fetch(adsetsUrl);
@@ -166,7 +166,7 @@ async function fetchAccountActivities(
       pageCount++;
       
       // Incluir TODOS os campos conforme exemplo do usuário com paginação
-      let activitiesUrl = `https://graph.facebook.com/v22.0/act_${accountId}/activities?since=${since}&until=${until}&fields=event_type,translated_event_type,event_time,date_time_in_timezone,extra_data,object_type,object_name,actor_name&access_token=${accessToken}&limit=100`;
+      let activitiesUrl = `https://graph.facebook.com/v24.0/act_${accountId}/activities?since=${since}&until=${until}&fields=event_type,translated_event_type,event_time,date_time_in_timezone,extra_data,object_type,object_name,actor_name&access_token=${accessToken}&limit=100`;
       
       if (nextPageCursor) {
         activitiesUrl += `&after=${nextPageCursor}`;
@@ -492,7 +492,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     if (basicInfo.is_prepay_account) {
       console.log(`💳 [META-API] Conta pré-paga detectada, buscando saldo da API...`);
       
-      const balanceUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=account_status,balance,expired_funding_source_details&access_token=${accessToken}`;
+      const balanceUrl = `https://graph.facebook.com/v24.0/act_${accountId}?fields=account_status,balance,expired_funding_source_details&access_token=${accessToken}`;
       const balanceResponse = await fetch(balanceUrl);
       
       if (!balanceResponse.ok) {
@@ -662,7 +662,7 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
   console.log(`🔍 [META-API] Buscando informações básicas da conta ${accountId}`);
   
   try {
-    const basicInfoUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,currency,account_status,is_prepay_account&access_token=${accessToken}`;
+    const basicInfoUrl = `https://graph.facebook.com/v24.0/act_${accountId}?fields=name,currency,account_status,is_prepay_account&access_token=${accessToken}`;
     
     const response = await metaFetchWithRetry(basicInfoUrl);
     if (!response.ok) {
@@ -711,7 +711,7 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
   try {
     // 1. Buscar TODAS as campanhas da conta com paginação
     let allCampaigns: any[] = [];
-    let campaignsNextUrl: string | null = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,status,effective_status,daily_budget,lifetime_budget&access_token=${accessToken}&limit=500`;
+    let campaignsNextUrl: string | null = `https://graph.facebook.com/v24.0/act_${accountId}/campaigns?fields=id,name,status,effective_status,daily_budget,lifetime_budget&access_token=${accessToken}&limit=500`;
     let pageCount = 0;
     
     console.log(`📞 [META-API] Buscando campanhas (com paginação)...`);
@@ -827,7 +827,7 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
     } else {
       console.log(`💸 [META-API] Buscando gastos de ${sinceParam} até ${untilParam} (até ontem)...`);
       
-      const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={'since':'${sinceParam}','until':'${untilParam}'}&access_token=${accessToken}`;
+      const insightsUrl = `https://graph.facebook.com/v24.0/act_${accountId}/insights?fields=spend&time_range={'since':'${sinceParam}','until':'${untilParam}'}&access_token=${accessToken}`;
       
       const insightsResponse = await fetch(insightsUrl);
       if (!insightsResponse.ok) {
@@ -848,7 +848,7 @@ export async function fetchMetaApiData(accountId: string, accessToken: string, c
     
     // 4. Buscar nome da conta
     console.log(`🏷️ [META-API] Buscando nome da conta...`);
-    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name&access_token=${accessToken}`;
+    const accountUrl = `https://graph.facebook.com/v24.0/act_${accountId}?fields=name&access_token=${accessToken}`;
     
     const accountResponse = await fetch(accountUrl);
     let accountName = `Conta ${accountId}`;

@@ -39,7 +39,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     // Sem paginação, contas com >25 campanhas perdiam as últimas (bug histórico).
     const allCampaigns: any[] = [];
     let nextUrl: string | null =
-      `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=200&access_token=${accessToken}`;
+      `https://graph.facebook.com/v24.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=200&access_token=${accessToken}`;
     let pageCount = 0;
     const MAX_PAGES = 20; // proteção contra loop infinito (até 4000 campanhas)
 
@@ -90,7 +90,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const windowStart = shiftIsoDate(today, -META_ZERO_STREAK_WINDOW_DAYS);
 
     const aggregatedUrl =
-      `https://graph.facebook.com/v22.0/act_${accountId}/insights` +
+      `https://graph.facebook.com/v24.0/act_${accountId}/insights` +
       `?level=campaign&fields=campaign_id,spend,impressions` +
       `&time_range={"since":"${windowStart}","until":"${today}"}` +
       `&time_increment=1&limit=500&access_token=${accessToken}`;
