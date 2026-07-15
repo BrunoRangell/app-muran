@@ -72,7 +72,7 @@ export const useCosts = (filters?: CostFilters) => {
       const { id, ...updateData } = updatedCost;
       const { data, error } = await supabase
         .from("costs")
-        .update(updateData)
+        .update(updateData as any)
         .eq("id", id)
         .select()
         .single();
