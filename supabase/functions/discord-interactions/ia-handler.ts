@@ -443,12 +443,7 @@ export async function handleIaButton(
     return;
   }
 
-  const rowHierarchy = (row.hierarchy_snapshot as any) || {};
-  const rowPathBits: string[] = [];
-  if (rowHierarchy.campaign_name) rowPathBits.push(rowHierarchy.campaign_name);
-  if (rowHierarchy.adset_name) rowPathBits.push(rowHierarchy.adset_name);
-  rowPathBits.push(row.target_name || 'item');
-  const rowPath = rowPathBits.join(' › ');
+  const rowPath = formatHierarchyPath(row.hierarchy_snapshot, row.level, row.target_name);
 
   if (prefix === 'ia_cancel') {
     await supabase
