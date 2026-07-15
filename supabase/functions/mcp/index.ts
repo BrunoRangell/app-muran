@@ -26,7 +26,7 @@ var whoami_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-clients.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.48.1";
+import { createClient } from "npm:@supabase/supabase-js@^2.110.6";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.0";
 import { z } from "npm:zod@^4";
 function supabaseForUser(ctx) {
@@ -63,7 +63,7 @@ var list_clients_default = defineTool2({
 });
 
 // src/lib/mcp/tools/get-client.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.48.1";
+import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.110.6";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.0";
 import { z as z2 } from "npm:zod@^4";
 function supabaseForUser2(ctx) {
@@ -100,7 +100,7 @@ var get_client_default = defineTool3({
 });
 
 // src/lib/mcp/tools/list-budget-reviews.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.48.1";
+import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.110.6";
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.22.0";
 import { z as z3 } from "npm:zod@^4";
 function supabaseForUser3(ctx) {
