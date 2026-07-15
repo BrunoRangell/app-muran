@@ -325,11 +325,44 @@ function computeAdDeltas(current: any[], previous: any[], platform: 'meta' | 'go
 }
 
 
+// Busca objetivos de todas as campanhas da conta em uma única chamada.
+async function fetchCampaignObjectives(
+  accountId: string,
+  accessToken: string,
+): Promise<Map<string, string>> {
+  const formatted = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+  const out = new Map<string, string>();
+  try {
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      fields: 'id,objective',
+      limit: '500',
+    });
+    const url = `https://graph.facebook.com/v24.0/${formatted}/campaigns?${params}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[META-OBJ] Failed to fetch campaign objectives: ${res.status}`);
+      return out;
+    }
+    const data = await res.json();
+    if (Array.isArray(data?.data)) {
+      for (const c of data.data) {
+        if (c?.id && c?.objective) out.set(String(c.id), String(c.objective));
+      }
+    }
+    console.log(`🎯 [META-OBJ] Loaded ${out.size} campaign objectives`);
+  } catch (e) {
+    console.warn('[META-OBJ] error:', e);
+  }
+  return out;
+}
+
 async function fetchMetaApiInsights(
   accountId: string,
   accessToken: string,
   since: string,
-  until: string
+  until: string,
+  campaignObjectiveMap: Map<string, string> = new Map(),
 ) {
   // Garantir que o accountId tenha o prefixo act_
   const formattedAccountId = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
