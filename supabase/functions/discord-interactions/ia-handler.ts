@@ -285,6 +285,7 @@ export async function handleIaCommand(
         action: decisao.acao,
         new_value: decisao.acao === 'mudar_orcamento' ? decisao.novo_valor : null,
         previous_value_snapshot: snapshot,
+        hierarchy_snapshot: target.hierarchy || null,
         comando,
         requested_by_discord_user: discordUser,
         channel_id: channelId,
