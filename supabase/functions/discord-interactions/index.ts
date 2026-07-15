@@ -4,6 +4,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import nacl from 'npm:tweetnacl@1.0.3';
+import { handleIaCommand, handleIaButton } from './ia-handler.ts';
 
 const META_API_VERSION = 'v24.0';
 const MURAN_ORANGE = 0xff6e00;
