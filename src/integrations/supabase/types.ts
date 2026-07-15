@@ -121,53 +121,59 @@ export type Database = {
       bot_action_requests: {
         Row: {
           action: string
+          candidates_snapshot: Json | null
           channel_id: string | null
           client_id: string | null
+          comando: string | null
           created_at: string
           executed_at: string | null
           id: string
-          level: string
+          level: string | null
           new_value: number | null
           platform: string
           previous_value_snapshot: Json | null
           requested_by_discord_user: string | null
           result: Json | null
           status: string
-          target_id: string
+          target_id: string | null
           target_name: string | null
         }
         Insert: {
           action: string
+          candidates_snapshot?: Json | null
           channel_id?: string | null
           client_id?: string | null
+          comando?: string | null
           created_at?: string
           executed_at?: string | null
           id?: string
-          level: string
+          level?: string | null
           new_value?: number | null
           platform: string
           previous_value_snapshot?: Json | null
           requested_by_discord_user?: string | null
           result?: Json | null
           status?: string
-          target_id: string
+          target_id?: string | null
           target_name?: string | null
         }
         Update: {
           action?: string
+          candidates_snapshot?: Json | null
           channel_id?: string | null
           client_id?: string | null
+          comando?: string | null
           created_at?: string
           executed_at?: string | null
           id?: string
-          level?: string
+          level?: string | null
           new_value?: number | null
           platform?: string
           previous_value_snapshot?: Json | null
           requested_by_discord_user?: string | null
           result?: Json | null
           status?: string
-          target_id?: string
+          target_id?: string | null
           target_name?: string | null
         }
         Relationships: []
