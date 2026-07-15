@@ -2,13 +2,22 @@
 
 import type { Target } from './ia-targets.ts';
 
+export type AcaoIA =
+  | 'pausar'
+  | 'ativar'
+  | 'mudar_orcamento'
+  | 'listar_campanhas'
+  | 'listar_conjuntos'
+  | 'listar_anuncios';
+
 export type ClaudeDecision = {
   confianca: 'confiante' | 'ambiguo' | 'nao_encontrado';
-  acao?: 'pausar' | 'ativar' | 'mudar_orcamento';
+  acao?: AcaoIA;
   nivel?: 'anuncio' | 'adset' | 'campanha';
   item_id?: string;
   item_nome?: string;
   novo_valor?: number;
+  plataforma_filtro?: 'meta' | 'google' | null;
   candidatos?: Array<{ id?: string; nome?: string }>;
   mensagem?: string;
 };
