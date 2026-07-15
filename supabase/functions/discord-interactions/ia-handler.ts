@@ -212,11 +212,18 @@ export async function handleIaCommand(
       }
 
       const reqId = inserted.id;
-      const options = candidates.map((t) => ({
-        label: `${t.name} (${statusLabelShort(t.status)})`.slice(0, 100),
-        description: `${nivelLabel(t.level)} · ${t.platform === 'meta' ? 'Meta' : 'Google'}`.slice(0, 100),
-        value: t.id,
-      }));
+      const options = candidates.map((t) => {
+        const h = t.hierarchy || {};
+        const parentBits: string[] = [];
+        if (h.campaign_name) parentBits.push(h.campaign_name);
+        if (h.adset_name) parentBits.push(h.adset_name);
+        const parentDesc = parentBits.length ? `${parentBits.join(' › ')} · ` : '';
+        return {
+          label: `${t.name} (${statusLabelShort(t.status)})`.slice(0, 100),
+          description: `${parentDesc}${nivelLabel(t.level)} · ${t.platform === 'meta' ? 'Meta' : 'Google'}`.slice(0, 100),
+          value: t.id,
+        };
+      });
 
       const acaoTxt =
         decisao.acao === 'mudar_orcamento'
