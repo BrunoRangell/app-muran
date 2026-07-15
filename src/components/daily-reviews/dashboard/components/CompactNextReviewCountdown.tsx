@@ -27,7 +27,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState<boolean>(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
