@@ -273,26 +273,56 @@ export async function handleIaCommand(
       return;
     }
 
-    // ===== Caso AMBÍGUO: menu de seleção =====
-    if (decisao.confianca === 'ambiguo') {
-      // Mapear candidatos sugeridos para targets reais
+    // ===== Caso AMBÍGUO ou NÃO_ENCONTRADO (com ação identificada): menu de seleção =====
+    const isWriteAction =
+      decisao.acao === 'pausar' || decisao.acao === 'ativar' || decisao.acao === 'mudar_orcamento';
+    const needsSelection =
+      decisao.confianca === 'ambiguo' ||
+      (decisao.confianca === 'nao_encontrado' && isWriteAction) ||
+      (decisao.confianca === 'confiante' && isWriteAction && !decisao.item_id);
+
+    if (needsSelection) {
+      // 1) Tentar candidatos que a IA sugeriu
       const candIds = new Set((decisao.candidatos || []).map((c) => c.id).filter(Boolean));
       let candidates: Target[] = targets.filter((t) => candIds.has(t.id));
-      // Fallback: se a IA não trouxe ids válidos, tentar por nome
       if (!candidates.length && decisao.candidatos?.length) {
         const names = (decisao.candidatos || []).map((c) => (c.nome || '').toLowerCase());
         candidates = targets.filter((t) => names.some((n) => n && t.name.toLowerCase().includes(n)));
       }
+
+      // 2) Fallback: quando a IA não mapeou nada, oferecer TODOS os alvos do nível pedido
+      //    (ou todos os níveis se ela não indicou). Para mudar_orcamento, restringe a
+      //    campanha/adset (nunca anúncio) e exclui Google adset (que não tem orçamento próprio).
+      if (!candidates.length) {
+        let pool = targets;
+        if (decisao.nivel) pool = pool.filter((t) => t.level === decisao.nivel);
+        if (decisao.acao === 'mudar_orcamento') {
+          pool = pool.filter((t) => {
+            if (t.level === 'anuncio') return false;
+            if (t.platform === 'google' && t.level === 'adset') return false;
+            return true;
+          });
+        }
+        // Priorizar ativos, depois pausados
+        const active = pool.filter((t) => {
+          const s = (t.status || '').toUpperCase();
+          return s === 'ACTIVE' || s === 'ENABLED';
+        });
+        const paused = pool.filter((t) => (t.status || '').toUpperCase() === 'PAUSED');
+        const rest = pool.filter((t) => !active.includes(t) && !paused.includes(t));
+        candidates = [...active, ...paused, ...rest];
+      }
+
       candidates = candidates.slice(0, 25);
 
       if (!candidates.length) {
         await editOriginal(appId, interactionToken, {
-          content: `🤔 A IA achou o pedido ambíguo, mas não consegui mapear os candidatos. ${decisao.mensagem ? `\n> ${decisao.mensagem}` : ''}\nTente reformular com o nome exato.`,
+          content: `🤔 Não encontrei nenhum item elegível para **${decisao.acao}** em **${client.company_name}**.${decisao.mensagem ? `\n> ${decisao.mensagem}` : ''}`,
         });
         return;
       }
 
-      // Persistir estado ambíguo
+      // Persistir estado ambíguo (reaproveita o status 'ambiguous')
       const { data: inserted, error: insErr } = await supabase
         .from('bot_action_requests')
         .insert({
@@ -302,7 +332,7 @@ export async function handleIaCommand(
           target_id: null,
           target_name: null,
           action: decisao.acao,
-          new_value: decisao.acao === 'mudar_orcamento' ? decisao.novo_valor : null,
+          new_value: decisao.acao === 'mudar_orcamento' ? decisao.novo_valor ?? null : null,
           comando,
           candidates_snapshot: candidates,
           requested_by_discord_user: discordUser,
@@ -336,11 +366,18 @@ export async function handleIaCommand(
 
       const acaoTxt =
         decisao.acao === 'mudar_orcamento'
-          ? `mudar o orçamento diário para **${formatBRL(decisao.novo_valor!)}/dia**`
+          ? decisao.novo_valor
+            ? `mudar o orçamento diário para **${formatBRL(decisao.novo_valor)}/dia**`
+            : `**mudar o orçamento diário**`
           : `**${decisao.acao}**`;
 
+      const cabecalho =
+        decisao.confianca === 'ambiguo'
+          ? `⚠️ Encontrei **${candidates.length}** itens compatíveis para ${acaoTxt} em **${client.company_name}**. Escolha qual:`
+          : `🤔 Não identifiquei um item específico para ${acaoTxt} em **${client.company_name}**. Escolha na lista (${candidates.length} opção${candidates.length === 1 ? '' : 'es'}):`;
+
       await editOriginal(appId, interactionToken, {
-        content: `⚠️ Encontrei **${candidates.length}** itens compatíveis para ${acaoTxt} em **${client.company_name}**. Escolha qual:`,
+        content: cabecalho,
         embeds: [],
         components: [
           {
