@@ -111,37 +111,67 @@ export function filterTargets(
   return targets.filter((t) => t.level === level && (!plataforma || t.platform === plataforma));
 }
 
+type StatusFilter = 'ativo' | 'pausado' | null | undefined;
+
+function titleSuffix(status: StatusFilter, plural: 'campanhas' | 'conjuntos' | 'anúncios') {
+  if (status === 'ativo') return `${plural} ativos`.replace('campanhas ativos', 'campanhas ativas').replace('anúncios ativos', 'anúncios ativos');
+  if (status === 'pausado') return `${plural} pausados`.replace('campanhas pausados', 'campanhas pausadas');
+  return plural.charAt(0).toUpperCase() + plural.slice(1);
+}
+
+function labelFor(status: StatusFilter, singular: 'campanha' | 'conjunto' | 'anúncio', qty: number) {
+  const plural = singular === 'campanha' ? 'campanhas' : singular === 'conjunto' ? 'conjuntos' : 'anúncios';
+  const noun = qty === 1 ? singular : plural;
+  if (status === 'ativo') {
+    if (singular === 'campanha') return `${qty} ${noun} ${qty === 1 ? 'ativa' : 'ativas'}`;
+    return `${qty} ${noun} ${qty === 1 ? 'ativo' : 'ativos'}`;
+  }
+  if (status === 'pausado') {
+    if (singular === 'campanha') return `${qty} ${noun} ${qty === 1 ? 'pausada' : 'pausadas'}`;
+    return `${qty} ${noun} ${qty === 1 ? 'pausado' : 'pausados'}`;
+  }
+  return `${qty} ${noun}`;
+}
+
 export function buildCampaignsListPayload(
   clientName: string,
   targets: Target[],
+  status?: StatusFilter,
 ): unknown {
   const items = filterTargets(targets, 'campanha');
   if (!items.length) {
-    return { content: `📭 Nenhuma campanha ativa/pausada encontrada para **${clientName}**.` };
+    const nada = status === 'ativo' ? 'ativa' : status === 'pausado' ? 'pausada' : 'ativa/pausada';
+    return { content: `📭 Nenhuma campanha ${nada} encontrada para **${clientName}**.` };
   }
   const lines = items.slice(0, 40).map((t) => {
     const budget = formatBRL(t.budget_amount);
     const budgetTxt = budget ? ` — ${budget}/dia` : '';
     return `${statusIcon(t.status)} \`${plataformaLabel(t.platform)}\` **${t.name}** — ${statusShort(t.status)}${budgetTxt}`;
   });
+  const suffix = status === 'ativo' ? 'Campanhas ativas' : status === 'pausado' ? 'Campanhas pausadas' : 'Campanhas';
   return {
     content: '',
     embeds: [
       {
-        title: `📋 Campanhas — ${clientName}`,
+        title: `📋 ${suffix} — ${clientName}`,
         description: lines.join('\n').slice(0, 4000),
         color: MURAN_ORANGE,
-        footer: { text: `${items.length} campanha(s)` },
+        footer: { text: labelFor(status, 'campanha', items.length) },
       },
     ],
     components: [],
   };
 }
 
-export function buildAdSetsListPayload(clientName: string, targets: Target[]): unknown {
+export function buildAdSetsListPayload(
+  clientName: string,
+  targets: Target[],
+  status?: StatusFilter,
+): unknown {
   const items = filterTargets(targets, 'adset');
   if (!items.length) {
-    return { content: `📭 Nenhum conjunto ativo/pausado encontrado para **${clientName}**.` };
+    const nada = status === 'ativo' ? 'ativo' : status === 'pausado' ? 'pausado' : 'ativo/pausado';
+    return { content: `📭 Nenhum conjunto ${nada} encontrado para **${clientName}**.` };
   }
   const lines = items.slice(0, 40).map((t) => {
     const budget = formatBRL(t.budget_amount);
@@ -149,14 +179,15 @@ export function buildAdSetsListPayload(clientName: string, targets: Target[]): u
     const camp = t.hierarchy?.campaign_name ? ` · _${t.hierarchy.campaign_name}_` : '';
     return `${statusIcon(t.status)} \`${plataformaLabel(t.platform)}\` **${t.name}** — ${statusShort(t.status)}${budgetTxt}${camp}`;
   });
+  const suffix = status === 'ativo' ? 'Conjuntos ativos' : status === 'pausado' ? 'Conjuntos pausados' : 'Conjuntos';
   return {
     content: '',
     embeds: [
       {
-        title: `📋 Conjuntos — ${clientName}`,
+        title: `📋 ${suffix} — ${clientName}`,
         description: lines.join('\n').slice(0, 4000),
         color: MURAN_ORANGE,
-        footer: { text: `${items.length} conjunto(s)` },
+        footer: { text: labelFor(status, 'conjunto', items.length) },
       },
     ],
     components: [],
