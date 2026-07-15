@@ -174,9 +174,45 @@ export async function fetchMetaInsights(
     campaigns: currentInsights.campaigns,
     timeSeries: currentInsights.timeSeries,
     demographics: currentInsights.demographics,
-    topAds
+    topAds,
+    adDeltas,
   };
 }
+
+// Cruza topAds atuais e anteriores por id do anúncio e calcula deltas (%).
+// Filtra por >=300 impressions no período atual para evitar ruído estatístico.
+function computeAdDeltas(current: any[], previous: any[], platform: 'meta' | 'google'): any[] {
+  const prevById = new Map<string, any>();
+  for (const p of previous || []) {
+    if (p?.id) prevById.set(p.id, p);
+  }
+  const out: any[] = [];
+  const pct = (cur: number, prev: number) => {
+    if (!prev) return cur > 0 ? 100 : 0;
+    return ((cur - prev) / prev) * 100;
+  };
+  for (const c of current || []) {
+    const impressions = c?.metrics?.impressions || 0;
+    if (impressions < 300) continue;
+    const p = prevById.get(c.id);
+    if (!p) continue;
+    out.push({
+      id: c.id,
+      name: c.name,
+      platform,
+      impressions_current: impressions,
+      ctr_change: pct(c.metrics.ctr, p.metrics?.ctr || 0),
+      cpc_change: pct(c.metrics.cpc, p.metrics?.cpc || 0),
+      cpa_change: pct(c.metrics.cpa, p.metrics?.cpa || 0),
+      spend_change: pct(c.metrics.spend, p.metrics?.spend || 0),
+      impressions_change: pct(impressions, p.metrics?.impressions || 0),
+    });
+  }
+  // Ordena por magnitude de piora de CTR (piores primeiro)
+  out.sort((a, b) => (a.ctr_change - b.ctr_change));
+  return out.slice(0, 15);
+}
+
 
 async function fetchMetaApiInsights(
   accountId: string,
