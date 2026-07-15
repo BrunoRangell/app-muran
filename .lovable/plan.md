@@ -1,39 +1,47 @@
-Plano para corrigir o aviso final da autorização MCP
+# Corrigir falha de autorização do Claude no MCP
 
-1. Confirmar onde a falha acontece
-- Validar se o erro ocorre depois de clicar em Aprovar no app, ou seja, no retorno para o conector/Lovable.
-- Usar a referência exibida no alerta (`ofid_bb0f4eae...`) apenas como indício de falha no fluxo OAuth, sem expor dados sensíveis.
+## Sintoma
+Após aprovar o consentimento em `app.muranmarketing.com.br/oauth/consent`, o Claude mostra:
+> "A autorização com APP Muran - Lovable falhou... ofid_fc1394c2c696feca"
 
-2. Verificar configuração OAuth do Supabase
-- Conferir se o Authorization Server está ativo.
-- Confirmar se o Authorization Path configurado no Supabase bate com as rotas públicas existentes:
-  - `/oauth/consent`
-  - `/.lovable/oauth/consent`
-- Confirmar se o Site URL está em `https://app.muranmarketing.com.br`.
-- Verificar se Dynamic OAuth Apps continua habilitado, pois conectores como Lovable/Claude precisam registrar cliente automaticamente.
+Isso indica que o Claude concluiu o redirect mas falhou ao **trocar o `code` por token** no endpoint `/oauth/token` do Supabase (ou o `id_token`/audience não bateu).
 
-3. Testar o endpoint MCP publicado
-- Validar o endpoint:
-  - `https://socrnutfpqtcjmetskta.supabase.co/functions/v1/mcp`
-- Conferir os metadados OAuth expostos pelo MCP, principalmente issuer, protected resource e audience.
-- Checar se o MCP está anunciando o issuer direto do Supabase:
-  - `https://socrnutfpqtcjmetskta.supabase.co/auth/v1`
+## Causas prováveis (em ordem)
 
-4. Revisar o fluxo do app
-- Confirmar que a página de consentimento carrega detalhes da autorização com `supabase.auth.oauth.getAuthorizationDetails`.
-- Confirmar que o botão Aprovar chama `approveAuthorization` e redireciona exatamente para a URL retornada pelo Supabase.
-- Ajustar o login para preservar o retorno ao consentimento em todos os caminhos necessários, se ainda houver algum ponto perdendo o `returnTo`.
+1. **Método de autenticação do client OAuth incompatível**  
+   O client "Claude - Muran APP" no Supabase provavelmente está com `token_endpoint_auth_method = client_secret_basic`, mas o Claude envia via `client_secret_post` (ou vice-versa). Como usamos DCR (Dynamic Client Registration), o correto é deixar o Supabase permitir o método que o Claude registrou automaticamente — não criar um client manual.
 
-5. Conferir logs da Edge Function MCP
-- Ler os logs recentes da função `mcp` durante a tentativa de vinculação.
-- Procurar erros de token, issuer, audience, DCR, CORS, protected resource metadata ou callback OAuth.
+2. **Client duplicado / manual conflitando com DCR**  
+   Se existe um client "Claude - Muran APP" criado manualmente, ele pode estar competindo com o client dinâmico que o Claude registra. O Claude sempre usa o `client_id` que ele mesmo registrou via DCR.
 
-6. Aplicar correção mínima
-- Se for configuração: orientar/ajustar o valor correto no Supabase.
-- Se for código: corrigir apenas a rota/redirect/issuer necessário.
-- Depois, regenerar o manifesto MCP e redeployar a função `mcp`.
+3. **Audience/issuer do token não bate com o MCP**  
+   Nosso `defineMcp` valida `acceptedAudiences: "authenticated"` e `issuer: https://socrnutfpqtcjmetskta.supabase.co/auth/v1`. Se o token emitido não tiver esse `aud`/`iss`, o MCP recusa.
 
-7. Validar novamente
-- Repetir o vínculo pelo conector.
-- Confirmar que o fluxo termina conectado, sem o aviso final.
-- Se o erro persistir, usar a referência do alerta junto dos logs para isolar se a falha está no callback do conector ou na resposta OAuth do Supabase.
+## Passos de diagnóstico e correção
+
+### 1. Remover client OAuth manual
+No Supabase Dashboard → Authentication → OAuth Server → **OAuth Apps**:
+- **Apagar** qualquer app criado manualmente para o Claude (incl. "Claude - Muran APP").
+- Deixar apenas **Allow Dynamic OAuth Apps: enabled**. O Claude registrará seu próprio client automaticamente.
+
+### 2. Retentar o fluxo no Claude
+- No Claude, remover a integração antiga "APP Muran - Lovable".
+- Adicionar novamente com URL: `https://socrnutfpqtcjmetskta.supabase.co/functions/v1/mcp`.
+- Autorizar → aprovar consentimento → aguardar retorno.
+
+### 3. Se ainda falhar, coletar evidências
+- Logs da edge function `mcp` (Supabase Dashboard → Functions → mcp → Logs) filtrando por `token`, `audience`, `issuer`, `401`, `invalid_client`.
+- Logs do Auth (Supabase → Logs → Auth) filtrando por `/oauth/token` no momento do teste.
+- Comparar `iss`/`aud` do access_token retornado (decodificar em jwt.io) com o esperado no `defineMcp`.
+
+### 4. Ajustes possíveis no código (apenas se logs indicarem)
+- Se `aud` do token do Supabase não for `"authenticated"`, ajustar `acceptedAudiences` em `src/lib/mcp/index.ts` para o valor real observado.
+- Se `iss` publicado divergir, corrigir `issuer` no mesmo arquivo, regerar manifest e redeployar `mcp`.
+
+## Detalhes técnicos
+- Arquivos possivelmente tocados: `src/lib/mcp/index.ts` (só se logs indicarem mismatch de `iss`/`aud`).
+- Comandos: `app_mcp_server--extract_mcp_manifest` + `supabase--deploy_edge_functions(["mcp"])` após qualquer mudança no MCP.
+- Nenhum código será alterado antes de você confirmar o passo 1 e retestar.
+
+## Próxima ação sua
+Confirmar se posso avançar para o passo 1 (remover client manual e retestar). Se após o retest ainda falhar, eu leio os logs da função `mcp` e do Auth para identificar mismatch de audience/issuer.
