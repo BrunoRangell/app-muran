@@ -265,8 +265,27 @@ Deno.serve(async (req) => {
       });
     }
 
-
-
+    if (name === 'ia') {
+      const comando = (interaction.data?.options || []).find((o: any) => o.name === 'comando')?.value || '';
+      const channelId = interaction.channel_id || interaction.channel?.id || '';
+      const channelName = interaction.channel?.name;
+      const discordUser =
+        interaction.member?.user?.username ||
+        interaction.user?.username ||
+        interaction.member?.user?.global_name ||
+        'desconhecido';
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        handleIaCommand(appId, token, String(comando), channelId, channelName, discordUser, supabase),
+      );
+      return jsonResponse({
+        type: 5,
+        data: {
+          flags: 64,
+          content: '🤖 Interpretando sua solicitação… (pode levar até 30s)',
+        },
+      });
+    }
 
     return jsonResponse({
       type: 4,
@@ -284,6 +303,12 @@ Deno.serve(async (req) => {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleAccountSelect(appId, token, accountRowId, supabase));
       return jsonResponse({ type: 6 }); // DEFERRED_UPDATE_MESSAGE
+    }
+
+    if (typeof customId === 'string' && (customId.startsWith('ia_confirm:') || customId.startsWith('ia_cancel:'))) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handleIaButton(appId, token, customId, supabase));
+      return jsonResponse({ type: 6 });
     }
   }
 
