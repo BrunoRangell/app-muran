@@ -164,6 +164,26 @@ export async function handleIaCommand(
       return;
     }
 
+    // ===== Consultas de LEITURA (sem confirmação) =====
+    if (
+      decisao.acao === 'listar_campanhas' ||
+      decisao.acao === 'listar_conjuntos' ||
+      decisao.acao === 'listar_anuncios'
+    ) {
+      const plat = decisao.plataforma_filtro || null;
+      const filtered = plat ? targets.filter((t) => t.platform === plat) : targets;
+      let payload: unknown;
+      if (decisao.acao === 'listar_campanhas') {
+        payload = buildCampaignsListPayload(client.company_name, filtered);
+      } else if (decisao.acao === 'listar_conjuntos') {
+        payload = buildAdSetsListPayload(client.company_name, filtered);
+      } else {
+        payload = await buildAdsListPayload(supabase, client.company_name, filtered);
+      }
+      await editOriginal(appId, interactionToken, payload);
+      return;
+    }
+
     // ===== Caso AMBÍGUO: menu de seleção =====
     if (decisao.confianca === 'ambiguo') {
       // Mapear candidatos sugeridos para targets reais
