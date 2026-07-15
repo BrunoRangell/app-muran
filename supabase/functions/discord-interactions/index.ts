@@ -304,9 +304,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ type: 6 }); // DEFERRED_UPDATE_MESSAGE
     }
 
-    if (typeof customId === 'string' && (customId.startsWith('ia_confirm:') || customId.startsWith('ia_cancel:'))) {
+    if (typeof customId === 'string' && (customId.startsWith('ia_confirm:') || customId.startsWith('ia_cancel:') || customId.startsWith('ia_pick:'))) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(handleIaButton(appId, token, customId, supabase));
+      EdgeRuntime.waitUntil(handleIaButton(appId, token, customId, interaction.data, supabase));
       return jsonResponse({ type: 6 });
     }
   }
