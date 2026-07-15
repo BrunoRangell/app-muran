@@ -251,7 +251,13 @@ export async function fetchMetaInsights(
         ? previousInsights.aggregate.spend / previousInsights.aggregate.clicks
         : 0,
       change: 0
-    }
+    },
+    // MANCHETE: "Resultados" mapeado pelo objetivo real da campanha.
+    results: {
+      current: currentInsights.aggregate.results,
+      previous: previousInsights?.aggregate.results || 0,
+      change: calculatePercentChange(currentInsights.aggregate.results, previousInsights?.aggregate.results || 0),
+    },
   };
 
   // Calcular change para métricas derivadas
@@ -271,8 +277,18 @@ export async function fetchMetaInsights(
     demographics: currentInsights.demographics,
     topAds,
     adDeltas,
-  };
+    // Contexto extra para o prompt
+    resultsMeta: {
+      estimated: currentInsights.aggregate.resultsEstimated,
+      objectiveBreakdown: currentInsights.aggregate.objectiveBreakdown,
+      funnel: {
+        current: currentInsights.aggregate.funnel,
+        previous: previousInsights?.aggregate.funnel || {},
+      },
+    },
+  } as any;
 }
+
 
 // Cruza topAds atuais e anteriores por id do anúncio e calcula deltas (%).
 // Filtra por >=300 impressions no período atual para evitar ruído estatístico.
