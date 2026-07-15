@@ -37,6 +37,26 @@ function formatBRL(v: number | null | undefined) {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function hierarchyPath(target: Target): string {
+  const h = target.hierarchy || {};
+  const parts: string[] = [];
+  if (h.campaign_name) parts.push(`**Campanha:** ${h.campaign_name}`);
+  if (h.adset_name) parts.push(`**Conjunto:** ${h.adset_name}`);
+  const selfLabel =
+    target.level === 'campanha' ? 'Campanha' : target.level === 'adset' ? 'Conjunto' : 'Anúncio';
+  parts.push(`**${selfLabel}:** ${target.name}`);
+  return parts.join(' → ');
+}
+
+function hierarchyPathPlain(target: Target): string {
+  const h = target.hierarchy || {};
+  const parts: string[] = [];
+  if (h.campaign_name) parts.push(h.campaign_name);
+  if (h.adset_name) parts.push(h.adset_name);
+  parts.push(target.name);
+  return parts.join(' › ');
+}
+
 function buildConfirmationPayload(
   clientName: string,
   target: Target,
@@ -46,15 +66,17 @@ function buildConfirmationPayload(
   reqId: string,
 ) {
   const plataformaLabel = target.platform === 'meta' ? 'Meta Ads' : 'Google Ads';
-  let descricao = '';
+  const path = hierarchyPath(target);
+  let acaoTxt = '';
   if (action === 'pausar') {
-    descricao = `Vou **pausar** o ${nivelLabel(target.level)} **${target.name}** — status atual: \`${target.status}\` → \`PAUSED\``;
+    acaoTxt = `Vou **pausar** este ${nivelLabel(target.level)} — status atual: \`${target.status}\` → \`PAUSED\``;
   } else if (action === 'ativar') {
     const alvo = target.platform === 'meta' ? 'ACTIVE' : 'ENABLED';
-    descricao = `Vou **ativar** o ${nivelLabel(target.level)} **${target.name}** — status atual: \`${target.status}\` → \`${alvo}\``;
+    acaoTxt = `Vou **ativar** este ${nivelLabel(target.level)} — status atual: \`${target.status}\` → \`${alvo}\``;
   } else {
-    descricao = `Vou **mudar o orçamento diário** do ${nivelLabel(target.level)} **${target.name}** — ${formatBRL(target.budget_amount)}/dia → **${formatBRL(newValue!)}/dia**`;
+    acaoTxt = `Vou **mudar o orçamento diário** deste ${nivelLabel(target.level)} — ${formatBRL(target.budget_amount)}/dia → **${formatBRL(newValue!)}/dia**`;
   }
+  const descricao = `${path}\n\n${acaoTxt}`;
 
   return {
     content: '',
@@ -82,6 +104,7 @@ function buildConfirmationPayload(
     ],
   };
 }
+
 
 export async function handleIaCommand(
   appId: string,
@@ -189,11 +212,18 @@ export async function handleIaCommand(
       }
 
       const reqId = inserted.id;
-      const options = candidates.map((t) => ({
-        label: `${t.name} (${statusLabelShort(t.status)})`.slice(0, 100),
-        description: `${nivelLabel(t.level)} · ${t.platform === 'meta' ? 'Meta' : 'Google'}`.slice(0, 100),
-        value: t.id,
-      }));
+      const options = candidates.map((t) => {
+        const h = t.hierarchy || {};
+        const parentBits: string[] = [];
+        if (h.campaign_name) parentBits.push(h.campaign_name);
+        if (h.adset_name) parentBits.push(h.adset_name);
+        const parentDesc = parentBits.length ? `${parentBits.join(' › ')} · ` : '';
+        return {
+          label: `${t.name} (${statusLabelShort(t.status)})`.slice(0, 100),
+          description: `${parentDesc}${nivelLabel(t.level)} · ${t.platform === 'meta' ? 'Meta' : 'Google'}`.slice(0, 100),
+          value: t.id,
+        };
+      });
 
       const acaoTxt =
         decisao.acao === 'mudar_orcamento'
@@ -255,6 +285,7 @@ export async function handleIaCommand(
         action: decisao.acao,
         new_value: decisao.acao === 'mudar_orcamento' ? decisao.novo_valor : null,
         previous_value_snapshot: snapshot,
+        hierarchy_snapshot: target.hierarchy || null,
         comando,
         requested_by_discord_user: discordUser,
         channel_id: channelId,
@@ -379,6 +410,7 @@ export async function handleIaButton(
         target_name: target.name,
         platform: target.platform,
         previous_value_snapshot: snapshot,
+        hierarchy_snapshot: target.hierarchy || null,
       })
       .eq('id', reqId);
 
@@ -401,13 +433,20 @@ export async function handleIaButton(
     return;
   }
 
+  const rowHierarchy = (row.hierarchy_snapshot as any) || {};
+  const rowPathBits: string[] = [];
+  if (rowHierarchy.campaign_name) rowPathBits.push(rowHierarchy.campaign_name);
+  if (rowHierarchy.adset_name) rowPathBits.push(rowHierarchy.adset_name);
+  rowPathBits.push(row.target_name || 'item');
+  const rowPath = rowPathBits.join(' › ');
+
   if (prefix === 'ia_cancel') {
     await supabase
       .from('bot_action_requests')
       .update({ status: 'cancelled', executed_at: new Date().toISOString() })
       .eq('id', reqId);
     await editMessage(appId, interactionToken, {
-      content: `❌ Ação cancelada — **${row.target_name}** não foi alterado.`,
+      content: `❌ Ação cancelada — **${rowPath}** não foi alterado.`,
       components: [],
       embeds: [],
     });
@@ -446,7 +485,7 @@ export async function handleIaButton(
 
       const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
       await editMessage(appId, interactionToken, {
-        content: `✅ **${row.target_name}** ${acaoTxt} com sucesso.`,
+        content: `✅ **${rowPath}** ${acaoTxt} com sucesso.`,
         components: [],
         embeds: [],
       });
@@ -461,7 +500,7 @@ export async function handleIaButton(
         })
         .eq('id', reqId);
       await editMessage(appId, interactionToken, {
-        content: `⚠️ Falha ao executar em **${row.target_name}**: ${e?.message || 'erro desconhecido'}`,
+        content: `⚠️ Falha ao executar em **${rowPath}**: ${e?.message || 'erro desconhecido'}`,
         components: [],
         embeds: [],
       });

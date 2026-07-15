@@ -36,6 +36,8 @@ export async function interpretarComandoIA(
     nivel: t.level,
     status: t.status,
     orcamento_diario_brl: t.budget_type === 'daily' ? t.budget_amount : null,
+    campanha_pai: t.hierarchy?.campaign_name || null,
+    conjunto_pai: t.hierarchy?.adset_name || null,
   }));
 
   const system = `Você é um assistente que interpreta pedidos de gestores de tráfego em português e devolve JSON estruturado com a ação a executar em Meta Ads ou Google Ads.
