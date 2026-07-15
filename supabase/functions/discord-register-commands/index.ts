@@ -8,18 +8,6 @@ const corsHeaders = {
 
 const COMMANDS = [
   {
-    name: 'anuncios',
-    description: 'Lista os anúncios ativos do Meta Ads de um cliente',
-    options: [
-      {
-        name: 'cliente',
-        description: 'Nome (ou parte) do cliente',
-        type: 3, // STRING
-        required: true,
-      },
-    ],
-  },
-  {
     name: 'ia',
     description: 'Executa uma ação (pausar/ativar/orçamento) via IA — descreva o que quer fazer',
     options: [
