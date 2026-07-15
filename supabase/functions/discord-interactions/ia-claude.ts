@@ -20,6 +20,7 @@ export type ClaudeDecision = {
   novo_valor?: number;
   plataforma_filtro?: 'meta' | 'google' | null;
   status_filtro?: 'ativo' | 'pausado' | 'todos' | null;
+  status_inicial?: 'ativo' | 'pausado' | null;
   candidatos?: Array<{ id?: string; nome?: string }>;
   mensagem?: string;
 };
