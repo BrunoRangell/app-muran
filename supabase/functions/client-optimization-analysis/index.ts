@@ -107,6 +107,7 @@ function extractOverview(resp: any) {
     spend: pick(o.spend),
     conversions: pick(o.conversions),
     cpa: pick(o.cpa),
+    results: pick(o.results),
   };
 }
 
@@ -150,7 +151,7 @@ async function collectWindow(
     if (valid.length === 0) return null;
     if (valid.length === 1) return extractOverview(valid[0]);
     const acc: any = {};
-    const keys = ['impressions', 'reach', 'clicks', 'spend', 'conversions'];
+    const keys = ['impressions', 'reach', 'clicks', 'spend', 'conversions', 'results'];
     for (const k of keys) {
       let cur = 0, prev = 0;
       for (const r of valid) {
@@ -170,9 +171,12 @@ async function collectWindow(
       previous: acc.clicks.previous > 0 ? acc.spend.previous / acc.clicks.previous : 0,
       change: 0,
     };
+    // CPA "por resultado" quando disponível; senão, por conversion whitelist antiga.
+    const cpaDenomCur = acc.results.current > 0 ? acc.results.current : acc.conversions.current;
+    const cpaDenomPrev = acc.results.previous > 0 ? acc.results.previous : acc.conversions.previous;
     acc.cpa = {
-      current: acc.conversions.current > 0 ? acc.spend.current / acc.conversions.current : 0,
-      previous: acc.conversions.previous > 0 ? acc.spend.previous / acc.conversions.previous : 0,
+      current: cpaDenomCur > 0 ? acc.spend.current / cpaDenomCur : 0,
+      previous: cpaDenomPrev > 0 ? acc.spend.previous / cpaDenomPrev : 0,
       change: 0,
     };
     for (const k of ['ctr', 'cpc', 'cpa']) {
@@ -190,6 +194,47 @@ async function collectWindow(
     return merged;
   };
 
+  // Consolida resultsMeta (objetivos Meta / categorias Google)
+  const mergeResultsMeta = (results: any[]) => {
+    const valid = results.filter(Boolean);
+    if (valid.length === 0) return null;
+    const first = valid[0];
+    if (first?.resultsMeta?.objectiveBreakdown !== undefined) {
+      // Meta
+      const objectiveBreakdown: Record<string, number> = {};
+      const funnelCur: Record<string, number> = {};
+      const funnelPrev: Record<string, number> = {};
+      let anyEstimated = false;
+      for (const r of valid) {
+        const m = r.resultsMeta || {};
+        anyEstimated = anyEstimated || !!m.estimated;
+        for (const [k, v] of Object.entries<any>(m.objectiveBreakdown || {})) objectiveBreakdown[k] = (objectiveBreakdown[k] || 0) + v;
+        for (const [k, v] of Object.entries<any>(m.funnel?.current || {})) funnelCur[k] = (funnelCur[k] || 0) + Number(v);
+        for (const [k, v] of Object.entries<any>(m.funnel?.previous || {})) funnelPrev[k] = (funnelPrev[k] || 0) + Number(v);
+      }
+      return { platform: 'meta' as const, estimated: anyEstimated, objectiveBreakdown, funnel: { current: funnelCur, previous: funnelPrev } };
+    }
+    if (first?.resultsMeta?.primaryCategory !== undefined) {
+      // Google
+      const catCur: Record<string, number> = {};
+      const catPrev: Record<string, number> = {};
+      let primaryCategory: string | null = null;
+      let maxVal = 0;
+      let estimated = true;
+      for (const r of valid) {
+        const m = r.resultsMeta || {};
+        estimated = estimated && !!m.estimated;
+        for (const [k, v] of Object.entries<any>(m.categoryBreakdown?.current || {})) catCur[k] = (catCur[k] || 0) + Number(v);
+        for (const [k, v] of Object.entries<any>(m.categoryBreakdown?.previous || {})) catPrev[k] = (catPrev[k] || 0) + Number(v);
+      }
+      for (const [k, v] of Object.entries(catCur)) {
+        if (v > maxVal) { maxVal = v; primaryCategory = k; }
+      }
+      return { platform: 'google' as const, estimated: !primaryCategory, primaryCategory, categoryBreakdown: { current: catCur, previous: catPrev } };
+    }
+    return null;
+  };
+
   return {
     label,
     daysBack,
@@ -198,9 +243,12 @@ async function collectWindow(
     google: aggregate(googleResults),
     metaAdDeltas: includeAdDeltas ? mergeDeltas(metaResults) : undefined,
     googleAdDeltas: includeAdDeltas ? mergeDeltas(googleResults) : undefined,
+    metaResultsMeta: mergeResultsMeta(metaResults),
+    googleResultsMeta: mergeResultsMeta(googleResults),
     errors,
-  };
+  } as WindowMetrics;
 }
+
 
 
 // ---------- Claude ----------
