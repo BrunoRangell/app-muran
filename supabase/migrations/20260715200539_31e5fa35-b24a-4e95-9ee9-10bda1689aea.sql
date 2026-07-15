@@ -1,0 +1,1 @@
+ALTER TABLE public.bot_action_requests ADD COLUMN IF NOT EXISTS hierarchy_snapshot jsonb;

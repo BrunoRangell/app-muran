@@ -127,6 +127,7 @@ export type Database = {
           comando: string | null
           created_at: string
           executed_at: string | null
+          hierarchy_snapshot: Json | null
           id: string
           level: string | null
           new_value: number | null
@@ -146,6 +147,7 @@ export type Database = {
           comando?: string | null
           created_at?: string
           executed_at?: string | null
+          hierarchy_snapshot?: Json | null
           id?: string
           level?: string | null
           new_value?: number | null
@@ -165,6 +167,7 @@ export type Database = {
           comando?: string | null
           created_at?: string
           executed_at?: string | null
+          hierarchy_snapshot?: Json | null
           id?: string
           level?: string | null
           new_value?: number | null
