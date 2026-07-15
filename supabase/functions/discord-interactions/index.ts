@@ -261,7 +261,7 @@ async function handleOtimizacaoCommand(
 
     // Feedback intermediário — a análise pode levar 20–60s
     await editOriginal(appId, token, {
-      content: `🔎 Analisando **${client.company_name}** — coletando métricas dos últimos 90 dias e chamando IA. Isso pode levar até 1 minuto…`,
+      content: `🔎 Analisando **${client.company_name}** — coletando métricas dos últimos 90 dias e chamando IA. Isso pode levar até 2 minutos…`,
     });
 
     // Invoca a function pesada; ela mesma dá PATCH/POST no webhook do Discord

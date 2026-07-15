@@ -79,8 +79,9 @@ export async function fetchGoogleInsights(
   clientId: string,
   accountId: string,
   dateRange: { start: string; end: string },
-  compareWithPrevious: boolean = true
-): Promise<TrafficInsightsResponse> {
+  compareWithPrevious: boolean = true,
+  includeAdDeltas: boolean = false
+): Promise<TrafficInsightsResponse & { adDeltas?: any[] }> {
   console.log(`📊 [GOOGLE-INSIGHTS] Fetching for account ${accountId}`);
 
   // Buscar informações da conta
@@ -165,6 +166,25 @@ export async function fetchGoogleInsights(
     dateRange.end
   );
 
+  // Deltas por anúncio (só na janela pedida)
+  let adDeltas: any[] | undefined;
+  if (includeAdDeltas) {
+    try {
+      const prevTopAds = await fetchGoogleTopAds(
+        customerId,
+        accessToken,
+        developerToken,
+        managerId,
+        previousStart.toISOString().split('T')[0],
+        previousEnd.toISOString().split('T')[0]
+      );
+      adDeltas = computeGoogleAdDeltas(topAds, prevTopAds);
+    } catch (e) {
+      console.warn('[GOOGLE-INSIGHTS] adDeltas skipped:', e);
+    }
+  }
+
+
   // Buscar insights do período anterior
   let previousInsights = null;
   if (compareWithPrevious) {
@@ -248,9 +268,42 @@ export async function fetchGoogleInsights(
     campaigns: currentInsights.campaigns,
     timeSeries: currentInsights.timeSeries,
     demographics,
-    topAds
+    topAds,
+    adDeltas,
   };
 }
+
+function computeGoogleAdDeltas(current: any[], previous: any[]): any[] {
+  const prevById = new Map<string, any>();
+  for (const p of previous || []) {
+    if (p?.id) prevById.set(p.id, p);
+  }
+  const out: any[] = [];
+  const pct = (cur: number, prev: number) => {
+    if (!prev) return cur > 0 ? 100 : 0;
+    return ((cur - prev) / prev) * 100;
+  };
+  for (const c of current || []) {
+    const impressions = c?.metrics?.impressions || 0;
+    if (impressions < 300) continue;
+    const p = prevById.get(c.id);
+    if (!p) continue;
+    out.push({
+      id: c.id,
+      name: c.name,
+      platform: 'google',
+      impressions_current: impressions,
+      ctr_change: pct(c.metrics.ctr, p.metrics?.ctr || 0),
+      cpc_change: pct(c.metrics.cpc, p.metrics?.cpc || 0),
+      cpa_change: pct(c.metrics.cpa, p.metrics?.cpa || 0),
+      spend_change: pct(c.metrics.spend, p.metrics?.spend || 0),
+      impressions_change: pct(impressions, p.metrics?.impressions || 0),
+    });
+  }
+  out.sort((a, b) => (a.ctr_change - b.ctr_change));
+  return out.slice(0, 15);
+}
+
 
 async function fetchGoogleAdsApiInsights(
   customerId: string,
