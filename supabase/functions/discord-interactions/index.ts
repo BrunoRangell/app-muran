@@ -281,7 +281,6 @@ Deno.serve(async (req) => {
       return jsonResponse({
         type: 5,
         data: {
-          flags: 64,
           content: '🤖 Interpretando sua solicitação… (pode levar até 30s)',
         },
       });
