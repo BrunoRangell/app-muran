@@ -333,7 +333,8 @@ export async function fetchMetaTopAds(
   accessToken: string,
   since: string,
   until: string,
-  limit: number = 10
+  limit: number = 10,
+  campaignObjectiveMap: Map<string, string> = new Map(),
 ): Promise<TopAd[]> {
   // Campos expandidos cobrindo todos os tipos de criativo
   const creativeFields = [
@@ -353,6 +354,7 @@ export async function fetchMetaTopAds(
   const fields = [
     'id',
     'name',
+    'campaign_id',
     `creative{${creativeFields}}`,
     `insights.time_range({"since":"${since}","until":"${until}"}).fields(impressions,clicks,ctr,spend,actions,cost_per_action_type)`,
   ].join(',');
@@ -392,17 +394,19 @@ export async function fetchMetaTopAds(
         const spend = parseFloat(insight.spend || '0');
         const ctr = parseFloat(insight.ctr || '0');
 
-        // Extract conversions
+        // "Resultados" mapeados pelo objetivo da campanha do anúncio.
+        const objective = campaignObjectiveMap.get(String(ad.campaign_id || ''));
+        const mapping = resultActionsForObjective(objective);
         let conversions = 0;
-        if (insight.actions && Array.isArray(insight.actions)) {
-          const convActions = insight.actions.filter((action: any) =>
-            action.action_type === 'lead' ||
-            action.action_type === 'purchase' ||
-            action.action_type === 'omni_purchase'
-          );
-          conversions = convActions.reduce((sum: number, action: any) =>
-            sum + parseInt(action.value || '0'), 0
-          );
+        if (mapping.usesClicks) {
+          conversions = clicks;
+        } else if (mapping.usesImpressions) {
+          conversions = impressions;
+        } else if (Array.isArray(insight.actions)) {
+          const allowed = mapping.actions.length > 0 ? new Set(mapping.actions) : FALLBACK_AD_RESULT_ACTIONS;
+          for (const a of insight.actions) {
+            if (allowed.has(a.action_type)) conversions += parseInt(a.value || '0');
+          }
         }
 
         const cpa = conversions > 0 ? spend / conversions : 0;
