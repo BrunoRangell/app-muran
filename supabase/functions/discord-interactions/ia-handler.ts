@@ -6,6 +6,7 @@ import { fetchChannelName, resolveClientsByChannelName, channelNameToSearch } fr
 import { fetchTargetsForClient, type Target } from './ia-targets.ts';
 import { interpretarComandoIA } from './ia-claude.ts';
 import { metaSetStatus, metaSetDailyBudget, googleSetStatus, googleSetDailyBudget } from './ia-writes.ts';
+import { buildCampaignsListPayload, buildAdSetsListPayload, buildAdsListPayload } from './ia-listing.ts';
 
 const MURAN_ORANGE = 0xff6e00;
 
