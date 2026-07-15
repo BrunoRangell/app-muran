@@ -691,3 +691,101 @@ export async function handleIaButton(
     }
   }
 }
+
+// ============== Submissão de modal (informar novo orçamento) ==============
+
+async function sendEphemeralError(appId: string, interactionToken: string, message: string) {
+  const url = `https://discord.com/api/v10/webhooks/${appId}/${interactionToken}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: message, flags: 64 }),
+  });
+  if (!res.ok) console.error('[ia sendEphemeralError]', res.status, await res.text());
+}
+
+export async function handleIaModalSubmit(
+  appId: string,
+  interactionToken: string,
+  customId: string,
+  interactionData: any,
+  supabase: ReturnType<typeof createClient>,
+) {
+  const [, reqId] = customId.split(':');
+  if (!reqId) return;
+
+  const rows: any[] = interactionData?.components || [];
+  let raw = '';
+  for (const row of rows) {
+    for (const comp of row.components || []) {
+      if (comp.custom_id === 'novo_valor') raw = comp.value || '';
+    }
+  }
+
+  const parsed = parseBRL(raw);
+
+  const { data: row, error } = await supabase
+    .from('bot_action_requests')
+    .select('*')
+    .eq('id', reqId)
+    .maybeSingle();
+
+  if (error || !row) {
+    console.error('[handleIaModalSubmit] lookup falhou', { reqId, error });
+    await sendEphemeralError(appId, interactionToken, '❌ Solicitação não encontrada ou expirada. Rode `/ia` novamente.');
+    return;
+  }
+
+  if (row.status !== 'awaiting_value') {
+    await sendEphemeralError(appId, interactionToken, `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`);
+    return;
+  }
+
+  if (parsed == null) {
+    await sendEphemeralError(
+      appId,
+      interactionToken,
+      `❌ Valor inválido: \`${raw}\`. Clique novamente em **💰 Informar novo orçamento** e digite um número em reais (ex: \`800\` ou \`R$ 1.200,50\`).`,
+    );
+    return;
+  }
+
+  const { error: updErr } = await supabase
+    .from('bot_action_requests')
+    .update({ new_value: parsed, status: 'pending' })
+    .eq('id', reqId);
+
+  if (updErr) {
+    console.error('[handleIaModalSubmit] update falhou', updErr);
+    await sendEphemeralError(appId, interactionToken, `⚠️ Erro ao registrar o valor: ${updErr.message}`);
+    return;
+  }
+
+  let clientCompanyName = 'cliente';
+  if (row.client_id) {
+    const { data: c } = await supabase.from('clients').select('company_name').eq('id', row.client_id).maybeSingle();
+    if (c?.company_name) clientCompanyName = c.company_name;
+  }
+
+  const snap = row.previous_value_snapshot || {};
+  const pseudoTarget: any = {
+    platform: row.platform,
+    level: row.level,
+    id: row.target_id,
+    name: row.target_name,
+    status: snap.status,
+    budget_amount: snap.budget_amount_brl,
+    budget_type: snap.budget_type,
+    resource_name: snap.resource_name,
+    account_id: snap.account_id,
+    extra: snap.extra,
+    hierarchy: row.hierarchy_snapshot || {},
+  };
+
+  const discordUser = row.requested_by_discord_user || 'gestor';
+  await editMessage(
+    appId,
+    interactionToken,
+    buildConfirmationPayload(clientCompanyName, pseudoTarget, 'mudar_orcamento', parsed, discordUser, reqId),
+  );
+}
