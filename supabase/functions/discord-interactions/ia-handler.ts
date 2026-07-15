@@ -105,6 +105,84 @@ function buildConfirmationPayload(
   };
 }
 
+// ============== "Awaiting value" flow (modal) ==============
+
+export function parseBRL(input: string | null | undefined): number | null {
+  if (input == null) return null;
+  let x = String(input).replace(/R\$/gi, '').replace(/\s/g, '').trim();
+  if (!x) return null;
+  if (x.includes(',')) {
+    // formato pt-BR: pontos = milhar, vírgula = decimal
+    x = x.replace(/\./g, '').replace(',', '.');
+  }
+  const n = parseFloat(x);
+  if (!isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function buildAskValuePayload(
+  clientName: string,
+  hierarchy: any,
+  level: string,
+  targetName: string,
+  currentBudget: number | null | undefined,
+  reqId: string,
+) {
+  const path = formatHierarchyPath(hierarchy, level, targetName);
+  const atual = currentBudget != null
+    ? `Orçamento diário atual: **${formatBRL(currentBudget)}/dia**`
+    : `Orçamento diário atual: _não identificado_`;
+  return {
+    content: '',
+    embeds: [
+      {
+        title: '💰 Faltou informar o novo orçamento',
+        description: `${path}\n\n${atual}\n\nClique no botão abaixo para informar o novo valor.`,
+        color: MURAN_ORANGE,
+        fields: [{ name: 'Cliente', value: clientName, inline: true }],
+      },
+    ],
+    components: [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 1, label: '💰 Informar novo orçamento', custom_id: `ia_ask_value:${reqId}` },
+          { type: 2, style: 4, label: '❌ Cancelar', custom_id: `ia_cancel:${reqId}` },
+        ],
+      },
+    ],
+  };
+}
+
+// Modal payload — devolvido SÍNCRONO como resposta type=9 pela interação de botão.
+export function buildValueModal(reqId: string, errorHint?: string) {
+  return {
+    type: 9,
+    data: {
+      custom_id: `ia_value_modal:${reqId}`,
+      title: 'Novo orçamento diário',
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 4, // TEXT_INPUT
+              custom_id: 'novo_valor',
+              style: 1, // SHORT
+              label: errorHint || 'Novo orçamento diário (R$)',
+              placeholder: 'Ex: 800  ou  R$ 1.200,50',
+              required: true,
+              min_length: 1,
+              max_length: 20,
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+
 
 export async function handleIaCommand(
   appId: string,
@@ -295,6 +373,56 @@ export async function handleIaCommand(
       return;
     }
 
+    // Caso especial conversacional: mudar_orcamento sem novo_valor válido → pedir via modal
+    const needsValue =
+      decisao.acao === 'mudar_orcamento' &&
+      (decisao.novo_valor == null || !isFinite(Number(decisao.novo_valor)) || Number(decisao.novo_valor) <= 0);
+
+    if (needsValue) {
+      // Validar que o item é elegível para mudar orçamento (nível/plataforma), antes de pedir valor
+      const structuralErr = validateActionStructural(decisao.acao, target);
+      if (structuralErr) {
+        await editOriginal(appId, interactionToken, { content: structuralErr });
+        return;
+      }
+
+      const snapshot = buildSnapshot(target);
+      const { data: inserted, error: insErr } = await supabase
+        .from('bot_action_requests')
+        .insert({
+          client_id: client.id,
+          platform: target.platform,
+          level: target.level,
+          target_id: target.id,
+          target_name: target.name,
+          action: decisao.acao,
+          new_value: null,
+          previous_value_snapshot: snapshot,
+          hierarchy_snapshot: target.hierarchy || null,
+          comando,
+          requested_by_discord_user: discordUser,
+          channel_id: channelId,
+          status: 'awaiting_value',
+        })
+        .select('id')
+        .single();
+
+      if (insErr || !inserted) {
+        console.error('[ia-handler insert awaiting_value]', insErr);
+        await editOriginal(appId, interactionToken, {
+          content: `⚠️ Erro ao registrar a solicitação: ${insErr?.message || 'desconhecido'}`,
+        });
+        return;
+      }
+
+      await editOriginal(
+        appId,
+        interactionToken,
+        buildAskValuePayload(client.company_name, target.hierarchy, target.level, target.name, target.budget_amount, inserted.id),
+      );
+      return;
+    }
+
     const validationError = validateAction(decisao.acao, decisao.novo_valor, target);
     if (validationError) {
       await editOriginal(appId, interactionToken, { content: validationError });
@@ -362,6 +490,24 @@ function validateAction(
     if (target.platform === 'google' && target.level === 'campanha' && !target.extra?.campaign_budget_resource) {
       return `❌ Não localizei o campaign_budget vinculado à campanha do Google. Não posso ajustar o orçamento.`;
     }
+  }
+  return null;
+}
+
+// Igual a validateAction, mas ignora ausência/valor de novoValor (usado quando ainda vamos pedir via modal).
+function validateActionStructural(
+  acao: 'pausar' | 'ativar' | 'mudar_orcamento',
+  target: Target,
+): string | null {
+  if (acao !== 'mudar_orcamento') return null;
+  if (target.level === 'anuncio') {
+    return `❌ Não dá pra mudar orçamento no nível de **anúncio** — orçamento fica em campanha ou conjunto.`;
+  }
+  if (target.platform === 'google' && target.level === 'adset') {
+    return `❌ No Google Ads o orçamento fica na **campanha**, não no conjunto (ad group). Peça pra mudar na campanha.`;
+  }
+  if (target.platform === 'google' && target.level === 'campanha' && !target.extra?.campaign_budget_resource) {
+    return `❌ Não localizei o campaign_budget vinculado à campanha do Google. Não posso ajustar o orçamento.`;
   }
   return null;
 }
@@ -468,7 +614,9 @@ export async function handleIaButton(
   }
 
   // ===== Confirmar / Cancelar =====
-  if (row.status !== 'pending') {
+  // Cancelar aceita tanto pending quanto awaiting_value; confirmar exige pending.
+  const allowedStatuses = prefix === 'ia_cancel' ? ['pending', 'awaiting_value'] : ['pending'];
+  if (!allowedStatuses.includes(row.status)) {
     await editMessage(appId, interactionToken, {
       content: `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`,
       components: [],
@@ -544,4 +692,102 @@ export async function handleIaButton(
       });
     }
   }
+}
+
+// ============== Submissão de modal (informar novo orçamento) ==============
+
+async function sendEphemeralError(appId: string, interactionToken: string, message: string) {
+  const url = `https://discord.com/api/v10/webhooks/${appId}/${interactionToken}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: message, flags: 64 }),
+  });
+  if (!res.ok) console.error('[ia sendEphemeralError]', res.status, await res.text());
+}
+
+export async function handleIaModalSubmit(
+  appId: string,
+  interactionToken: string,
+  customId: string,
+  interactionData: any,
+  supabase: ReturnType<typeof createClient>,
+) {
+  const [, reqId] = customId.split(':');
+  if (!reqId) return;
+
+  const rows: any[] = interactionData?.components || [];
+  let raw = '';
+  for (const row of rows) {
+    for (const comp of row.components || []) {
+      if (comp.custom_id === 'novo_valor') raw = comp.value || '';
+    }
+  }
+
+  const parsed = parseBRL(raw);
+
+  const { data: row, error } = await supabase
+    .from('bot_action_requests')
+    .select('*')
+    .eq('id', reqId)
+    .maybeSingle();
+
+  if (error || !row) {
+    console.error('[handleIaModalSubmit] lookup falhou', { reqId, error });
+    await sendEphemeralError(appId, interactionToken, '❌ Solicitação não encontrada ou expirada. Rode `/ia` novamente.');
+    return;
+  }
+
+  if (row.status !== 'awaiting_value') {
+    await sendEphemeralError(appId, interactionToken, `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`);
+    return;
+  }
+
+  if (parsed == null) {
+    await sendEphemeralError(
+      appId,
+      interactionToken,
+      `❌ Valor inválido: \`${raw}\`. Clique novamente em **💰 Informar novo orçamento** e digite um número em reais (ex: \`800\` ou \`R$ 1.200,50\`).`,
+    );
+    return;
+  }
+
+  const { error: updErr } = await supabase
+    .from('bot_action_requests')
+    .update({ new_value: parsed, status: 'pending' })
+    .eq('id', reqId);
+
+  if (updErr) {
+    console.error('[handleIaModalSubmit] update falhou', updErr);
+    await sendEphemeralError(appId, interactionToken, `⚠️ Erro ao registrar o valor: ${updErr.message}`);
+    return;
+  }
+
+  let clientCompanyName = 'cliente';
+  if (row.client_id) {
+    const { data: c } = await supabase.from('clients').select('company_name').eq('id', row.client_id).maybeSingle();
+    if (c?.company_name) clientCompanyName = c.company_name;
+  }
+
+  const snap = row.previous_value_snapshot || {};
+  const pseudoTarget: any = {
+    platform: row.platform,
+    level: row.level,
+    id: row.target_id,
+    name: row.target_name,
+    status: snap.status,
+    budget_amount: snap.budget_amount_brl,
+    budget_type: snap.budget_type,
+    resource_name: snap.resource_name,
+    account_id: snap.account_id,
+    extra: snap.extra,
+    hierarchy: row.hierarchy_snapshot || {},
+  };
+
+  const discordUser = row.requested_by_discord_user || 'gestor';
+  await editMessage(
+    appId,
+    interactionToken,
+    buildConfirmationPayload(clientCompanyName, pseudoTarget, 'mudar_orcamento', parsed, discordUser, reqId),
+  );
 }
