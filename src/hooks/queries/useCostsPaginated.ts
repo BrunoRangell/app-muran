@@ -56,7 +56,7 @@ export const useCostsPaginated = (filters?: CostFilters) => {
     mutationFn: async (newCost: Omit<Cost, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from("costs")
-        .insert(newCost)
+        .insert(newCost as any)
         .select()
         .single();
 
