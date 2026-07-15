@@ -494,6 +494,24 @@ function validateAction(
   return null;
 }
 
+// Igual a validateAction, mas ignora ausência/valor de novoValor (usado quando ainda vamos pedir via modal).
+function validateActionStructural(
+  acao: 'pausar' | 'ativar' | 'mudar_orcamento',
+  target: Target,
+): string | null {
+  if (acao !== 'mudar_orcamento') return null;
+  if (target.level === 'anuncio') {
+    return `❌ Não dá pra mudar orçamento no nível de **anúncio** — orçamento fica em campanha ou conjunto.`;
+  }
+  if (target.platform === 'google' && target.level === 'adset') {
+    return `❌ No Google Ads o orçamento fica na **campanha**, não no conjunto (ad group). Peça pra mudar na campanha.`;
+  }
+  if (target.platform === 'google' && target.level === 'campanha' && !target.extra?.campaign_budget_resource) {
+    return `❌ Não localizei o campaign_budget vinculado à campanha do Google. Não posso ajustar o orçamento.`;
+  }
+  return null;
+}
+
 function buildSnapshot(target: Target) {
   return {
     status: target.status,
