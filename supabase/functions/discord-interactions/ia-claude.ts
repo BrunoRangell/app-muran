@@ -8,7 +8,8 @@ export type AcaoIA =
   | 'mudar_orcamento'
   | 'listar_campanhas'
   | 'listar_conjuntos'
-  | 'listar_anuncios';
+  | 'listar_anuncios'
+  | 'criar_anuncio';
 
 export type ClaudeDecision = {
   confianca: 'confiante' | 'ambiguo' | 'nao_encontrado';
@@ -19,6 +20,7 @@ export type ClaudeDecision = {
   novo_valor?: number;
   plataforma_filtro?: 'meta' | 'google' | null;
   status_filtro?: 'ativo' | 'pausado' | 'todos' | null;
+  status_inicial?: 'ativo' | 'pausado' | null;
   candidatos?: Array<{ id?: string; nome?: string }>;
   mensagem?: string;
 };
@@ -54,6 +56,8 @@ export async function interpretarComandoIA(
 
 Regras:
 - Ações de ESCRITA: "pausar", "ativar", "mudar_orcamento" — exigem um item específico.
+- Ação de CRIAÇÃO: "criar_anuncio" — cria um NOVO anúncio dentro de um CONJUNTO (adset) existente da Meta. Só suportado em Meta. Nesse caso, nivel="adset" e item_id/item_nome apontam pro CONJUNTO onde o anúncio vai ser criado. Se não achar o conjunto claramente, use "ambiguo" ou "nao_encontrado" — igual ao que já fazemos com escrita.
+- Se o usuário mencionar explicitamente que o novo anúncio deve nascer ATIVO (ex: "crie e ative", "crie ativo", "publica ativo"), preencha status_inicial="ativo". Caso contrário deixe status_inicial="pausado" (default seguro).
 - Ações de LEITURA (consultas): "listar_campanhas", "listar_conjuntos", "listar_anuncios" — não exigem item específico; apenas identifique o tipo pedido. Ex: "quais anúncios estão ativos", "liste as campanhas", "me mostra os conjuntos" → use a ação de listagem correspondente com confianca="confiante", sem item_id.
 - Para listagens, opcionalmente preencha "plataforma_filtro" ("meta" ou "google") se o usuário mencionar explicitamente a plataforma; caso contrário deixe null.
 - Para listagens, preencha "status_filtro": "ativo" se o usuário disser "ativos/ativas/rodando/no ar/ligados"; "pausado" se disser "pausados/pausadas/parados/desligados"; "todos" (ou null) se não especificar.
@@ -67,13 +71,14 @@ Regras:
 Schema:
 {
   "confianca": "confiante" | "ambiguo" | "nao_encontrado",
-  "acao": "pausar" | "ativar" | "mudar_orcamento" | "listar_campanhas" | "listar_conjuntos" | "listar_anuncios",
+  "acao": "pausar" | "ativar" | "mudar_orcamento" | "listar_campanhas" | "listar_conjuntos" | "listar_anuncios" | "criar_anuncio",
   "nivel": "anuncio" | "adset" | "campanha",
-  "item_id": "<id exato da lista, só para ações de escrita>",
+  "item_id": "<id exato da lista, só para ações de escrita/criação>",
   "item_nome": "<nome exato>",
   "novo_valor": <número em BRL, só se mudar_orcamento>,
   "plataforma_filtro": "meta" | "google" | null,
   "status_filtro": "ativo" | "pausado" | "todos" | null,
+  "status_inicial": "ativo" | "pausado" | null,
   "candidatos": [{"id":"...","nome":"..."}],
   "mensagem": "<explicação curta quando ambíguo/nao_encontrado>"
 }`;

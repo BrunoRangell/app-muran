@@ -5,6 +5,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import nacl from 'npm:tweetnacl@1.0.3';
 import { handleIaCommand, handleIaButton, handleIaModalSubmit, buildValueModal } from './ia-handler.ts';
+import {
+  handleImageSourceClick, handleMessageAttachImage,
+  buildDriveModal, buildInstagramModal, buildCopyModal,
+  handleCopyModalSubmit, handleCtaPick, handlePagePick,
+} from './ia-create-ad.ts';
 
 const META_API_VERSION = 'v24.0';
 const MURAN_ORANGE = 0xff6e00;
@@ -249,20 +254,29 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // APPLICATION_COMMAND
+  // APPLICATION_COMMAND (slash + message commands)
   if (interaction.type === 2) {
     const name = interaction.data?.name;
+    const cmdType = interaction.data?.type; // 1 = CHAT_INPUT, 3 = MESSAGE
     const token = interaction.token;
+
+    // MESSAGE COMMAND: "Usar como imagem do anúncio"
+    if (cmdType === 3 && name === 'Usar como imagem do anúncio') {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        (async () => {
+          const { handleMessageAttachImage: fn } = await import('./ia-create-ad.ts');
+          await fn(supabase, appId, token, interaction);
+        })(),
+      );
+      return jsonResponse({ type: 5, data: { flags: 64 } });
+    }
 
     if (name === 'anuncios') {
       const cliente = (interaction.data?.options || []).find((o: any) => o.name === 'cliente')?.value || '';
-      // Resposta diferida (efêmera) — depois editamos via webhook
-      // @ts-ignore — runtime Deno
+      // @ts-ignore
       EdgeRuntime.waitUntil(handleAnunciosCommand(appId, token, String(cliente), supabase));
-      return jsonResponse({
-        type: 5,
-        data: { flags: 64 }, // ephemeral
-      });
+      return jsonResponse({ type: 5, data: { flags: 64 } });
     }
 
     if (name === 'ia') {
@@ -280,34 +294,65 @@ Deno.serve(async (req) => {
       );
       return jsonResponse({
         type: 5,
-        data: {
-          content: '🤖 Interpretando sua solicitação… (pode levar até 30s)',
-        },
+        data: { content: '🤖 Interpretando sua solicitação… (pode levar até 30s)' },
       });
     }
 
-    return jsonResponse({
-      type: 4,
-      data: { content: 'Comando não reconhecido', flags: 64 },
-    });
+    return jsonResponse({ type: 4, data: { content: 'Comando não reconhecido', flags: 64 } });
   }
 
   // MESSAGE_COMPONENT
   if (interaction.type === 3) {
     const customId = interaction.data?.custom_id;
     const token = interaction.token;
+    const msgCtx = interaction.message
+      ? { id: interaction.message.id, channel_id: interaction.channel_id || interaction.channel?.id }
+      : null;
 
     if (customId === 'select_anuncios_account') {
       const accountRowId = interaction.data?.values?.[0];
       // @ts-ignore
       EdgeRuntime.waitUntil(handleAccountSelect(appId, token, accountRowId, supabase));
-      return jsonResponse({ type: 6 }); // DEFERRED_UPDATE_MESSAGE
+      return jsonResponse({ type: 6 });
     }
 
-    // Botão "Informar novo orçamento" → abre modal SÍNCRONO (type 9)
+    // Botão "Informar novo orçamento" → modal SÍNCRONO
     if (typeof customId === 'string' && customId.startsWith('ia_ask_value:')) {
       const [, reqId] = customId.split(':');
       return jsonResponse(buildValueModal(reqId));
+    }
+
+    // Wizard criar_anuncio: fonte de imagem
+    if (typeof customId === 'string' && customId.startsWith('ia_create_src:')) {
+      const parts = customId.split(':');
+      const reqId = parts[1];
+      const source = parts[2];
+      if (source === 'drive') return jsonResponse(buildDriveModal(reqId));
+      if (source === 'instagram') return jsonResponse(buildInstagramModal(reqId));
+      // upload → async
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handleImageSourceClick(supabase, appId, token, customId, msgCtx as any));
+      return jsonResponse({ type: 6 });
+    }
+
+    // Wizard: botão que abre o modal de copy
+    if (typeof customId === 'string' && customId.startsWith('ia_create_open_copy:')) {
+      const [, reqId] = customId.split(':');
+      return jsonResponse(buildCopyModal(reqId));
+    }
+
+    // Wizard: seleção de CTA fallback
+    if (typeof customId === 'string' && customId.startsWith('ia_create_cta_pick:')) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handleCtaPick(supabase, appId, token, customId, interaction.data));
+      return jsonResponse({ type: 6 });
+    }
+
+    // Wizard: seleção de página promovível
+    if (typeof customId === 'string' && customId.startsWith('ia_create_page_pick:')) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handlePagePick(supabase, appId, token, customId, interaction.data));
+      return jsonResponse({ type: 6 });
     }
 
     if (typeof customId === 'string' && (customId.startsWith('ia_confirm:') || customId.startsWith('ia_cancel:') || customId.startsWith('ia_pick:'))) {
@@ -325,8 +370,51 @@ Deno.serve(async (req) => {
     if (typeof customId === 'string' && customId.startsWith('ia_value_modal:')) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleIaModalSubmit(appId, token, customId, interaction.data, supabase));
-      // DEFERRED_UPDATE_MESSAGE — vamos editar a mensagem original com o embed de confirmação
       return jsonResponse({ type: 6 });
+    }
+
+    if (typeof customId === 'string' && customId.startsWith('ia_create_copy_modal:')) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handleCopyModalSubmit(supabase, appId, token, customId, interaction.data));
+      return jsonResponse({ type: 5, data: { flags: 64 } });
+    }
+
+    if (typeof customId === 'string' && customId.startsWith('ia_create_drive_modal:')) {
+      // Fase B — ainda não implementado
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        (async () => {
+          const url = `https://discord.com/api/v10/webhooks/${appId}/${token}`;
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: '🚧 Fonte "Link do Drive" ainda não implementada (Fase B). Use "📤 Novo upload" por enquanto.',
+              flags: 64,
+            }),
+          });
+        })(),
+      );
+      return jsonResponse({ type: 5, data: { flags: 64 } });
+    }
+
+    if (typeof customId === 'string' && customId.startsWith('ia_create_ig_modal:')) {
+      // Fase C — ainda não implementado
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        (async () => {
+          const url = `https://discord.com/api/v10/webhooks/${appId}/${token}`;
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: '🚧 Fonte "Post do Instagram" ainda não implementada (Fase C). Use "📤 Novo upload" por enquanto.',
+              flags: 64,
+            }),
+          });
+        })(),
+      );
+      return jsonResponse({ type: 5, data: { flags: 64 } });
     }
   }
 

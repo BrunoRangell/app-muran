@@ -19,6 +19,12 @@ const COMMANDS = [
       },
     ],
   },
+  {
+    // Message Command (type 3) — aparece em "Apps" ao clicar com botão direito numa mensagem.
+    // Usado no wizard de criar_anuncio para capturar a imagem anexada à mensagem selecionada.
+    name: 'Usar como imagem do anúncio',
+    type: 3,
+  },
 ];
 
 Deno.serve(async (req) => {

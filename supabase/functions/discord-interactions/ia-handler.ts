@@ -7,6 +7,7 @@ import { fetchTargetsForClient, type Target } from './ia-targets.ts';
 import { interpretarComandoIA } from './ia-claude.ts';
 import { metaSetStatus, metaSetDailyBudget, googleSetStatus, googleSetDailyBudget } from './ia-writes.ts';
 import { buildCampaignsListPayload, buildAdSetsListPayload, buildAdsListPayload } from './ia-listing.ts';
+import { startCreateAdFlow, executeCreateAd } from './ia-create-ad.ts';
 
 const MURAN_ORANGE = 0xff6e00;
 
@@ -270,6 +271,38 @@ export async function handleIaCommand(
         payload = await buildAdsListPayload(supabase, client.company_name, filtered, statusF);
       }
       await editOriginal(appId, interactionToken, payload);
+      return;
+    }
+
+    // ===== CRIAR ANÚNCIO NOVO (só Meta, dentro de adset existente) =====
+    if (decisao.acao === 'criar_anuncio') {
+      // Precisa de adset resolvido, confiante. Ambiguidade fica pra Slice A2.
+      const adsetTarget =
+        decisao.item_id ? targets.find((t) => t.id === decisao.item_id && t.level === 'adset' && t.platform === 'meta') : undefined;
+      if (!adsetTarget) {
+        // Filtrar candidatos possíveis pra dar hint
+        const metaAdsets = targets.filter((t) => t.platform === 'meta' && t.level === 'adset');
+        const hint = metaAdsets.length
+          ? `\nConjuntos disponíveis: ${metaAdsets.slice(0, 8).map((t) => `\`${t.name}\``).join(', ')}${metaAdsets.length > 8 ? '…' : ''}`
+          : '';
+        await editOriginal(appId, interactionToken, {
+          content: `🤔 Pra criar anúncio, preciso identificar o **conjunto (adset)** do Meta onde ele vai. Reformule mencionando o nome exato do conjunto.${hint}`,
+        });
+        return;
+      }
+      const statusInicial: 'ativo' | 'pausado' = decisao.status_inicial === 'ativo' ? 'ativo' : 'pausado';
+      await startCreateAdFlow(supabase, appId, interactionToken, {
+        clientId: client.id,
+        clientName: client.company_name,
+        discordUser,
+        channelId,
+        comando,
+        adsetTargetId: adsetTarget.id,
+        adsetName: adsetTarget.name,
+        accountId: adsetTarget.account_id || '',
+        hierarchy: adsetTarget.hierarchy || {},
+        statusInicial,
+      });
       return;
     }
 
@@ -692,7 +725,12 @@ export async function handleIaButton(
 
   // ===== Confirmar / Cancelar =====
   // Cancelar aceita tanto pending quanto awaiting_value; confirmar exige pending.
-  const allowedStatuses = prefix === 'ia_cancel' ? ['pending', 'awaiting_value'] : ['pending'];
+  const cancelAllowed = [
+    'pending', 'awaiting_value',
+    'draft_image_source', 'awaiting_image_upload', 'awaiting_drive_link',
+    'awaiting_instagram_link', 'draft_copy', 'awaiting_cta_pick', 'awaiting_page_pick',
+  ];
+  const allowedStatuses = prefix === 'ia_cancel' ? cancelAllowed : ['pending'];
   if (!allowedStatuses.includes(row.status)) {
     await editMessage(appId, interactionToken, {
       content: `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`,
@@ -720,8 +758,15 @@ export async function handleIaButton(
     try {
       const snap = row.previous_value_snapshot || {};
       let result: any;
+      let successMsg = '';
 
-      if (row.platform === 'meta') {
+      if (row.action === 'criar_anuncio') {
+        const created = await executeCreateAd(supabase, row);
+        result = created;
+        successMsg =
+          `✅ Anúncio **${row.creative_draft?.name || 'novo'}** criado (${created.status}) no conjunto **${row.creative_draft?.adset_name || row.target_name}**.\n` +
+          `🔗 <${created.ad_manager_url}>`;
+      } else if (row.platform === 'meta') {
         if (row.action === 'pausar') {
           result = await metaSetStatus(supabase, row.target_id, 'PAUSED');
         } else if (row.action === 'ativar') {
@@ -746,9 +791,12 @@ export async function handleIaButton(
         .update({ status: 'executed', executed_at: new Date().toISOString(), result })
         .eq('id', reqId);
 
-      const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
+      if (!successMsg) {
+        const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
+        successMsg = `✅ **${rowPath}** ${acaoTxt} com sucesso.`;
+      }
       await editMessage(appId, interactionToken, {
-        content: `✅ **${rowPath}** ${acaoTxt} com sucesso.`,
+        content: successMsg,
         components: [],
         embeds: [],
       });
