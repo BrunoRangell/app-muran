@@ -171,14 +171,23 @@ export async function handleIaCommand(
       decisao.acao === 'listar_anuncios'
     ) {
       const plat = decisao.plataforma_filtro || null;
-      const filtered = plat ? targets.filter((t) => t.platform === plat) : targets;
+      const statusF = decisao.status_filtro && decisao.status_filtro !== 'todos' ? decisao.status_filtro : null;
+      let filtered = plat ? targets.filter((t) => t.platform === plat) : targets;
+      if (statusF === 'ativo') {
+        filtered = filtered.filter((t) => {
+          const s = (t.status || '').toUpperCase();
+          return s === 'ACTIVE' || s === 'ENABLED';
+        });
+      } else if (statusF === 'pausado') {
+        filtered = filtered.filter((t) => (t.status || '').toUpperCase() === 'PAUSED');
+      }
       let payload: unknown;
       if (decisao.acao === 'listar_campanhas') {
-        payload = buildCampaignsListPayload(client.company_name, filtered);
+        payload = buildCampaignsListPayload(client.company_name, filtered, statusF);
       } else if (decisao.acao === 'listar_conjuntos') {
-        payload = buildAdSetsListPayload(client.company_name, filtered);
+        payload = buildAdSetsListPayload(client.company_name, filtered, statusF);
       } else {
-        payload = await buildAdsListPayload(supabase, client.company_name, filtered);
+        payload = await buildAdsListPayload(supabase, client.company_name, filtered, statusF);
       }
       await editOriginal(appId, interactionToken, payload);
       return;
