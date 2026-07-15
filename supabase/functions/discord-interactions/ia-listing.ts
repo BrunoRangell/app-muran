@@ -198,10 +198,13 @@ export async function buildAdsListPayload(
   supabase: ReturnType<typeof createClient>,
   clientName: string,
   targets: Target[],
+  status?: StatusFilter,
 ): Promise<unknown> {
-  const items = filterTargets(targets, 'anuncio').slice(0, 10);
+  const allAds = filterTargets(targets, 'anuncio');
+  const items = allAds.slice(0, 10);
   if (!items.length) {
-    return { content: `📭 Nenhum anúncio ativo/pausado encontrado para **${clientName}**.` };
+    const nada = status === 'ativo' ? 'ativo' : status === 'pausado' ? 'pausado' : 'ativo/pausado';
+    return { content: `📭 Nenhum anúncio ${nada} encontrado para **${clientName}**.` };
   }
 
   // Buscar thumbnails + insights para os anúncios Meta (Google não tem thumbnail simples).
