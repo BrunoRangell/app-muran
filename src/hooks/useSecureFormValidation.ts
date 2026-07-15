@@ -50,7 +50,7 @@ export function useSecureFormValidation<T extends z.ZodType>({
         throw new Error("ID inválido");
       }
 
-      await onSubmit(sanitizedData);
+      await onSubmit(sanitizedData as any);
       
       console.log('Formulário submetido com sucesso');
       
