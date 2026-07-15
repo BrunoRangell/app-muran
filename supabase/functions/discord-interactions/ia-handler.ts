@@ -753,8 +753,15 @@ export async function handleIaButton(
     try {
       const snap = row.previous_value_snapshot || {};
       let result: any;
+      let successMsg = '';
 
-      if (row.platform === 'meta') {
+      if (row.action === 'criar_anuncio') {
+        const created = await executeCreateAd(supabase, row);
+        result = created;
+        successMsg =
+          `✅ Anúncio **${row.creative_draft?.name || 'novo'}** criado (${created.status}) no conjunto **${row.creative_draft?.adset_name || row.target_name}**.\n` +
+          `🔗 <${created.ad_manager_url}>`;
+      } else if (row.platform === 'meta') {
         if (row.action === 'pausar') {
           result = await metaSetStatus(supabase, row.target_id, 'PAUSED');
         } else if (row.action === 'ativar') {
@@ -779,9 +786,12 @@ export async function handleIaButton(
         .update({ status: 'executed', executed_at: new Date().toISOString(), result })
         .eq('id', reqId);
 
-      const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
+      if (!successMsg) {
+        const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
+        successMsg = `✅ **${rowPath}** ${acaoTxt} com sucesso.`;
+      }
       await editMessage(appId, interactionToken, {
-        content: `✅ **${rowPath}** ${acaoTxt} com sucesso.`,
+        content: successMsg,
         components: [],
         embeds: [],
       });
