@@ -3,7 +3,8 @@ import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
 function supabaseForUser(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+  const env = (globalThis as any).process?.env ?? {};
+  return createClient(env.SUPABASE_URL!, env.SUPABASE_PUBLISHABLE_KEY!, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });

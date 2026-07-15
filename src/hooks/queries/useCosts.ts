@@ -44,7 +44,7 @@ export const useCosts = (filters?: CostFilters) => {
     mutationFn: async (newCost: Omit<Cost, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from("costs")
-        .insert(newCost)
+        .insert(newCost as any)
         .select()
         .single();
 
@@ -72,7 +72,7 @@ export const useCosts = (filters?: CostFilters) => {
       const { id, ...updateData } = updatedCost;
       const { data, error } = await supabase
         .from("costs")
-        .update(updateData)
+        .update(updateData as any)
         .eq("id", id)
         .select()
         .single();

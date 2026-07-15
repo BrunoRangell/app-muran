@@ -18,9 +18,7 @@ export const clientFormSchema = z.object({
       return false;
     }
   }, "Data de início inválida"),
-  status: z.enum(["active", "inactive"], {
-    required_error: "Status é obrigatório",
-  }),
+  status: z.enum(["active", "inactive"], { message: "Status é obrigatório" }),
   paymentType: z.enum(["pre", "post"]),
   acquisitionChannel: z.string(),
   customAcquisitionChannel: z.string().optional(),

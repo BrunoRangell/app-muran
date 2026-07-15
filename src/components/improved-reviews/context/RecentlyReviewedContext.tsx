@@ -13,7 +13,7 @@ const LOCK_DURATION_MS = 5000; // 5 segundos de lock de posição
 
 export function RecentlyReviewedProvider({ children }: { children: ReactNode }) {
   const [recentlyReviewedIds, setRecentlyReviewedIds] = useState<Set<string>>(new Set());
-  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const markAsReviewed = useCallback((id: string) => {
     console.log(`🔒 Marcando cliente ${id} como recém-revisado (lock de posição por ${LOCK_DURATION_MS / 1000}s)`);

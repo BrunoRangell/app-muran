@@ -19,6 +19,18 @@ const COMMANDS = [
       },
     ],
   },
+  {
+    name: 'otimizacao',
+    description: 'Gera análise de otimização com IA (Meta+Google, últimos 90 dias) para um cliente',
+    options: [
+      {
+        name: 'cliente',
+        description: 'Nome (ou parte) do cliente',
+        type: 3, // STRING
+        required: true,
+      },
+    ],
+  },
 ];
 
 Deno.serve(async (req) => {
