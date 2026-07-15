@@ -71,8 +71,7 @@ verify_jwt = false
 [functions.meta-active-ads]
 verify_jwt = true
 
-[functions.client-optimization-analysis]
-verify_jwt = false
+
 
 
 
