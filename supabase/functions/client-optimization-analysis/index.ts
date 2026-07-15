@@ -205,20 +205,16 @@ async function collectWindow(
 
 // ---------- Claude ----------
 
-interface AnalysisAction {
-  prioridade: string; // P1, P2, ...
-  titulo: string;
-  justificativa: string;
-  acao: string;
+interface PlatformAnalysis {
+  status?: 'piorando' | 'misto' | 'melhorando' | string;
+  piorou?: string[];
+  melhorou?: string[];
 }
 
 interface AnalysisJSON {
   resumo_executivo?: string;
-  piorou?: string[];
-  melhorou?: string[];
-  tendencia_30d?: string;
-  contexto_90d?: string;
-  acoes?: AnalysisAction[];
+  meta?: PlatformAnalysis | null;
+  google?: PlatformAnalysis | null;
 }
 
 function buildPrompt(
@@ -227,6 +223,7 @@ function buildPrompt(
   hasMeta: boolean,
   hasGoogle: boolean,
 ): string {
+  const w7 = windows.find((w) => w.daysBack === 7);
   const summary = {
     cliente: clientName,
     janelas: windows.map((w) => ({
@@ -236,18 +233,31 @@ function buildPrompt(
       google: w.google,
       erros: w.errors,
     })),
+    anuncios_7d: {
+      meta: w7?.metaAdDeltas || [],
+      google: w7?.googleAdDeltas || [],
+      // "Só anúncios com >=300 impressões no período foram incluídos."
+    },
   };
 
-  const platformNote =
-    hasMeta && hasGoogle
-      ? 'O cliente usa Meta E Google Ads. Em cada item de `piorou` e `melhorou`, PREFIXE com "[Meta] " ou "[Google] " para deixar claro a qual plataforma o ponto se refere.'
-      : 'O cliente usa apenas uma plataforma. NÃO use prefixos "[Meta]" ou "[Google]" nos itens.';
+  const platformsAsked: string[] = [];
+  if (hasMeta) platformsAsked.push('meta');
+  if (hasGoogle) platformsAsked.push('google');
 
-  return `Você é analista sênior de mídia paga em uma agência (Muran).
+  return `Você é analista sênior de mídia paga na agência Muran.
 
-Métricas do cliente em 3 janelas comparativas (7d, 30d, 90d — cada uma comparada com o período anterior de mesma duração). Cada métrica tem \`current\`, \`previous\` e \`change\` (% de variação). "meta" = Facebook/Instagram Ads. "google" = Google Ads. Se algum estiver \`null\`, ou o cliente não usa essa plataforma ou houve erro (veja \`erros\`).
+Você recebe métricas de 1 cliente em 3 janelas comparativas (7d, 30d, 90d — cada uma vs. período anterior de mesma duração). "meta" = Facebook/Instagram Ads. "google" = Google Ads. Cada métrica traz \`current\`, \`previous\` e \`change\` (% de variação).
 
-${platformNote}
+Além disso, para a janela de 7 dias você recebe \`anuncios_7d\` com deltas por anúncio individual (só anúncios com pelo menos 300 impressões no período — abaixo disso é ruído estatístico, ignore).
+
+Plataformas que este cliente usa: ${platformsAsked.join(' e ')}.
+
+Heurísticas causa→padrão (use como base de raciocínio, cite o padrão que observou — não afirme causa como fato absoluto, use "sugere", "indica", "pode estar"):
+- CTR caindo + frequência subindo → fadiga de criativo
+- CPC subindo + CTR estável → leilão mais caro / mais concorrência
+- Conversões caindo com CTR/CPC estáveis → possível problema de tracking, landing page ou qualidade de lead
+- CPA piorando + spend subindo + conversões estáveis → ineficiência de segmentação / público saturado
+- Impressões e clicks caindo juntos → possível problema de entrega (orçamento, aprovação, aprendizado)
 
 Dados:
 \`\`\`json
@@ -257,25 +267,25 @@ ${JSON.stringify(summary, null, 2)}
 Responda **APENAS um JSON válido**, sem texto antes ou depois, sem cercas de código markdown, seguindo EXATAMENTE este schema:
 
 {
-  "resumo_executivo": "1 a 2 frases curtas resumindo o quadro geral",
-  "piorou": ["ponto 1 com números", "ponto 2 com números", ...],  // 2 a 4 itens, cada um <= 200 chars
-  "melhorou": ["ponto 1", ...],  // 1 a 3 itens, cada um <= 200 chars
-  "tendencia_30d": "1 a 2 frases: os 7d confirmam tendência ou é ruído?",  // <= 300 chars
-  "contexto_90d": "1 a 2 frases sobre sazonalidade / patamar geral",  // <= 300 chars
-  "acoes": [
-    {
-      "prioridade": "P1",
-      "titulo": "título curto e concreto",
-      "justificativa": "por que, com número",
-      "acao": "o que fazer, concreto"
-    }
-  ]  // 3 a 5 ações, P1 primeiro, cada campo curto (<= 180 chars)
+  "resumo_executivo": "1 a 2 frases gerais do quadro do cliente",
+  "meta": {
+    "status": "piorando" | "misto" | "melhorando",
+    "piorou": ["parágrafo em texto corrido com causa provável + sugestão embutida, citando números e (quando aplicável) o anúncio específico responsável pelo nome"],
+    "melhorou": ["parágrafo em texto corrido"]
+  },
+  "google": { "status": "...", "piorou": [...], "melhorou": [...] }
 }
 
-Regras:
-- Português brasileiro, direto, sem enrolação.
-- Use números reais dos dados.
-- NÃO inclua markdown, cercas \`\`\`, comentários ou texto fora do JSON.`;
+Regras críticas:
+- \`meta\` deve ser \`null\` se o cliente NÃO usa Meta (${hasMeta ? 'usa — preencha' : 'NÃO usa — retorne null'}).
+- \`google\` deve ser \`null\` se o cliente NÃO usa Google (${hasGoogle ? 'usa — preencha' : 'NÃO usa — retorne null'}).
+- \`piorou\`: 1 a 3 parágrafos, cada um até ~350 caracteres. Cada parágrafo deve incluir CAUSA PROVÁVEL + SUGESTÃO CONCRETA de solução embutida no mesmo texto, não em lista separada.
+- \`melhorou\`: 1 a 2 parágrafos, mesmo formato.
+- Cite o nome do anúncio específico responsável por uma variação SEMPRE que \`anuncios_7d\` mostrar um anúncio claramente responsável (com >=300 impressões — o filtro já foi aplicado). Nunca aponte um anúncio abaixo de 300 impressões.
+- Texto corrido inteligente, português brasileiro, sem bullets internos, sem asteriscos, sem markdown dentro dos parágrafos.
+- \`status\`: "piorando" se predomina piora; "melhorando" se predomina melhora; "misto" se equilibrado.
+- NÃO inclua nenhum campo \`acoes\` ou lista de ações separada — a sugestão fica embutida em cada parágrafo.
+- NÃO inclua cercas \`\`\`, comentários ou texto fora do JSON.`;
 }
 
 async function callClaude(apiKey: string, prompt: string): Promise<string> {
@@ -288,7 +298,7 @@ async function callClaude(apiKey: string, prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 2000,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -309,11 +319,9 @@ async function callClaude(apiKey: string, prompt: string): Promise<string> {
 
 function parseAnalysisJSON(raw: string): AnalysisJSON {
   let cleaned = raw.trim();
-  // Remove markdown fences se a IA colocou apesar de pedirmos para não colocar
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   }
-  // Extrai o primeiro objeto JSON encontrado
   const first = cleaned.indexOf('{');
   const last = cleaned.lastIndexOf('}');
   if (first !== -1 && last !== -1 && last > first) {
@@ -322,7 +330,7 @@ function parseAnalysisJSON(raw: string): AnalysisJSON {
   return JSON.parse(cleaned) as AnalysisJSON;
 }
 
-// ---------- Discord embed ----------
+// ---------- Discord embeds ----------
 
 const FIELD_LIMIT = 1024;
 const DESCRIPTION_LIMIT = 4096;
@@ -332,103 +340,82 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max - 1).trimEnd() + '…';
 }
 
-function bulletList(items: string[] | undefined, max = FIELD_LIMIT): string | null {
+// Junta parágrafos separados por linha em branco, truncando graciosamente.
+function paragraphs(items: string[] | undefined, max = FIELD_LIMIT): string | null {
   if (!items || items.length === 0) return null;
-  const lines = items.map((i) => `• ${i}`);
-  let out = lines.join('\n');
-  if (out.length > max) {
-    // Trunca item a item
-    const kept: string[] = [];
-    let total = 0;
-    for (const l of lines) {
-      if (total + l.length + 1 > max - 1) break;
-      kept.push(l);
-      total += l.length + 1;
-    }
-    out = kept.join('\n') + '\n…';
+  const clean = items.map((s) => (s || '').trim()).filter(Boolean);
+  if (clean.length === 0) return null;
+  let out = clean.join('\n\n');
+  if (out.length <= max) return out;
+  // Trunca parágrafo a parágrafo
+  const kept: string[] = [];
+  let total = 0;
+  for (const p of clean) {
+    const add = kept.length === 0 ? p.length : p.length + 2;
+    if (total + add > max - 2) break;
+    kept.push(p);
+    total += add;
   }
-  return out;
+  if (kept.length === 0) return truncate(clean[0], max);
+  return kept.join('\n\n') + '\n…';
 }
 
-function formatActions(actions: AnalysisAction[] | undefined): string | null {
-  if (!actions || actions.length === 0) return null;
-  const blocks = actions.map((a) => {
-    const p = (a.prioridade || 'P?').toUpperCase();
-    const titulo = a.titulo || '';
-    const just = a.justificativa ? `_${a.justificativa}_` : '';
-    const acao = a.acao ? `→ ${a.acao}` : '';
-    return `**${p} — ${titulo}**\n${just}${just && acao ? '\n' : ''}${acao}`.trim();
-  });
-  let out = blocks.join('\n\n');
-  if (out.length > FIELD_LIMIT) {
-    // Reduz iterativamente
-    const kept: string[] = [];
-    let total = 0;
-    for (const b of blocks) {
-      if (total + b.length + 2 > FIELD_LIMIT - 1) break;
-      kept.push(b);
-      total += b.length + 2;
-    }
-    out = kept.join('\n\n') + '\n…';
-  }
-  return out;
+function statusBadge(status?: string): string {
+  const s = (status || '').toLowerCase();
+  if (s === 'piorando') return '🔴 Piorando';
+  if (s === 'melhorando') return '🟢 Melhorando';
+  if (s === 'misto') return '🟡 Misto';
+  return '⚪ Sem classificação';
 }
 
-function buildEmbed(
-  clientName: string,
-  analysis: AnalysisJSON,
-  hasMeta: boolean,
-  hasGoogle: boolean,
-  platformErrors: { meta: boolean; google: boolean; details: string[] },
-) {
-  const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
-
-  // Nota de fallback (erros de coleta)
-  const notas: string[] = [];
-  if (hasMeta && platformErrors.meta) notas.push('⚠️ Meta Ads: falha ao coletar métricas nesta análise.');
-  if (hasGoogle && platformErrors.google) notas.push('⚠️ Google Ads: falha ao coletar métricas nesta análise.');
-  if (notas.length) {
-    fields.push({
-      name: '⚠️ Observações',
-      value: truncate(notas.join('\n'), FIELD_LIMIT),
-    });
-  }
-
-  const piorou = bulletList(analysis.piorou);
-  if (piorou) fields.push({ name: '📉 O que piorou (7d)', value: piorou });
-
-  const melhorou = bulletList(analysis.melhorou);
-  if (melhorou) fields.push({ name: '📈 O que melhorou (7d)', value: melhorou });
-
-  if (analysis.tendencia_30d) {
-    fields.push({ name: '📊 Tendência 30 dias', value: truncate(analysis.tendencia_30d, FIELD_LIMIT) });
-  }
-  if (analysis.contexto_90d) {
-    fields.push({ name: '🗓️ Contexto 90 dias', value: truncate(analysis.contexto_90d, FIELD_LIMIT) });
-  }
-
-  const acoes = formatActions(analysis.acoes);
-  if (acoes) fields.push({ name: '🎯 Ações priorizadas', value: acoes });
-
-  const platformLabel = [hasMeta ? 'Meta' : null, hasGoogle ? 'Google' : null]
-    .filter(Boolean)
-    .join(' + ');
-
-  const description = analysis.resumo_executivo
-    ? truncate(analysis.resumo_executivo, DESCRIPTION_LIMIT)
-    : undefined;
-
+function buildOverviewEmbed(clientName: string, analysis: AnalysisJSON, hasMeta: boolean, hasGoogle: boolean) {
+  const platformLabel = [hasMeta ? 'Meta' : null, hasGoogle ? 'Google' : null].filter(Boolean).join(' + ');
   return {
     title: truncate(`🤖 Análise de otimização — ${clientName}`, 256),
-    description,
+    description: analysis.resumo_executivo
+      ? truncate(analysis.resumo_executivo, DESCRIPTION_LIMIT)
+      : '_Sem resumo executivo._',
     color: 0xff6e00,
-    fields,
-    footer: {
-      text: `${platformLabel} · janelas 7d / 30d / 90d`,
-    },
+    footer: { text: `${platformLabel} · janelas 7d / 30d / 90d` },
     timestamp: new Date().toISOString(),
   };
 }
+
+function buildPlatformEmbed(
+  title: string,
+  color: number,
+  data: PlatformAnalysis | null | undefined,
+  errorNote: string | null,
+) {
+  const fields: Array<{ name: string; value: string }> = [];
+
+  if (errorNote) {
+    fields.push({ name: '⚠️ Observação', value: truncate(errorNote, FIELD_LIMIT) });
+  }
+
+  if (data) {
+    const piorou = paragraphs(data.piorou);
+    if (piorou) fields.push({ name: '📉 O que piorou (7d)', value: piorou });
+
+    const melhorou = paragraphs(data.melhorou);
+    if (melhorou) fields.push({ name: '📈 O que melhorou (7d)', value: melhorou });
+
+    if (!piorou && !melhorou && !errorNote) {
+      fields.push({ name: '_Sem pontos relevantes_', value: 'A IA não identificou variações significativas nos últimos 7 dias.' });
+    }
+  }
+
+  const desc = data?.status ? statusBadge(data.status) : undefined;
+
+  return {
+    title: truncate(title, 256),
+    description: desc,
+    color,
+    fields,
+  };
+}
+
+
 
 // ---------- Orquestração ----------
 
