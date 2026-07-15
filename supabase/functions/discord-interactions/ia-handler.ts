@@ -614,7 +614,9 @@ export async function handleIaButton(
   }
 
   // ===== Confirmar / Cancelar =====
-  if (row.status !== 'pending') {
+  // Cancelar aceita tanto pending quanto awaiting_value; confirmar exige pending.
+  const allowedStatuses = prefix === 'ia_cancel' ? ['pending', 'awaiting_value'] : ['pending'];
+  if (!allowedStatuses.includes(row.status)) {
     await editMessage(appId, interactionToken, {
       content: `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`,
       components: [],
