@@ -85,9 +85,12 @@ async function sendChunks(appId: string, token: string, text: string) {
 
 interface WindowMetrics {
   label: string;
+  daysBack: number;
   dateRange: { start: string; end: string };
   meta?: any;
   google?: any;
+  metaAdDeltas?: any[];
+  googleAdDeltas?: any[];
   errors: string[];
 }
 
@@ -116,11 +119,12 @@ async function collectWindow(
 ): Promise<WindowMetrics> {
   const dateRange = windowRange(daysBack);
   const errors: string[] = [];
+  const includeAdDeltas = daysBack === 7;
 
   const metaPromise = metaAccountRowIds.length
     ? Promise.all(
         metaAccountRowIds.map((id) =>
-          fetchMetaInsights(clientId, id, dateRange, true).catch((e) => {
+          fetchMetaInsights(clientId, id, dateRange, true, includeAdDeltas).catch((e) => {
             errors.push(`meta[${id}]: ${e?.message || e}`);
             return null;
           }),
@@ -131,7 +135,7 @@ async function collectWindow(
   const googlePromise = googleAccountRowIds.length
     ? Promise.all(
         googleAccountRowIds.map((id) =>
-          fetchGoogleInsights(clientId, id, dateRange, true).catch((e) => {
+          fetchGoogleInsights(clientId, id, dateRange, true, includeAdDeltas).catch((e) => {
             errors.push(`google[${id}]: ${e?.message || e}`);
             return null;
           }),
@@ -141,7 +145,6 @@ async function collectWindow(
 
   const [metaResults, googleResults] = await Promise.all([metaPromise, googlePromise]);
 
-  // Agrega múltiplas contas da mesma plataforma somando `current` e `previous`
   const aggregate = (results: any[]) => {
     const valid = results.filter(Boolean);
     if (valid.length === 0) return null;
@@ -157,7 +160,6 @@ async function collectWindow(
       const change = prev > 0 ? ((cur - prev) / prev) * 100 : 0;
       acc[k] = { current: cur, previous: prev, change };
     }
-    // derivadas
     acc.ctr = {
       current: acc.impressions.current > 0 ? (acc.clicks.current / acc.impressions.current) * 100 : 0,
       previous: acc.impressions.previous > 0 ? (acc.clicks.previous / acc.impressions.previous) * 100 : 0,
@@ -179,14 +181,27 @@ async function collectWindow(
     return acc;
   };
 
+  // Consolida adDeltas de todas as contas da mesma plataforma
+  const mergeDeltas = (results: any[]): any[] => {
+    const merged: any[] = [];
+    for (const r of results) {
+      if (r?.adDeltas && Array.isArray(r.adDeltas)) merged.push(...r.adDeltas);
+    }
+    return merged;
+  };
+
   return {
     label,
+    daysBack,
     dateRange,
     meta: aggregate(metaResults),
     google: aggregate(googleResults),
+    metaAdDeltas: includeAdDeltas ? mergeDeltas(metaResults) : undefined,
+    googleAdDeltas: includeAdDeltas ? mergeDeltas(googleResults) : undefined,
     errors,
   };
 }
+
 
 // ---------- Claude ----------
 
