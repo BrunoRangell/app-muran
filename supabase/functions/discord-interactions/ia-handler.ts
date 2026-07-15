@@ -426,12 +426,11 @@ export async function handleIaButton(
       })
       .eq('id', reqId);
 
-    const clientName = (row as any).clients?.company_name || 'cliente';
     const discordUser = row.requested_by_discord_user || 'gestor';
     await editMessage(
       appId,
       interactionToken,
-      buildConfirmationPayload(clientName, target, row.action, row.new_value ? Number(row.new_value) : undefined, discordUser, reqId),
+      buildConfirmationPayload(clientCompanyName, target, row.action, row.new_value ? Number(row.new_value) : undefined, discordUser, reqId),
     );
     return;
   }
