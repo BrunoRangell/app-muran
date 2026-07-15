@@ -85,6 +85,24 @@ export async function fetchMetaInsights(
     10
   );
 
+  // Deltas por anúncio (só na janela pedida, ex: 7d)
+  let adDeltas: any[] | undefined;
+  if (includeAdDeltas) {
+    try {
+      const prevTopAds = await fetchMetaTopAds(
+        metaAccountId,
+        accessToken,
+        previousStart.toISOString().split('T')[0],
+        previousEnd.toISOString().split('T')[0],
+        50
+      );
+      adDeltas = computeAdDeltas(topAds, prevTopAds, 'meta');
+    } catch (e) {
+      console.warn('[META-INSIGHTS] adDeltas skipped:', e);
+    }
+  }
+
+
   // Processar dados agregados
   const overview = {
     impressions: {
