@@ -622,6 +622,44 @@ export async function handleIaButton(
       return;
     }
 
+    // Se for mudar_orcamento sem valor ainda, pula pro fluxo awaiting_value (modal)
+    const hasValidValue =
+      row.new_value != null && isFinite(Number(row.new_value)) && Number(row.new_value) > 0;
+    const needsValueNow = row.action === 'mudar_orcamento' && !hasValidValue;
+
+    if (needsValueNow) {
+      const structuralErr = validateActionStructural(row.action, target);
+      if (structuralErr) {
+        await supabase
+          .from('bot_action_requests')
+          .update({ status: 'failed', executed_at: new Date().toISOString(), result: { error: structuralErr } })
+          .eq('id', reqId);
+        await editMessage(appId, interactionToken, { content: structuralErr, components: [], embeds: [] });
+        return;
+      }
+
+      const snapshot = buildSnapshot(target);
+      await supabase
+        .from('bot_action_requests')
+        .update({
+          status: 'awaiting_value',
+          level: target.level,
+          target_id: target.id,
+          target_name: target.name,
+          platform: target.platform,
+          previous_value_snapshot: snapshot,
+          hierarchy_snapshot: target.hierarchy || null,
+        })
+        .eq('id', reqId);
+
+      await editMessage(
+        appId,
+        interactionToken,
+        buildAskValuePayload(clientCompanyName, target.hierarchy, target.level, target.name, target.budget_amount, reqId),
+      );
+      return;
+    }
+
     const validationError = validateAction(row.action, row.new_value ? Number(row.new_value) : undefined, target);
     if (validationError) {
       await supabase.from('bot_action_requests').update({ status: 'failed', executed_at: new Date().toISOString(), result: { error: validationError } }).eq('id', reqId);
