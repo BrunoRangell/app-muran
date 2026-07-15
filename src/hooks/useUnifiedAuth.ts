@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
-let sessionCheckDebounce: NodeJS.Timeout;
+let sessionCheckDebounce: ReturnType<typeof setTimeout>;
 
 export const useUnifiedAuth = () => {
   const [user, setUser] = useState<User | null>(null);
