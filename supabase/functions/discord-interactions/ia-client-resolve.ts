@@ -23,8 +23,11 @@ export async function fetchChannelName(channelId: string): Promise<string | null
 }
 
 export function channelNameToSearch(name: string): string {
-  // Reverte slug: hífens viram espaço; usaremos como padrão ilike com espaços/wildcards
-  return name.replace(/[-_]+/g, ' ').trim();
+  // 1) Remove qualquer caractere decorativo (emoji, bullets, símbolos) — mantém letras, números, hífen e espaço.
+  // 2) Converte hífens/underscores em espaço.
+  // 3) Colapsa espaços e trima.
+  const cleaned = name.replace(/[^\p{L}\p{N}\s-]/gu, '');
+  return cleaned.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export async function resolveClientsByChannelName(
