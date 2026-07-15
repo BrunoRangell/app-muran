@@ -113,7 +113,7 @@ export default function Settings() {
 
       const { error } = await supabase
         .from('team_members')
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', currentUser.id);
 
       if (error) {
