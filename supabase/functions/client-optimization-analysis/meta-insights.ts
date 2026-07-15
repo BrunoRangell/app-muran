@@ -7,6 +7,93 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Whitelist genérica para fallback quando o objetivo da campanha for desconhecido.
+const FALLBACK_RESULT_ACTIONS = new Set([
+  'lead',
+  'purchase',
+  'omni_purchase',
+  'onsite_conversion.lead_grouped',
+  'offsite_conversion.fb_pixel_lead',
+  'offsite_conversion.fb_pixel_purchase',
+]);
+
+// Ações de funil (contexto de causa — não são o "Resultado" principal).
+const FUNNEL_ACTIONS = [
+  'landing_page_view',
+  'view_content',
+  'add_to_cart',
+  'initiate_checkout',
+  'add_payment_info',
+];
+
+// Mapa objetivo Meta → action_type(s) que representam "Resultados" no Gerenciador.
+export function resultActionsForObjective(objective?: string): { actions: string[]; usesClicks: boolean; usesImpressions: boolean } {
+  const o = (objective || '').toUpperCase();
+  switch (o) {
+    case 'OUTCOME_LEADS':
+    case 'LEAD_GENERATION':
+      return { actions: ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_MESSAGES':
+    case 'MESSAGES':
+      return { actions: ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_SALES':
+    case 'CONVERSIONS':
+    case 'PRODUCT_CATALOG_SALES':
+      return { actions: ['purchase', 'omni_purchase', 'offsite_conversion.fb_pixel_purchase'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_ENGAGEMENT':
+    case 'POST_ENGAGEMENT':
+    case 'PAGE_LIKES':
+      return { actions: ['post_engagement', 'page_engagement'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_TRAFFIC':
+    case 'LINK_CLICKS':
+      return { actions: [], usesClicks: true, usesImpressions: false };
+    case 'OUTCOME_AWARENESS':
+    case 'BRAND_AWARENESS':
+    case 'REACH':
+    case 'VIDEO_VIEWS':
+      return { actions: [], usesClicks: false, usesImpressions: true };
+    default:
+      return { actions: [], usesClicks: false, usesImpressions: false };
+  }
+}
+
+export function extractResultCount(
+  actions: any[] | undefined,
+  objective: string | undefined,
+  clicks: number,
+  impressions: number,
+): { count: number; estimated: boolean } {
+  const mapping = resultActionsForObjective(objective);
+  if (mapping.usesClicks) return { count: clicks, estimated: false };
+  if (mapping.usesImpressions) return { count: impressions, estimated: false };
+  if (!Array.isArray(actions) || actions.length === 0) return { count: 0, estimated: !objective };
+
+  if (mapping.actions.length > 0) {
+    let sum = 0;
+    for (const a of actions) {
+      if (mapping.actions.includes(a.action_type)) sum += parseInt(a.value || '0');
+    }
+    return { count: sum, estimated: false };
+  }
+  // Fallback whitelist genérica
+  let sum = 0;
+  for (const a of actions) {
+    if (FALLBACK_RESULT_ACTIONS.has(a.action_type)) sum += parseInt(a.value || '0');
+  }
+  return { count: sum, estimated: true };
+}
+
+function extractFunnelCounts(actions: any[] | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!Array.isArray(actions)) return out;
+  for (const a of actions) {
+    if (FUNNEL_ACTIONS.includes(a.action_type)) {
+      out[a.action_type] = (out[a.action_type] || 0) + parseInt(a.value || '0');
+    }
+  }
+  return out;
+}
+
 export async function fetchMetaInsights(
   clientId: string,
   accountId: string,
