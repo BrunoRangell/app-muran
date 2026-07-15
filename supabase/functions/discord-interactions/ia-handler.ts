@@ -347,6 +347,9 @@ function validateAction(
     if (target.level === 'anuncio') {
       return `❌ Não dá pra mudar orçamento no nível de **anúncio** — orçamento fica em campanha ou conjunto.`;
     }
+    if (target.platform === 'google' && target.level === 'adset') {
+      return `❌ No Google Ads o orçamento fica na **campanha**, não no conjunto (ad group). Peça pra mudar na campanha.`;
+    }
     if (target.platform === 'google' && target.level === 'campanha' && !target.extra?.campaign_budget_resource) {
       return `❌ Não localizei o campaign_budget vinculado à campanha do Google. Não posso ajustar o orçamento.`;
     }
