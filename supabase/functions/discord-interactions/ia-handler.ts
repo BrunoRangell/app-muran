@@ -37,6 +37,26 @@ function formatBRL(v: number | null | undefined) {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function hierarchyPath(target: Target): string {
+  const h = target.hierarchy || {};
+  const parts: string[] = [];
+  if (h.campaign_name) parts.push(`**Campanha:** ${h.campaign_name}`);
+  if (h.adset_name) parts.push(`**Conjunto:** ${h.adset_name}`);
+  const selfLabel =
+    target.level === 'campanha' ? 'Campanha' : target.level === 'adset' ? 'Conjunto' : 'Anúncio';
+  parts.push(`**${selfLabel}:** ${target.name}`);
+  return parts.join(' → ');
+}
+
+function hierarchyPathPlain(target: Target): string {
+  const h = target.hierarchy || {};
+  const parts: string[] = [];
+  if (h.campaign_name) parts.push(h.campaign_name);
+  if (h.adset_name) parts.push(h.adset_name);
+  parts.push(target.name);
+  return parts.join(' › ');
+}
+
 function buildConfirmationPayload(
   clientName: string,
   target: Target,
@@ -46,15 +66,17 @@ function buildConfirmationPayload(
   reqId: string,
 ) {
   const plataformaLabel = target.platform === 'meta' ? 'Meta Ads' : 'Google Ads';
-  let descricao = '';
+  const path = hierarchyPath(target);
+  let acaoTxt = '';
   if (action === 'pausar') {
-    descricao = `Vou **pausar** o ${nivelLabel(target.level)} **${target.name}** — status atual: \`${target.status}\` → \`PAUSED\``;
+    acaoTxt = `Vou **pausar** este ${nivelLabel(target.level)} — status atual: \`${target.status}\` → \`PAUSED\``;
   } else if (action === 'ativar') {
     const alvo = target.platform === 'meta' ? 'ACTIVE' : 'ENABLED';
-    descricao = `Vou **ativar** o ${nivelLabel(target.level)} **${target.name}** — status atual: \`${target.status}\` → \`${alvo}\``;
+    acaoTxt = `Vou **ativar** este ${nivelLabel(target.level)} — status atual: \`${target.status}\` → \`${alvo}\``;
   } else {
-    descricao = `Vou **mudar o orçamento diário** do ${nivelLabel(target.level)} **${target.name}** — ${formatBRL(target.budget_amount)}/dia → **${formatBRL(newValue!)}/dia**`;
+    acaoTxt = `Vou **mudar o orçamento diário** deste ${nivelLabel(target.level)} — ${formatBRL(target.budget_amount)}/dia → **${formatBRL(newValue!)}/dia**`;
   }
+  const descricao = `${path}\n\n${acaoTxt}`;
 
   return {
     content: '',
@@ -82,6 +104,7 @@ function buildConfirmationPayload(
     ],
   };
 }
+
 
 export async function handleIaCommand(
   appId: string,
