@@ -1,6 +1,17 @@
 import { TopAd } from "./types.ts";
+import { resultActionsForObjective } from "./meta-insights.ts";
 
 const META_API_VERSION = "v24.0";
+
+// Whitelist fallback (usada quando o objetivo da campanha do anúncio não é conhecido).
+const FALLBACK_AD_RESULT_ACTIONS = new Set([
+  'lead',
+  'purchase',
+  'omni_purchase',
+  'onsite_conversion.lead_grouped',
+  'offsite_conversion.fb_pixel_lead',
+  'offsite_conversion.fb_pixel_purchase',
+]);
 
 const VIDEO_MEDIA_TYPES = new Set([
   'video',
