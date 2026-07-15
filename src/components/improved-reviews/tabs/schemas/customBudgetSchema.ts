@@ -2,20 +2,13 @@
 import { z } from "zod";
 
 export const customBudgetSchema = z.object({
-  platform: z.enum(["meta", "google"], {
-    required_error: "Selecione uma plataforma",
-  }),
+  platform: z.enum(["meta", "google"], { message: "Selecione uma plataforma" }),
   client_id: z.string().min(1, "Selecione um cliente"),
-  budget_amount: z.number({
-    required_error: "Informe o valor do orçamento",
-    invalid_type_error: "Valor deve ser um número",
-  }).min(0.01, "Valor deve ser maior que zero"),
-  start_date: z.date({
-    required_error: "Selecione a data de início",
-  }),
-  end_date: z.date({
-    required_error: "Selecione a data de término",
-  }),
+  budget_amount: z
+    .number({ message: "Informe o valor do orçamento" })
+    .min(0.01, "Valor deve ser maior que zero"),
+  start_date: z.date({ message: "Selecione a data de início" }),
+  end_date: z.date({ message: "Selecione a data de término" }),
   description: z.string().optional(),
   account_id: z.string().optional(),
 }).refine((data) => data.end_date >= data.start_date, {
