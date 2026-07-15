@@ -273,7 +273,7 @@ async function fetchGoogleTargetsForAccount(
   try {
     const rows = await googleAdsSearch(
       cust,
-      `SELECT ad_group.id, ad_group.name, ad_group.status, ad_group.resource_name, campaign.id
+      `SELECT ad_group.id, ad_group.name, ad_group.status, ad_group.resource_name, campaign.id, campaign.name
        FROM ad_group
        WHERE ad_group.status IN ('ENABLED','PAUSED')
        LIMIT 100`,
@@ -289,6 +289,10 @@ async function fetchGoogleTargetsForAccount(
         name: a.name,
         status: a.status,
         account_id: cust,
+        hierarchy: {
+          campaign_id: r.campaign?.id ? String(r.campaign.id) : undefined,
+          campaign_name: r.campaign?.name,
+        },
         extra: { campaign_id: r.campaign?.id },
       });
     }
@@ -300,7 +304,8 @@ async function fetchGoogleTargetsForAccount(
   try {
     const rows = await googleAdsSearch(
       cust,
-      `SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.status, ad_group_ad.resource_name, ad_group.id
+      `SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.status, ad_group_ad.resource_name,
+              ad_group.id, ad_group.name, campaign.id, campaign.name
        FROM ad_group_ad
        WHERE ad_group_ad.status IN ('ENABLED','PAUSED')
        LIMIT 100`,
@@ -317,6 +322,12 @@ async function fetchGoogleTargetsForAccount(
         name: a.ad?.name || `Ad ${adId}`,
         status: a.status,
         account_id: cust,
+        hierarchy: {
+          campaign_id: r.campaign?.id ? String(r.campaign.id) : undefined,
+          campaign_name: r.campaign?.name,
+          adset_id: r.adGroup?.id ? String(r.adGroup.id) : undefined,
+          adset_name: r.adGroup?.name,
+        },
         extra: { ad_group_id: r.adGroup?.id },
       });
     }
