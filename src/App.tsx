@@ -75,6 +75,7 @@ function App() {
 
         {/* Tela de consentimento OAuth (MCP) — rota pública, faz seu próprio check de sessão */}
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+        <Route path="/oauth/consent" element={<OAuthConsent />} />
 
         <Route path="/login" element={<Login />} />
 
