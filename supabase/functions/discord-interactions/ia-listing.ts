@@ -259,8 +259,10 @@ export async function buildAdsListPayload(
     return embed;
   });
 
+  const heading = status === 'ativo' ? 'Anúncios ativos' : status === 'pausado' ? 'Anúncios pausados' : 'Anúncios';
+  const totalTxt = allAds.length > items.length ? ` (${items.length} de ${allAds.length})` : ` (${items.length})`;
   return {
-    content: `📋 Anúncios — **${clientName}** (${items.length}${filterTargets(targets, 'anuncio').length > items.length ? ` de ${filterTargets(targets, 'anuncio').length}` : ''})`,
+    content: `📋 ${heading} — **${clientName}**${totalTxt}`,
     embeds,
     components: [],
   };
