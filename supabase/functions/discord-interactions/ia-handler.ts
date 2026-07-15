@@ -433,13 +433,20 @@ export async function handleIaButton(
     return;
   }
 
+  const rowHierarchy = (row.hierarchy_snapshot as any) || {};
+  const rowPathBits: string[] = [];
+  if (rowHierarchy.campaign_name) rowPathBits.push(rowHierarchy.campaign_name);
+  if (rowHierarchy.adset_name) rowPathBits.push(rowHierarchy.adset_name);
+  rowPathBits.push(row.target_name || 'item');
+  const rowPath = rowPathBits.join(' › ');
+
   if (prefix === 'ia_cancel') {
     await supabase
       .from('bot_action_requests')
       .update({ status: 'cancelled', executed_at: new Date().toISOString() })
       .eq('id', reqId);
     await editMessage(appId, interactionToken, {
-      content: `❌ Ação cancelada — **${row.target_name}** não foi alterado.`,
+      content: `❌ Ação cancelada — **${rowPath}** não foi alterado.`,
       components: [],
       embeds: [],
     });
