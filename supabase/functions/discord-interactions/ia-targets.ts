@@ -6,6 +6,13 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const META_API_VERSION = 'v24.0';
 const GOOGLE_ADS_API = 'https://googleads.googleapis.com/v21';
 
+export type Hierarchy = {
+  campaign_id?: string;
+  campaign_name?: string;
+  adset_id?: string;
+  adset_name?: string;
+};
+
 export type Target = {
   platform: 'meta' | 'google';
   level: 'campanha' | 'adset' | 'anuncio';
@@ -16,6 +23,7 @@ export type Target = {
   budget_amount?: number | null; // diário em BRL, quando aplicável
   budget_type?: 'daily' | 'lifetime' | null;
   account_id?: string;
+  hierarchy?: Hierarchy;
   extra?: Record<string, any>;
 };
 
