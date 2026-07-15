@@ -105,7 +105,8 @@ import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.110.
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.22.0";
 import { z as z3 } from "npm:zod@^4";
 function supabaseForUser3(ctx) {
-  return createClient3(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+  const env = globalThis.process?.env ?? {};
+  return createClient3(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
