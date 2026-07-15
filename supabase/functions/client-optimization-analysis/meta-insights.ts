@@ -11,8 +11,9 @@ export async function fetchMetaInsights(
   clientId: string,
   accountId: string,
   dateRange: { start: string; end: string },
-  compareWithPrevious: boolean = true
-): Promise<TrafficInsightsResponse> {
+  compareWithPrevious: boolean = true,
+  includeAdDeltas: boolean = false
+): Promise<TrafficInsightsResponse & { adDeltas?: any[] }> {
   console.log(`📊 [META-INSIGHTS] Fetching for account ${accountId}`);
 
   // Buscar informações da conta
