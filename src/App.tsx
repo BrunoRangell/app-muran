@@ -64,6 +64,7 @@ const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"))
 const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
+const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
 
 function App() {
   return (
@@ -71,6 +72,9 @@ function App() {
       <Routes>
         {/* Rota pública do portal do cliente */}
         <Route path="/cliente/:accessToken" element={<TrafficReports />} />
+
+        {/* Tela de consentimento OAuth (MCP) — rota pública, faz seu próprio check de sessão */}
+        <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
         <Route path="/login" element={<Login />} />
 
