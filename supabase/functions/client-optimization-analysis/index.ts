@@ -91,6 +91,8 @@ interface WindowMetrics {
   google?: any;
   metaAdDeltas?: any[];
   googleAdDeltas?: any[];
+  metaResultsMeta?: any;
+  googleResultsMeta?: any;
   errors: string[];
 }
 
