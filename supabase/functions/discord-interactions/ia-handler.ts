@@ -38,23 +38,22 @@ function formatBRL(v: number | null | undefined) {
 }
 
 function hierarchyPath(target: Target): string {
-  const h = target.hierarchy || {};
-  const parts: string[] = [];
-  if (h.campaign_name) parts.push(`**Campanha:** ${h.campaign_name}`);
-  if (h.adset_name) parts.push(`**Conjunto:** ${h.adset_name}`);
-  const selfLabel =
-    target.level === 'campanha' ? 'Campanha' : target.level === 'adset' ? 'Conjunto' : 'Anúncio';
-  parts.push(`**${selfLabel}:** ${target.name}`);
-  return parts.join(' → ');
+  return formatHierarchyPath(target.hierarchy, target.level, target.name);
 }
 
-function hierarchyPathPlain(target: Target): string {
-  const h = target.hierarchy || {};
-  const parts: string[] = [];
-  if (h.campaign_name) parts.push(h.campaign_name);
-  if (h.adset_name) parts.push(h.adset_name);
-  parts.push(target.name);
-  return parts.join(' › ');
+function formatHierarchyPath(
+  hierarchy: { campaign_name?: string; adset_name?: string } | null | undefined,
+  level: string | null | undefined,
+  name: string | null | undefined,
+): string {
+  const h = hierarchy || {};
+  const lines: string[] = [];
+  if (h.campaign_name) lines.push(`**Campanha:** ${h.campaign_name}`);
+  if (h.adset_name) lines.push(`**Conjunto:** ${h.adset_name}`);
+  const selfLabel =
+    level === 'campanha' ? 'Campanha' : level === 'adset' ? 'Conjunto' : 'Anúncio';
+  lines.push(`**${selfLabel}:** ${name || 'item'}`);
+  return lines.join('\n');
 }
 
 function buildConfirmationPayload(
