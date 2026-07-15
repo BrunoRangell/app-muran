@@ -146,6 +146,11 @@ export async function fetchGoogleInsights(
     dateRange.end
   );
 
+  // Buscar quebra de conversões por categoria (Resultados por tipo de conversão)
+  const currentCategoryBreakdown = await fetchGoogleConversionsByCategory(
+    customerId, accessToken, developerToken, managerId, dateRange.start, dateRange.end,
+  );
+
   // Buscar dados demográficos
   const demographics = await fetchGoogleAdsDemographics(
     customerId,
@@ -187,6 +192,7 @@ export async function fetchGoogleInsights(
 
   // Buscar insights do período anterior
   let previousInsights = null;
+  let previousCategoryBreakdown: Record<string, number> = {};
   if (compareWithPrevious) {
     previousInsights = await fetchGoogleAdsApiInsights(
       customerId,
@@ -196,7 +202,24 @@ export async function fetchGoogleInsights(
       previousStart.toISOString().split('T')[0],
       previousEnd.toISOString().split('T')[0]
     );
+    previousCategoryBreakdown = await fetchGoogleConversionsByCategory(
+      customerId, accessToken, developerToken, managerId,
+      previousStart.toISOString().split('T')[0],
+      previousEnd.toISOString().split('T')[0],
+    );
   }
+
+  // Determina a categoria "Resultados" principal: a com maior volume no período atual.
+  let primaryCategory: string | null = null;
+  let primaryResultsCurrent = 0;
+  for (const [cat, val] of Object.entries(currentCategoryBreakdown)) {
+    if (val > primaryResultsCurrent) {
+      primaryResultsCurrent = val;
+      primaryCategory = cat;
+    }
+  }
+  const primaryResultsPrevious = primaryCategory ? (previousCategoryBreakdown[primaryCategory] || 0) : 0;
+
 
   // Processar dados agregados
   const overview = {
@@ -251,7 +274,13 @@ export async function fetchGoogleInsights(
         ? previousInsights.aggregate.spend / previousInsights.aggregate.clicks
         : 0,
       change: 0
-    }
+    },
+    // MANCHETE: Resultados = conversões da categoria principal (LEAD, PURCHASE, etc.)
+    results: {
+      current: primaryResultsCurrent,
+      previous: primaryResultsPrevious,
+      change: calculatePercentChange(primaryResultsCurrent, primaryResultsPrevious),
+    },
   };
 
   overview.ctr.change = calculatePercentChange(overview.ctr.current, overview.ctr.previous);
@@ -270,8 +299,66 @@ export async function fetchGoogleInsights(
     demographics,
     topAds,
     adDeltas,
-  };
+    resultsMeta: {
+      primaryCategory,
+      categoryBreakdown: {
+        current: currentCategoryBreakdown,
+        previous: previousCategoryBreakdown,
+      },
+      // Se não conseguimos identificar categoria (conta sem conversões cadastradas), sinaliza estimativa.
+      estimated: !primaryCategory,
+    },
+  } as any;
 }
+
+// Consulta separada segmentando por categoria de conversion action.
+// Retorna { LEAD: 25.0, PURCHASE: 12.0, ... }.
+async function fetchGoogleConversionsByCategory(
+  customerId: string,
+  accessToken: string,
+  developerToken: string,
+  managerId: string | null,
+  startDate: string,
+  endDate: string,
+): Promise<Record<string, number>> {
+  const query = `
+    SELECT
+      segments.conversion_action_category,
+      metrics.conversions
+    FROM campaign
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    AND campaign.status IN ('ENABLED', 'PAUSED')
+  `;
+  const url = `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`;
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${accessToken}`,
+    'developer-token': developerToken,
+    'Content-Type': 'application/json',
+  };
+  if (managerId) headers['login-customer-id'] = managerId.replace(/-/g, '');
+
+  const out: Record<string, number> = {};
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ query }) });
+    if (!res.ok) {
+      console.warn(`[GOOGLE-CATEG] HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      return out;
+    }
+    const data = await res.json();
+    if (Array.isArray(data?.results)) {
+      for (const row of data.results) {
+        const cat = row?.segments?.conversionActionCategory || 'UNSPECIFIED';
+        const val = parseFloat(row?.metrics?.conversions || '0');
+        out[cat] = (out[cat] || 0) + val;
+      }
+    }
+    console.log(`🎯 [GOOGLE-CATEG] categories:`, out);
+  } catch (e) {
+    console.warn('[GOOGLE-CATEG] error:', e);
+  }
+  return out;
+}
+
 
 function computeGoogleAdDeltas(current: any[], previous: any[]): any[] {
   const prevById = new Map<string, any>();

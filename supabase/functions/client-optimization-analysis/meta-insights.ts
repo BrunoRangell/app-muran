@@ -7,6 +7,93 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Whitelist genérica para fallback quando o objetivo da campanha for desconhecido.
+const FALLBACK_RESULT_ACTIONS = new Set([
+  'lead',
+  'purchase',
+  'omni_purchase',
+  'onsite_conversion.lead_grouped',
+  'offsite_conversion.fb_pixel_lead',
+  'offsite_conversion.fb_pixel_purchase',
+]);
+
+// Ações de funil (contexto de causa — não são o "Resultado" principal).
+const FUNNEL_ACTIONS = [
+  'landing_page_view',
+  'view_content',
+  'add_to_cart',
+  'initiate_checkout',
+  'add_payment_info',
+];
+
+// Mapa objetivo Meta → action_type(s) que representam "Resultados" no Gerenciador.
+export function resultActionsForObjective(objective?: string): { actions: string[]; usesClicks: boolean; usesImpressions: boolean } {
+  const o = (objective || '').toUpperCase();
+  switch (o) {
+    case 'OUTCOME_LEADS':
+    case 'LEAD_GENERATION':
+      return { actions: ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_MESSAGES':
+    case 'MESSAGES':
+      return { actions: ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_SALES':
+    case 'CONVERSIONS':
+    case 'PRODUCT_CATALOG_SALES':
+      return { actions: ['purchase', 'omni_purchase', 'offsite_conversion.fb_pixel_purchase'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_ENGAGEMENT':
+    case 'POST_ENGAGEMENT':
+    case 'PAGE_LIKES':
+      return { actions: ['post_engagement', 'page_engagement'], usesClicks: false, usesImpressions: false };
+    case 'OUTCOME_TRAFFIC':
+    case 'LINK_CLICKS':
+      return { actions: [], usesClicks: true, usesImpressions: false };
+    case 'OUTCOME_AWARENESS':
+    case 'BRAND_AWARENESS':
+    case 'REACH':
+    case 'VIDEO_VIEWS':
+      return { actions: [], usesClicks: false, usesImpressions: true };
+    default:
+      return { actions: [], usesClicks: false, usesImpressions: false };
+  }
+}
+
+export function extractResultCount(
+  actions: any[] | undefined,
+  objective: string | undefined,
+  clicks: number,
+  impressions: number,
+): { count: number; estimated: boolean } {
+  const mapping = resultActionsForObjective(objective);
+  if (mapping.usesClicks) return { count: clicks, estimated: false };
+  if (mapping.usesImpressions) return { count: impressions, estimated: false };
+  if (!Array.isArray(actions) || actions.length === 0) return { count: 0, estimated: !objective };
+
+  if (mapping.actions.length > 0) {
+    let sum = 0;
+    for (const a of actions) {
+      if (mapping.actions.includes(a.action_type)) sum += parseInt(a.value || '0');
+    }
+    return { count: sum, estimated: false };
+  }
+  // Fallback whitelist genérica
+  let sum = 0;
+  for (const a of actions) {
+    if (FALLBACK_RESULT_ACTIONS.has(a.action_type)) sum += parseInt(a.value || '0');
+  }
+  return { count: sum, estimated: true };
+}
+
+function extractFunnelCounts(actions: any[] | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!Array.isArray(actions)) return out;
+  for (const a of actions) {
+    if (FUNNEL_ACTIONS.includes(a.action_type)) {
+      out[a.action_type] = (out[a.action_type] || 0) + parseInt(a.value || '0');
+    }
+  }
+  return out;
+}
+
 export async function fetchMetaInsights(
   clientId: string,
   accountId: string,
@@ -57,12 +144,16 @@ export async function fetchMetaInsights(
   const previousEnd = new Date(startDate);
   previousEnd.setDate(previousEnd.getDate() - 1);
 
+  // Buscar objetivos das campanhas (uma única chamada, cachear para topAds também)
+  const campaignObjectiveMap = await fetchCampaignObjectives(metaAccountId, accessToken);
+
   // Buscar insights do período atual (agora incluindo demographics)
   const currentInsights = await fetchMetaApiInsights(
     metaAccountId,
     accessToken,
     dateRange.start,
-    dateRange.end
+    dateRange.end,
+    campaignObjectiveMap,
   );
 
   // Buscar insights do período anterior se solicitado
@@ -72,17 +163,19 @@ export async function fetchMetaInsights(
       metaAccountId,
       accessToken,
       previousStart.toISOString().split('T')[0],
-      previousEnd.toISOString().split('T')[0]
+      previousEnd.toISOString().split('T')[0],
+      campaignObjectiveMap,
     );
   }
 
-  // Buscar top ads
+  // Buscar top ads (objetivo por campanha vai influenciar o cálculo de "conversions" por anúncio)
   const topAds = await fetchMetaTopAds(
     metaAccountId,
     accessToken,
     dateRange.start,
     dateRange.end,
-    10
+    10,
+    campaignObjectiveMap,
   );
 
   // Deltas por anúncio (só na janela pedida, ex: 7d)
@@ -94,13 +187,15 @@ export async function fetchMetaInsights(
         accessToken,
         previousStart.toISOString().split('T')[0],
         previousEnd.toISOString().split('T')[0],
-        50
+        50,
+        campaignObjectiveMap,
       );
       adDeltas = computeAdDeltas(topAds, prevTopAds, 'meta');
     } catch (e) {
       console.warn('[META-INSIGHTS] adDeltas skipped:', e);
     }
   }
+
 
 
   // Processar dados agregados
@@ -156,7 +251,13 @@ export async function fetchMetaInsights(
         ? previousInsights.aggregate.spend / previousInsights.aggregate.clicks
         : 0,
       change: 0
-    }
+    },
+    // MANCHETE: "Resultados" mapeado pelo objetivo real da campanha.
+    results: {
+      current: currentInsights.aggregate.results,
+      previous: previousInsights?.aggregate.results || 0,
+      change: calculatePercentChange(currentInsights.aggregate.results, previousInsights?.aggregate.results || 0),
+    },
   };
 
   // Calcular change para métricas derivadas
@@ -176,8 +277,18 @@ export async function fetchMetaInsights(
     demographics: currentInsights.demographics,
     topAds,
     adDeltas,
-  };
+    // Contexto extra para o prompt
+    resultsMeta: {
+      estimated: currentInsights.aggregate.resultsEstimated,
+      objectiveBreakdown: currentInsights.aggregate.objectiveBreakdown,
+      funnel: {
+        current: currentInsights.aggregate.funnel,
+        previous: previousInsights?.aggregate.funnel || {},
+      },
+    },
+  } as any;
 }
+
 
 // Cruza topAds atuais e anteriores por id do anúncio e calcula deltas (%).
 // Filtra por >=300 impressions no período atual para evitar ruído estatístico.
@@ -214,11 +325,44 @@ function computeAdDeltas(current: any[], previous: any[], platform: 'meta' | 'go
 }
 
 
+// Busca objetivos de todas as campanhas da conta em uma única chamada.
+async function fetchCampaignObjectives(
+  accountId: string,
+  accessToken: string,
+): Promise<Map<string, string>> {
+  const formatted = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+  const out = new Map<string, string>();
+  try {
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      fields: 'id,objective',
+      limit: '500',
+    });
+    const url = `https://graph.facebook.com/v24.0/${formatted}/campaigns?${params}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[META-OBJ] Failed to fetch campaign objectives: ${res.status}`);
+      return out;
+    }
+    const data = await res.json();
+    if (Array.isArray(data?.data)) {
+      for (const c of data.data) {
+        if (c?.id && c?.objective) out.set(String(c.id), String(c.objective));
+      }
+    }
+    console.log(`🎯 [META-OBJ] Loaded ${out.size} campaign objectives`);
+  } catch (e) {
+    console.warn('[META-OBJ] error:', e);
+  }
+  return out;
+}
+
 async function fetchMetaApiInsights(
   accountId: string,
   accessToken: string,
   since: string,
-  until: string
+  until: string,
+  campaignObjectiveMap: Map<string, string> = new Map(),
 ) {
   // Garantir que o accountId tenha o prefixo act_
   const formattedAccountId = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
@@ -349,6 +493,10 @@ async function fetchMetaApiInsights(
   let totalClicks = 0;
   let totalSpend = 0;
   let totalConversions = 0;
+  let totalResults = 0;
+  let anyEstimated = false;
+  const objectiveBreakdown: Record<string, number> = {};
+  const funnelTotals: Record<string, number> = {};
 
   if (data.data && Array.isArray(data.data)) {
     for (const insight of data.data) {
@@ -360,21 +508,24 @@ async function fetchMetaApiInsights(
       const reach = parseInt(insight.reach || '0');
       const clicks = parseInt(insight.clicks || '0');
       const spend = parseFloat(insight.spend || '0');
-      const ctr = parseFloat(insight.ctr || '0');
-      const cpc = parseFloat(insight.cpc || '0');
-      
-      // Extrair conversões
+      const objective = campaignObjectiveMap.get(String(campaignId));
+
+      // "Resultados" mapeado pelo objetivo real da campanha.
+      const { count: results, estimated } = extractResultCount(insight.actions, objective, clicks, impressions);
+      if (estimated) anyEstimated = true;
+
+      // Whitelist genérica (mantida como "conversions" — só métrica legada de contexto).
       let conversions = 0;
       if (insight.actions && Array.isArray(insight.actions)) {
-        const conversionActions = insight.actions.filter((action: any) => 
-          action.action_type === 'lead' || 
-          action.action_type === 'purchase' ||
-          action.action_type === 'omni_purchase' ||
-          action.action_type === 'onsite_conversion.post_save'
-        );
-        conversions = conversionActions.reduce((sum: number, action: any) => 
-          sum + parseInt(action.value || '0'), 0
-        );
+        for (const a of insight.actions) {
+          if (FALLBACK_RESULT_ACTIONS.has(a.action_type)) conversions += parseInt(a.value || '0');
+        }
+      }
+
+      // Funil de contexto (view_content, add_to_cart, initiate_checkout etc.)
+      const funnel = extractFunnelCounts(insight.actions);
+      for (const [k, v] of Object.entries(funnel)) {
+        funnelTotals[k] = (funnelTotals[k] || 0) + v;
       }
 
       const videoViews = insight.video_play_actions?.[0]?.value || 0;
@@ -386,17 +537,21 @@ async function fetchMetaApiInsights(
           name: campaignName,
           platform: 'meta' as const,
           status: 'active',
+          objective: objective || null,
+          resultsEstimated: estimated,
           impressions: 0,
           reach: 0,
           clicks: 0,
           ctr: 0,
           cpc: 0,
           conversions: 0,
+          results: 0,
           cpa: 0,
           spend: 0,
           frequency: 0,
-          videoViews: 0
+          videoViews: 0,
         });
+        if (objective) objectiveBreakdown[objective] = (objectiveBreakdown[objective] || 0) + 1;
       }
 
       const campaign = campaignsMap.get(campaignId);
@@ -405,6 +560,7 @@ async function fetchMetaApiInsights(
       campaign.clicks += clicks;
       campaign.spend += spend;
       campaign.conversions += conversions;
+      campaign.results += results;
       campaign.videoViews += videoViews;
 
       // Agregar por data para série temporal
@@ -414,6 +570,7 @@ async function fetchMetaApiInsights(
           impressions: 0,
           clicks: 0,
           conversions: 0,
+          results: 0,
           spend: 0
         });
       }
@@ -422,6 +579,7 @@ async function fetchMetaApiInsights(
       timePoint.impressions += impressions;
       timePoint.clicks += clicks;
       timePoint.conversions += conversions;
+      timePoint.results += results;
       timePoint.spend += spend;
 
       // Totais
@@ -430,14 +588,17 @@ async function fetchMetaApiInsights(
       totalClicks += clicks;
       totalSpend += spend;
       totalConversions += conversions;
+      totalResults += results;
     }
   }
 
   // Calcular métricas derivadas por campanha
-  const campaigns: CampaignInsight[] = Array.from(campaignsMap.values()).map(c => {
+  const campaigns: CampaignInsight[] = Array.from(campaignsMap.values()).map((c: any) => {
     c.ctr = c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0;
     c.cpc = c.clicks > 0 ? c.spend / c.clicks : 0;
-    c.cpa = c.conversions > 0 ? c.spend / c.conversions : 0;
+    // CPA agora usa "results" (objetivo real) quando disponível; senão, whitelist.
+    const denom = c.results > 0 ? c.results : c.conversions;
+    c.cpa = denom > 0 ? c.spend / denom : 0;
     c.frequency = c.reach > 0 ? c.impressions / c.reach : 0;
     return c;
   });
@@ -451,7 +612,11 @@ async function fetchMetaApiInsights(
       reach: totalReach,
       clicks: totalClicks,
       spend: totalSpend,
-      conversions: totalConversions
+      conversions: totalConversions,
+      results: totalResults,
+      resultsEstimated: anyEstimated || campaignObjectiveMap.size === 0,
+      objectiveBreakdown,
+      funnel: funnelTotals,
     },
     campaigns,
     timeSeries,

@@ -91,6 +91,8 @@ interface WindowMetrics {
   google?: any;
   metaAdDeltas?: any[];
   googleAdDeltas?: any[];
+  metaResultsMeta?: any;
+  googleResultsMeta?: any;
   errors: string[];
 }
 
@@ -107,6 +109,7 @@ function extractOverview(resp: any) {
     spend: pick(o.spend),
     conversions: pick(o.conversions),
     cpa: pick(o.cpa),
+    results: pick(o.results),
   };
 }
 
@@ -150,7 +153,7 @@ async function collectWindow(
     if (valid.length === 0) return null;
     if (valid.length === 1) return extractOverview(valid[0]);
     const acc: any = {};
-    const keys = ['impressions', 'reach', 'clicks', 'spend', 'conversions'];
+    const keys = ['impressions', 'reach', 'clicks', 'spend', 'conversions', 'results'];
     for (const k of keys) {
       let cur = 0, prev = 0;
       for (const r of valid) {
@@ -170,9 +173,12 @@ async function collectWindow(
       previous: acc.clicks.previous > 0 ? acc.spend.previous / acc.clicks.previous : 0,
       change: 0,
     };
+    // CPA "por resultado" quando disponível; senão, por conversion whitelist antiga.
+    const cpaDenomCur = acc.results.current > 0 ? acc.results.current : acc.conversions.current;
+    const cpaDenomPrev = acc.results.previous > 0 ? acc.results.previous : acc.conversions.previous;
     acc.cpa = {
-      current: acc.conversions.current > 0 ? acc.spend.current / acc.conversions.current : 0,
-      previous: acc.conversions.previous > 0 ? acc.spend.previous / acc.conversions.previous : 0,
+      current: cpaDenomCur > 0 ? acc.spend.current / cpaDenomCur : 0,
+      previous: cpaDenomPrev > 0 ? acc.spend.previous / cpaDenomPrev : 0,
       change: 0,
     };
     for (const k of ['ctr', 'cpc', 'cpa']) {
@@ -190,6 +196,47 @@ async function collectWindow(
     return merged;
   };
 
+  // Consolida resultsMeta (objetivos Meta / categorias Google)
+  const mergeResultsMeta = (results: any[]) => {
+    const valid = results.filter(Boolean);
+    if (valid.length === 0) return null;
+    const first = valid[0];
+    if (first?.resultsMeta?.objectiveBreakdown !== undefined) {
+      // Meta
+      const objectiveBreakdown: Record<string, number> = {};
+      const funnelCur: Record<string, number> = {};
+      const funnelPrev: Record<string, number> = {};
+      let anyEstimated = false;
+      for (const r of valid) {
+        const m = r.resultsMeta || {};
+        anyEstimated = anyEstimated || !!m.estimated;
+        for (const [k, v] of Object.entries<any>(m.objectiveBreakdown || {})) objectiveBreakdown[k] = (objectiveBreakdown[k] || 0) + v;
+        for (const [k, v] of Object.entries<any>(m.funnel?.current || {})) funnelCur[k] = (funnelCur[k] || 0) + Number(v);
+        for (const [k, v] of Object.entries<any>(m.funnel?.previous || {})) funnelPrev[k] = (funnelPrev[k] || 0) + Number(v);
+      }
+      return { platform: 'meta' as const, estimated: anyEstimated, objectiveBreakdown, funnel: { current: funnelCur, previous: funnelPrev } };
+    }
+    if (first?.resultsMeta?.primaryCategory !== undefined) {
+      // Google
+      const catCur: Record<string, number> = {};
+      const catPrev: Record<string, number> = {};
+      let primaryCategory: string | null = null;
+      let maxVal = 0;
+      let estimated = true;
+      for (const r of valid) {
+        const m = r.resultsMeta || {};
+        estimated = estimated && !!m.estimated;
+        for (const [k, v] of Object.entries<any>(m.categoryBreakdown?.current || {})) catCur[k] = (catCur[k] || 0) + Number(v);
+        for (const [k, v] of Object.entries<any>(m.categoryBreakdown?.previous || {})) catPrev[k] = (catPrev[k] || 0) + Number(v);
+      }
+      for (const [k, v] of Object.entries(catCur)) {
+        if (v > maxVal) { maxVal = v; primaryCategory = k; }
+      }
+      return { platform: 'google' as const, estimated: !primaryCategory, primaryCategory, categoryBreakdown: { current: catCur, previous: catPrev } };
+    }
+    return null;
+  };
+
   return {
     label,
     daysBack,
@@ -198,9 +245,12 @@ async function collectWindow(
     google: aggregate(googleResults),
     metaAdDeltas: includeAdDeltas ? mergeDeltas(metaResults) : undefined,
     googleAdDeltas: includeAdDeltas ? mergeDeltas(googleResults) : undefined,
+    metaResultsMeta: mergeResultsMeta(metaResults),
+    googleResultsMeta: mergeResultsMeta(googleResults),
     errors,
-  };
+  } as WindowMetrics;
 }
+
 
 
 // ---------- Claude ----------
@@ -233,10 +283,16 @@ function buildPrompt(
       google: w.google,
       erros: w.errors,
     })),
+    contexto_resultados: {
+      // Objetivo real de cada campanha Meta e categoria principal de conversão Google — usados para
+      // interpretar "Resultados" (a métrica manchete). Se `estimated=true`, a métrica "results" caiu num
+      // fallback genérico e deve ser tratada como estimativa.
+      meta: w7?.metaResultsMeta || null,
+      google: w7?.googleResultsMeta || null,
+    },
     anuncios_7d: {
       meta: w7?.metaAdDeltas || [],
       google: w7?.googleAdDeltas || [],
-      // "Só anúncios com >=300 impressões no período foram incluídos."
     },
   };
 
@@ -248,16 +304,24 @@ function buildPrompt(
 
 Você recebe métricas de 1 cliente em 3 janelas comparativas (7d, 30d, 90d — cada uma vs. período anterior de mesma duração). "meta" = Facebook/Instagram Ads. "google" = Google Ads. Cada métrica traz \`current\`, \`previous\` e \`change\` (% de variação).
 
+MÉTRICA MANCHETE — "Resultados" (\`results\`):
+Esta é a métrica REAL do objetivo da campanha, equivalente à coluna "Resultados" do Gerenciador do Meta / à conversão principal do Google Ads. Cada campanha tem um objetivo específico (leads, mensagens, compras, engajamento, tráfego, alcance) e "results" já foi calculado a partir da action_type correta pra esse objetivo. NUNCA lidere um parágrafo com CTR, CPC ou CPA — essas são pistas de causa. A primeira frase de CADA ponto de piorou/melhorou deve ser sempre sobre RESULTADOS, com números absolutos (não só percentual). Exemplo obrigatório: "Leads caíram de 12 para 7 (-42%)" e não "CTR caiu 8%".
+
+Se \`contexto_resultados.meta.estimated=true\` ou \`contexto_resultados.google.estimated=true\`, avise entre parênteses "(métrica estimada)" na primeira menção de resultados dessa plataforma.
+
+Métricas secundárias (CTR, CPC, CPA, cliques, impressões, funil landing_page_view/add_to_cart/initiate_checkout) entram SOMENTE como explicação de causa depois da manchete de resultados, ou como sinal de alerta a monitorar.
+
 Além disso, para a janela de 7 dias você recebe \`anuncios_7d\` com deltas por anúncio individual (só anúncios com pelo menos 300 impressões no período — abaixo disso é ruído estatístico, ignore).
 
 Plataformas que este cliente usa: ${platformsAsked.join(' e ')}.
 
-Heurísticas causa→padrão (use como base de raciocínio, cite o padrão que observou — não afirme causa como fato absoluto, use "sugere", "indica", "pode estar"):
-- CTR caindo + frequência subindo → fadiga de criativo
-- CPC subindo + CTR estável → leilão mais caro / mais concorrência
-- Conversões caindo com CTR/CPC estáveis → possível problema de tracking, landing page ou qualidade de lead
-- CPA piorando + spend subindo + conversões estáveis → ineficiência de segmentação / público saturado
-- Impressões e clicks caindo juntos → possível problema de entrega (orçamento, aprovação, aprendizado)
+Heurísticas causa→padrão FUNIL-CONSCIENTES (use como base de raciocínio; "sugere", "indica", "pode estar" — não afirme causa como fato):
+- Resultados caindo + cliques estáveis → problema ENTRE clique e conversão (landing page, formulário, tracking/pixel, qualidade do lead). É o alerta mais grave: gastando pra levar tráfego que não converte.
+- Resultados caindo + CPA subindo + spend subindo → ineficiência real, público saturado / segmentação ruim, precisa agir.
+- Resultados caindo + impressões e cliques caindo juntos → problema de entrega (orçamento, aprovação de anúncio, fase de aprendizado, leilão).
+- CTR caindo mas Resultados estáveis → ainda não é grave, só monitorar; a criativa perdeu apelo mas o funil segue convertendo. NÃO é a manchete.
+- Resultados subindo mesmo com CPC subindo → otimização está compensando custo maior; sinal positivo, dizer que o funil está performando apesar do leilão mais caro.
+- CTR caindo + frequência subindo → fadiga de criativo (contexto de causa quando resultados também estão caindo).
 
 Dados:
 \`\`\`json
@@ -267,11 +331,11 @@ ${JSON.stringify(summary, null, 2)}
 Responda **APENAS um JSON válido**, sem texto antes ou depois, sem cercas de código markdown, seguindo EXATAMENTE este schema:
 
 {
-  "resumo_executivo": "1 a 2 frases gerais do quadro do cliente",
+  "resumo_executivo": "1 a 2 frases gerais liderando com Resultados (não com CTR/CPC)",
   "meta": {
     "status": "piorando" | "misto" | "melhorando",
-    "piorou": ["parágrafo em texto corrido com causa provável + sugestão embutida, citando números e (quando aplicável) o anúncio específico responsável pelo nome"],
-    "melhorou": ["parágrafo em texto corrido"]
+    "piorou": ["parágrafo em texto corrido: 1ª frase = Resultados em números absolutos (ex: 'Leads caíram de 12 para 7, -42%'); depois causa provável usando CTR/CPC/CPA/funil como pistas; e sugestão de solução embutida"],
+    "melhorou": ["mesmo formato: 1ª frase sobre Resultados, depois causa e insight"]
   },
   "google": { "status": "...", "piorou": [...], "melhorou": [...] }
 }
@@ -279,14 +343,16 @@ Responda **APENAS um JSON válido**, sem texto antes ou depois, sem cercas de c�
 Regras críticas:
 - \`meta\` deve ser \`null\` se o cliente NÃO usa Meta (${hasMeta ? 'usa — preencha' : 'NÃO usa — retorne null'}).
 - \`google\` deve ser \`null\` se o cliente NÃO usa Google (${hasGoogle ? 'usa — preencha' : 'NÃO usa — retorne null'}).
-- \`piorou\`: 1 a 3 parágrafos, cada um até ~350 caracteres. Cada parágrafo deve incluir CAUSA PROVÁVEL + SUGESTÃO CONCRETA de solução embutida no mesmo texto, não em lista separada.
+- \`piorou\`: 1 a 3 parágrafos, cada um até ~350 caracteres. Sempre abrir com Resultados em números absolutos.
 - \`melhorou\`: 1 a 2 parágrafos, mesmo formato.
-- Cite o nome do anúncio específico responsável por uma variação SEMPRE que \`anuncios_7d\` mostrar um anúncio claramente responsável (com >=300 impressões — o filtro já foi aplicado). Nunca aponte um anúncio abaixo de 300 impressões.
+- Cite o nome do anúncio específico responsável por uma variação SEMPRE que \`anuncios_7d\` mostrar um anúncio claramente responsável (com >=300 impressões — filtro já aplicado). Nunca aponte um anúncio abaixo de 300 impressões.
 - Texto corrido inteligente, português brasileiro, sem bullets internos, sem asteriscos, sem markdown dentro dos parágrafos.
-- \`status\`: "piorando" se predomina piora; "melhorando" se predomina melhora; "misto" se equilibrado.
+- \`status\`: baseie-se PRIMEIRO em Resultados (não em CTR/CPC). "piorando" se Resultados caíram; "melhorando" se subiram; "misto" se ambiguidade real (ex: 7d pior mas 30d melhor).
+- NUNCA lidere um ponto com CTR, CPC ou CPA. Isso é regra absoluta.
 - NÃO inclua nenhum campo \`acoes\` ou lista de ações separada — a sugestão fica embutida em cada parágrafo.
 - NÃO inclua cercas \`\`\`, comentários ou texto fora do JSON.`;
 }
+
 
 async function callClaude(apiKey: string, prompt: string): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
