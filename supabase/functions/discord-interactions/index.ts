@@ -304,9 +304,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ type: 6 }); // DEFERRED_UPDATE_MESSAGE
     }
 
+    // Botão "Informar novo orçamento" → abre modal SÍNCRONO (type 9)
+    if (typeof customId === 'string' && customId.startsWith('ia_ask_value:')) {
+      const [, reqId] = customId.split(':');
+      return jsonResponse(buildValueModal(reqId));
+    }
+
     if (typeof customId === 'string' && (customId.startsWith('ia_confirm:') || customId.startsWith('ia_cancel:') || customId.startsWith('ia_pick:'))) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleIaButton(appId, token, customId, interaction.data, supabase));
+      return jsonResponse({ type: 6 });
+    }
+  }
+
+  // MODAL_SUBMIT
+  if (interaction.type === 5) {
+    const customId = interaction.data?.custom_id;
+    const token = interaction.token;
+
+    if (typeof customId === 'string' && customId.startsWith('ia_value_modal:')) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handleIaModalSubmit(appId, token, customId, interaction.data, supabase));
+      // DEFERRED_UPDATE_MESSAGE — vamos editar a mensagem original com o embed de confirmação
       return jsonResponse({ type: 6 });
     }
   }
