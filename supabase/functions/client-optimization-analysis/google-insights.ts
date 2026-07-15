@@ -146,6 +146,11 @@ export async function fetchGoogleInsights(
     dateRange.end
   );
 
+  // Buscar quebra de conversões por categoria (Resultados por tipo de conversão)
+  const currentCategoryBreakdown = await fetchGoogleConversionsByCategory(
+    customerId, accessToken, developerToken, managerId, dateRange.start, dateRange.end,
+  );
+
   // Buscar dados demográficos
   const demographics = await fetchGoogleAdsDemographics(
     customerId,
@@ -187,6 +192,7 @@ export async function fetchGoogleInsights(
 
   // Buscar insights do período anterior
   let previousInsights = null;
+  let previousCategoryBreakdown: Record<string, number> = {};
   if (compareWithPrevious) {
     previousInsights = await fetchGoogleAdsApiInsights(
       customerId,
@@ -196,7 +202,24 @@ export async function fetchGoogleInsights(
       previousStart.toISOString().split('T')[0],
       previousEnd.toISOString().split('T')[0]
     );
+    previousCategoryBreakdown = await fetchGoogleConversionsByCategory(
+      customerId, accessToken, developerToken, managerId,
+      previousStart.toISOString().split('T')[0],
+      previousEnd.toISOString().split('T')[0],
+    );
   }
+
+  // Determina a categoria "Resultados" principal: a com maior volume no período atual.
+  let primaryCategory: string | null = null;
+  let primaryResultsCurrent = 0;
+  for (const [cat, val] of Object.entries(currentCategoryBreakdown)) {
+    if (val > primaryResultsCurrent) {
+      primaryResultsCurrent = val;
+      primaryCategory = cat;
+    }
+  }
+  const primaryResultsPrevious = primaryCategory ? (previousCategoryBreakdown[primaryCategory] || 0) : 0;
+
 
   // Processar dados agregados
   const overview = {
