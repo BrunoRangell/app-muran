@@ -19,6 +19,18 @@ const COMMANDS = [
       },
     ],
   },
+  {
+    name: 'ia',
+    description: 'Executa uma ação (pausar/ativar/orçamento) via IA — descreva o que quer fazer',
+    options: [
+      {
+        name: 'comando',
+        description: 'Ex: "pausar o anúncio xpto" ou "mudar orçamento da campanha Y pra 800/dia"',
+        type: 3,
+        required: true,
+      },
+    ],
+  },
 ];
 
 Deno.serve(async (req) => {
