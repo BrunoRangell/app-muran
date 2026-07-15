@@ -6,6 +6,7 @@ import { fetchChannelName, resolveClientsByChannelName, channelNameToSearch } fr
 import { fetchTargetsForClient, type Target } from './ia-targets.ts';
 import { interpretarComandoIA } from './ia-claude.ts';
 import { metaSetStatus, metaSetDailyBudget, googleSetStatus, googleSetDailyBudget } from './ia-writes.ts';
+import { buildCampaignsListPayload, buildAdSetsListPayload, buildAdsListPayload } from './ia-listing.ts';
 
 const MURAN_ORANGE = 0xff6e00;
 
@@ -160,6 +161,26 @@ export async function handleIaCommand(
       await editOriginal(appId, interactionToken, {
         content: `🤔 Não consegui identificar a ação para **${client.company_name}**.\n${decisao.mensagem ? `> ${decisao.mensagem}\n` : ''}Tente reformular incluindo o nome exato do anúncio/conjunto/campanha.`,
       });
+      return;
+    }
+
+    // ===== Consultas de LEITURA (sem confirmação) =====
+    if (
+      decisao.acao === 'listar_campanhas' ||
+      decisao.acao === 'listar_conjuntos' ||
+      decisao.acao === 'listar_anuncios'
+    ) {
+      const plat = decisao.plataforma_filtro || null;
+      const filtered = plat ? targets.filter((t) => t.platform === plat) : targets;
+      let payload: unknown;
+      if (decisao.acao === 'listar_campanhas') {
+        payload = buildCampaignsListPayload(client.company_name, filtered);
+      } else if (decisao.acao === 'listar_conjuntos') {
+        payload = buildAdSetsListPayload(client.company_name, filtered);
+      } else {
+        payload = await buildAdsListPayload(supabase, client.company_name, filtered);
+      }
+      await editOriginal(appId, interactionToken, payload);
       return;
     }
 
@@ -325,6 +346,9 @@ function validateAction(
     }
     if (target.level === 'anuncio') {
       return `❌ Não dá pra mudar orçamento no nível de **anúncio** — orçamento fica em campanha ou conjunto.`;
+    }
+    if (target.platform === 'google' && target.level === 'adset') {
+      return `❌ No Google Ads o orçamento fica na **campanha**, não no conjunto (ad group). Peça pra mudar na campanha.`;
     }
     if (target.platform === 'google' && target.level === 'campanha' && !target.extra?.campaign_budget_resource) {
       return `❌ Não localizei o campaign_budget vinculado à campanha do Google. Não posso ajustar o orçamento.`;
