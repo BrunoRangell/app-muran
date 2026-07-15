@@ -8,7 +8,8 @@ export type AcaoIA =
   | 'mudar_orcamento'
   | 'listar_campanhas'
   | 'listar_conjuntos'
-  | 'listar_anuncios';
+  | 'listar_anuncios'
+  | 'criar_anuncio';
 
 export type ClaudeDecision = {
   confianca: 'confiante' | 'ambiguo' | 'nao_encontrado';
