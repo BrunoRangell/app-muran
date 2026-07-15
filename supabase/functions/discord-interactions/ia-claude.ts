@@ -56,6 +56,7 @@ Regras:
 - Ações de ESCRITA: "pausar", "ativar", "mudar_orcamento" — exigem um item específico.
 - Ações de LEITURA (consultas): "listar_campanhas", "listar_conjuntos", "listar_anuncios" — não exigem item específico; apenas identifique o tipo pedido. Ex: "quais anúncios estão ativos", "liste as campanhas", "me mostra os conjuntos" → use a ação de listagem correspondente com confianca="confiante", sem item_id.
 - Para listagens, opcionalmente preencha "plataforma_filtro" ("meta" ou "google") se o usuário mencionar explicitamente a plataforma; caso contrário deixe null.
+- Para listagens, preencha "status_filtro": "ativo" se o usuário disser "ativos/ativas/rodando/no ar/ligados"; "pausado" se disser "pausados/pausadas/parados/desligados"; "todos" (ou null) se não especificar.
 - Para ações de escrita: escolha SEMPRE um item que exista na lista fornecida. NUNCA invente um id.
 - Se houver correspondência clara e única (mesmo com variações de escrita/acentos), use "confiante".
 - Se houver mais de um item plausível para uma ação de escrita, use "ambiguo" e preencha "candidatos".
