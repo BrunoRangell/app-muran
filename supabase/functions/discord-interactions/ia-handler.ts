@@ -274,6 +274,38 @@ export async function handleIaCommand(
       return;
     }
 
+    // ===== CRIAR ANÚNCIO NOVO (só Meta, dentro de adset existente) =====
+    if (decisao.acao === 'criar_anuncio') {
+      // Precisa de adset resolvido, confiante. Ambiguidade fica pra Slice A2.
+      const adsetTarget =
+        decisao.item_id ? targets.find((t) => t.id === decisao.item_id && t.level === 'adset' && t.platform === 'meta') : undefined;
+      if (!adsetTarget) {
+        // Filtrar candidatos possíveis pra dar hint
+        const metaAdsets = targets.filter((t) => t.platform === 'meta' && t.level === 'adset');
+        const hint = metaAdsets.length
+          ? `\nConjuntos disponíveis: ${metaAdsets.slice(0, 8).map((t) => `\`${t.name}\``).join(', ')}${metaAdsets.length > 8 ? '…' : ''}`
+          : '';
+        await editOriginal(appId, interactionToken, {
+          content: `🤔 Pra criar anúncio, preciso identificar o **conjunto (adset)** do Meta onde ele vai. Reformule mencionando o nome exato do conjunto.${hint}`,
+        });
+        return;
+      }
+      const statusInicial: 'ativo' | 'pausado' = decisao.status_inicial === 'ativo' ? 'ativo' : 'pausado';
+      await startCreateAdFlow(supabase, appId, interactionToken, {
+        clientId: client.id,
+        clientName: client.company_name,
+        discordUser,
+        channelId,
+        comando,
+        adsetTargetId: adsetTarget.id,
+        adsetName: adsetTarget.name,
+        accountId: adsetTarget.account_id || '',
+        hierarchy: adsetTarget.hierarchy || {},
+        statusInicial,
+      });
+      return;
+    }
+
     // ===== Caso AMBÍGUO ou NÃO_ENCONTRADO (com ação identificada): menu de seleção =====
     const isWriteAction =
       decisao.acao === 'pausar' || decisao.acao === 'ativar' || decisao.acao === 'mudar_orcamento';
