@@ -190,7 +190,28 @@ async function collectWindow(
 
 // ---------- Claude ----------
 
-function buildPrompt(clientName: string, windows: WindowMetrics[]): string {
+interface AnalysisAction {
+  prioridade: string; // P1, P2, ...
+  titulo: string;
+  justificativa: string;
+  acao: string;
+}
+
+interface AnalysisJSON {
+  resumo_executivo?: string;
+  piorou?: string[];
+  melhorou?: string[];
+  tendencia_30d?: string;
+  contexto_90d?: string;
+  acoes?: AnalysisAction[];
+}
+
+function buildPrompt(
+  clientName: string,
+  windows: WindowMetrics[],
+  hasMeta: boolean,
+  hasGoogle: boolean,
+): string {
   const summary = {
     cliente: clientName,
     janelas: windows.map((w) => ({
@@ -202,38 +223,44 @@ function buildPrompt(clientName: string, windows: WindowMetrics[]): string {
     })),
   };
 
+  const platformNote =
+    hasMeta && hasGoogle
+      ? 'O cliente usa Meta E Google Ads. Em cada item de `piorou` e `melhorou`, PREFIXE com "[Meta] " ou "[Google] " para deixar claro a qual plataforma o ponto se refere.'
+      : 'O cliente usa apenas uma plataforma. NÃO use prefixos "[Meta]" ou "[Google]" nos itens.';
+
   return `Você é analista sênior de mídia paga em uma agência (Muran).
 
-Abaixo estão as métricas de anúncios de UM cliente, em 3 janelas comparativas:
-- **7 dias vs 7 dias anteriores** (sinal imediato)
-- **30 dias vs 30 dias anteriores** (confirmação de tendência)
-- **90 dias vs 90 dias anteriores** (contexto de sazonalidade)
+Métricas do cliente em 3 janelas comparativas (7d, 30d, 90d — cada uma comparada com o período anterior de mesma duração). Cada métrica tem \`current\`, \`previous\` e \`change\` (% de variação). "meta" = Facebook/Instagram Ads. "google" = Google Ads. Se algum estiver \`null\`, ou o cliente não usa essa plataforma ou houve erro (veja \`erros\`).
 
-Cada métrica tem \`current\`, \`previous\` e \`change\` (% de variação). "meta" = Facebook/Instagram Ads. "google" = Google Ads. Se algum estiver \`null\`, o cliente não usa essa plataforma OU houve erro na coleta (veja \`erros\`).
+${platformNote}
 
 Dados:
 \`\`\`json
 ${JSON.stringify(summary, null, 2)}
 \`\`\`
 
-Entregue uma análise **em português brasileiro, direta, sem enrolação**, formatada em markdown compatível com Discord (use **negrito**, listas com \`-\`, sem tabelas). Estrutura:
+Responda **APENAS um JSON válido**, sem texto antes ou depois, sem cercas de código markdown, seguindo EXATAMENTE este schema:
 
-**📉 O que piorou (últimos 7d vs anteriores)**
-Liste 2–4 pontos concretos com números.
+{
+  "resumo_executivo": "1 a 2 frases curtas resumindo o quadro geral",
+  "piorou": ["ponto 1 com números", "ponto 2 com números", ...],  // 2 a 4 itens, cada um <= 200 chars
+  "melhorou": ["ponto 1", ...],  // 1 a 3 itens, cada um <= 200 chars
+  "tendencia_30d": "1 a 2 frases: os 7d confirmam tendência ou é ruído?",  // <= 300 chars
+  "contexto_90d": "1 a 2 frases sobre sazonalidade / patamar geral",  // <= 300 chars
+  "acoes": [
+    {
+      "prioridade": "P1",
+      "titulo": "título curto e concreto",
+      "justificativa": "por que, com número",
+      "acao": "o que fazer, concreto"
+    }
+  ]  // 3 a 5 ações, P1 primeiro, cada campo curto (<= 180 chars)
+}
 
-**📈 O que melhorou**
-1–3 pontos.
-
-**📊 Tendência dos 30 dias**
-Confirma o que os 7d indicam? Ou é ruído?
-
-**🗓️ Contexto dos 90 dias**
-Contexto de sazonalidade / patamar geral.
-
-**🎯 Hipóteses e ações priorizadas**
-3 a 5 ações CONCRETAS, priorizadas (P1 > P2 > P3), com justificativa curta. Ex: "P1 — Pausar campanha X: CPA subiu 180% nos últimos 7d enquanto conversões caíram."
-
-Seja objetivo. Máximo ~1200 palavras.`;
+Regras:
+- Português brasileiro, direto, sem enrolação.
+- Use números reais dos dados.
+- NÃO inclua markdown, cercas \`\`\`, comentários ou texto fora do JSON.`;
 }
 
 async function callClaude(apiKey: string, prompt: string): Promise<string> {
@@ -265,6 +292,129 @@ async function callClaude(apiKey: string, prompt: string): Promise<string> {
   return text;
 }
 
+function parseAnalysisJSON(raw: string): AnalysisJSON {
+  let cleaned = raw.trim();
+  // Remove markdown fences se a IA colocou apesar de pedirmos para não colocar
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  }
+  // Extrai o primeiro objeto JSON encontrado
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) {
+    cleaned = cleaned.slice(first, last + 1);
+  }
+  return JSON.parse(cleaned) as AnalysisJSON;
+}
+
+// ---------- Discord embed ----------
+
+const FIELD_LIMIT = 1024;
+const DESCRIPTION_LIMIT = 4096;
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1).trimEnd() + '…';
+}
+
+function bulletList(items: string[] | undefined, max = FIELD_LIMIT): string | null {
+  if (!items || items.length === 0) return null;
+  const lines = items.map((i) => `• ${i}`);
+  let out = lines.join('\n');
+  if (out.length > max) {
+    // Trunca item a item
+    const kept: string[] = [];
+    let total = 0;
+    for (const l of lines) {
+      if (total + l.length + 1 > max - 1) break;
+      kept.push(l);
+      total += l.length + 1;
+    }
+    out = kept.join('\n') + '\n…';
+  }
+  return out;
+}
+
+function formatActions(actions: AnalysisAction[] | undefined): string | null {
+  if (!actions || actions.length === 0) return null;
+  const blocks = actions.map((a) => {
+    const p = (a.prioridade || 'P?').toUpperCase();
+    const titulo = a.titulo || '';
+    const just = a.justificativa ? `_${a.justificativa}_` : '';
+    const acao = a.acao ? `→ ${a.acao}` : '';
+    return `**${p} — ${titulo}**\n${just}${just && acao ? '\n' : ''}${acao}`.trim();
+  });
+  let out = blocks.join('\n\n');
+  if (out.length > FIELD_LIMIT) {
+    // Reduz iterativamente
+    const kept: string[] = [];
+    let total = 0;
+    for (const b of blocks) {
+      if (total + b.length + 2 > FIELD_LIMIT - 1) break;
+      kept.push(b);
+      total += b.length + 2;
+    }
+    out = kept.join('\n\n') + '\n…';
+  }
+  return out;
+}
+
+function buildEmbed(
+  clientName: string,
+  analysis: AnalysisJSON,
+  hasMeta: boolean,
+  hasGoogle: boolean,
+  platformErrors: { meta: boolean; google: boolean; details: string[] },
+) {
+  const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
+
+  // Nota de fallback (erros de coleta)
+  const notas: string[] = [];
+  if (hasMeta && platformErrors.meta) notas.push('⚠️ Meta Ads: falha ao coletar métricas nesta análise.');
+  if (hasGoogle && platformErrors.google) notas.push('⚠️ Google Ads: falha ao coletar métricas nesta análise.');
+  if (notas.length) {
+    fields.push({
+      name: '⚠️ Observações',
+      value: truncate(notas.join('\n'), FIELD_LIMIT),
+    });
+  }
+
+  const piorou = bulletList(analysis.piorou);
+  if (piorou) fields.push({ name: '📉 O que piorou (7d)', value: piorou });
+
+  const melhorou = bulletList(analysis.melhorou);
+  if (melhorou) fields.push({ name: '📈 O que melhorou (7d)', value: melhorou });
+
+  if (analysis.tendencia_30d) {
+    fields.push({ name: '📊 Tendência 30 dias', value: truncate(analysis.tendencia_30d, FIELD_LIMIT) });
+  }
+  if (analysis.contexto_90d) {
+    fields.push({ name: '🗓️ Contexto 90 dias', value: truncate(analysis.contexto_90d, FIELD_LIMIT) });
+  }
+
+  const acoes = formatActions(analysis.acoes);
+  if (acoes) fields.push({ name: '🎯 Ações priorizadas', value: acoes });
+
+  const platformLabel = [hasMeta ? 'Meta' : null, hasGoogle ? 'Google' : null]
+    .filter(Boolean)
+    .join(' + ');
+
+  const description = analysis.resumo_executivo
+    ? truncate(analysis.resumo_executivo, DESCRIPTION_LIMIT)
+    : undefined;
+
+  return {
+    title: truncate(`🤖 Análise de otimização — ${clientName}`, 256),
+    description,
+    color: 0xff6e00,
+    fields,
+    footer: {
+      text: `${platformLabel} · janelas 7d / 30d / 90d`,
+    },
+    timestamp: new Date().toISOString(),
+  };
+}
+
 // ---------- Orquestração ----------
 
 async function runAnalysis(
@@ -283,7 +433,6 @@ async function runAnalysis(
     return;
   }
 
-  // Contas ativas do cliente
   const { data: accounts, error: accErr } = await supabase
     .from('client_accounts')
     .select('id, platform, account_id, account_name')
@@ -299,22 +448,22 @@ async function runAnalysis(
 
   const metaIds = (accounts || []).filter((a) => a.platform === 'meta').map((a) => a.id);
   const googleIds = (accounts || []).filter((a) => a.platform === 'google').map((a) => a.id);
+  const hasMeta = metaIds.length > 0;
+  const hasGoogle = googleIds.length > 0;
 
-  if (metaIds.length === 0 && googleIds.length === 0) {
+  if (!hasMeta && !hasGoogle) {
     await editOriginal(appId, interactionToken, {
       content: `❌ **${clientName}** não tem contas ativas de Meta ou Google Ads cadastradas.`,
     });
     return;
   }
 
-  // Coleta paralela das 3 janelas
   const windows = await Promise.all([
     collectWindow(clientId, metaIds, googleIds, 7, 'Últimos 7 dias'),
     collectWindow(clientId, metaIds, googleIds, 30, 'Últimos 30 dias'),
     collectWindow(clientId, metaIds, googleIds, 90, 'Últimos 90 dias'),
   ]);
 
-  // Se todas as janelas ficaram sem dados de ambas as plataformas, aborta.
   const hasAnyData = windows.some((w) => w.meta || w.google);
   if (!hasAnyData) {
     const allErrors = windows.flatMap((w) => w.errors).join('\n');
@@ -324,10 +473,17 @@ async function runAnalysis(
     return;
   }
 
-  const prompt = buildPrompt(clientName, windows);
-  let analysis: string;
+  // Detecta falha por plataforma: se plataforma esperada não tem NENHUM dado em nenhuma janela
+  const platformErrors = {
+    meta: hasMeta && windows.every((w) => !w.meta),
+    google: hasGoogle && windows.every((w) => !w.google),
+    details: windows.flatMap((w) => w.errors),
+  };
+
+  const prompt = buildPrompt(clientName, windows, hasMeta, hasGoogle);
+  let rawAnalysis: string;
   try {
-    analysis = await callClaude(anthropicKey, prompt);
+    rawAnalysis = await callClaude(anthropicKey, prompt);
   } catch (e: any) {
     await editOriginal(appId, interactionToken, {
       content: `⚠️ Erro ao chamar IA: ${e?.message || 'desconhecido'}`,
@@ -335,12 +491,27 @@ async function runAnalysis(
     return;
   }
 
-  const header =
-    `🤖 **Análise de otimização — ${clientName}**\n` +
-    `Plataformas: ${[metaIds.length ? 'Meta' : null, googleIds.length ? 'Google' : null].filter(Boolean).join(' + ')}\n` +
-    `Janelas: 7d · 30d · 90d (comparadas com o período anterior)\n\n`;
+  let parsed: AnalysisJSON;
+  try {
+    parsed = parseAnalysisJSON(rawAnalysis);
+  } catch (e: any) {
+    console.error('[parse] falhou', e, 'raw:', rawAnalysis.slice(0, 500));
+    // Fallback: manda o texto bruto truncado como description
+    await editOriginal(appId, interactionToken, {
+      embeds: [
+        {
+          title: truncate(`🤖 Análise de otimização — ${clientName}`, 256),
+          description: truncate(rawAnalysis, DESCRIPTION_LIMIT),
+          color: 0xff6e00,
+          footer: { text: '⚠️ Resposta da IA veio em formato inesperado (fallback texto)' },
+        },
+      ],
+    });
+    return;
+  }
 
-  await sendChunks(appId, interactionToken, header + analysis);
+  const embed = buildEmbed(clientName, parsed, hasMeta, hasGoogle, platformErrors);
+  await editOriginal(appId, interactionToken, { embeds: [embed] });
 }
 
 // ---------- Entry point ----------
