@@ -410,6 +410,7 @@ export async function handleIaButton(
         target_name: target.name,
         platform: target.platform,
         previous_value_snapshot: snapshot,
+        hierarchy_snapshot: target.hierarchy || null,
       })
       .eq('id', reqId);
 
