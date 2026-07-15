@@ -32,7 +32,7 @@ export function useSecureFormValidation<T extends z.ZodType>({
       });
 
       // Sanitizar dados de entrada
-      const sanitizedData = { ...data };
+      const sanitizedData: Record<string, any> = (data && typeof data === 'object') ? { ...(data as any) } : {};
       
       // Sanitizar campos de texto
       Object.keys(sanitizedData).forEach(key => {
