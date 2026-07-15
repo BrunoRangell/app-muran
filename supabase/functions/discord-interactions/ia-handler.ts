@@ -235,7 +235,9 @@ export async function handleIaCommand(
     // 3) Claude interpreta
     const decisao = await interpretarComandoIA(comando, targets);
 
-    if (decisao.confianca === 'nao_encontrado' || !decisao.acao) {
+    // Só bailar aqui quando NEM a ação foi identificada — se a ação veio mas o item não bateu,
+    // caímos no branch de seleção adiante para reaproveitar o select menu.
+    if (!decisao.acao) {
       await editOriginal(appId, interactionToken, {
         content: `🤔 Não consegui identificar a ação para **${client.company_name}**.\n${decisao.mensagem ? `> ${decisao.mensagem}\n` : ''}Tente reformular incluindo o nome exato do anúncio/conjunto/campanha.`,
       });
