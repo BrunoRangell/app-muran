@@ -493,6 +493,10 @@ async function fetchMetaApiInsights(
   let totalClicks = 0;
   let totalSpend = 0;
   let totalConversions = 0;
+  let totalResults = 0;
+  let anyEstimated = false;
+  const objectiveBreakdown: Record<string, number> = {};
+  const funnelTotals: Record<string, number> = {};
 
   if (data.data && Array.isArray(data.data)) {
     for (const insight of data.data) {
@@ -504,21 +508,24 @@ async function fetchMetaApiInsights(
       const reach = parseInt(insight.reach || '0');
       const clicks = parseInt(insight.clicks || '0');
       const spend = parseFloat(insight.spend || '0');
-      const ctr = parseFloat(insight.ctr || '0');
-      const cpc = parseFloat(insight.cpc || '0');
-      
-      // Extrair conversões
+      const objective = campaignObjectiveMap.get(String(campaignId));
+
+      // "Resultados" mapeado pelo objetivo real da campanha.
+      const { count: results, estimated } = extractResultCount(insight.actions, objective, clicks, impressions);
+      if (estimated) anyEstimated = true;
+
+      // Whitelist genérica (mantida como "conversions" — só métrica legada de contexto).
       let conversions = 0;
       if (insight.actions && Array.isArray(insight.actions)) {
-        const conversionActions = insight.actions.filter((action: any) => 
-          action.action_type === 'lead' || 
-          action.action_type === 'purchase' ||
-          action.action_type === 'omni_purchase' ||
-          action.action_type === 'onsite_conversion.post_save'
-        );
-        conversions = conversionActions.reduce((sum: number, action: any) => 
-          sum + parseInt(action.value || '0'), 0
-        );
+        for (const a of insight.actions) {
+          if (FALLBACK_RESULT_ACTIONS.has(a.action_type)) conversions += parseInt(a.value || '0');
+        }
+      }
+
+      // Funil de contexto (view_content, add_to_cart, initiate_checkout etc.)
+      const funnel = extractFunnelCounts(insight.actions);
+      for (const [k, v] of Object.entries(funnel)) {
+        funnelTotals[k] = (funnelTotals[k] || 0) + v;
       }
 
       const videoViews = insight.video_play_actions?.[0]?.value || 0;
@@ -530,17 +537,21 @@ async function fetchMetaApiInsights(
           name: campaignName,
           platform: 'meta' as const,
           status: 'active',
+          objective: objective || null,
+          resultsEstimated: estimated,
           impressions: 0,
           reach: 0,
           clicks: 0,
           ctr: 0,
           cpc: 0,
           conversions: 0,
+          results: 0,
           cpa: 0,
           spend: 0,
           frequency: 0,
-          videoViews: 0
+          videoViews: 0,
         });
+        if (objective) objectiveBreakdown[objective] = (objectiveBreakdown[objective] || 0) + 1;
       }
 
       const campaign = campaignsMap.get(campaignId);
@@ -549,6 +560,7 @@ async function fetchMetaApiInsights(
       campaign.clicks += clicks;
       campaign.spend += spend;
       campaign.conversions += conversions;
+      campaign.results += results;
       campaign.videoViews += videoViews;
 
       // Agregar por data para série temporal
@@ -558,6 +570,7 @@ async function fetchMetaApiInsights(
           impressions: 0,
           clicks: 0,
           conversions: 0,
+          results: 0,
           spend: 0
         });
       }
@@ -566,6 +579,7 @@ async function fetchMetaApiInsights(
       timePoint.impressions += impressions;
       timePoint.clicks += clicks;
       timePoint.conversions += conversions;
+      timePoint.results += results;
       timePoint.spend += spend;
 
       // Totais
@@ -574,14 +588,17 @@ async function fetchMetaApiInsights(
       totalClicks += clicks;
       totalSpend += spend;
       totalConversions += conversions;
+      totalResults += results;
     }
   }
 
   // Calcular métricas derivadas por campanha
-  const campaigns: CampaignInsight[] = Array.from(campaignsMap.values()).map(c => {
+  const campaigns: CampaignInsight[] = Array.from(campaignsMap.values()).map((c: any) => {
     c.ctr = c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0;
     c.cpc = c.clicks > 0 ? c.spend / c.clicks : 0;
-    c.cpa = c.conversions > 0 ? c.spend / c.conversions : 0;
+    // CPA agora usa "results" (objetivo real) quando disponível; senão, whitelist.
+    const denom = c.results > 0 ? c.results : c.conversions;
+    c.cpa = denom > 0 ? c.spend / denom : 0;
     c.frequency = c.reach > 0 ? c.impressions / c.reach : 0;
     return c;
   });
@@ -595,7 +612,11 @@ async function fetchMetaApiInsights(
       reach: totalReach,
       clicks: totalClicks,
       spend: totalSpend,
-      conversions: totalConversions
+      conversions: totalConversions,
+      results: totalResults,
+      resultsEstimated: anyEstimated || campaignObjectiveMap.size === 0,
+      objectiveBreakdown,
+      funnel: funnelTotals,
     },
     campaigns,
     timeSeries,
