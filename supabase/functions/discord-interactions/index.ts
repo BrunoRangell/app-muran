@@ -263,6 +263,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (name === 'otimizacao') {
+      const cliente = (interaction.data?.options || []).find((o: any) => o.name === 'cliente')?.value || '';
+      // @ts-ignore — runtime Deno
+      EdgeRuntime.waitUntil(handleOtimizacaoCommand(appId, token, String(cliente), supabase));
+      // Resposta diferida PÚBLICA no canal (sem flags: 64)
+      return jsonResponse({ type: 5 });
+    }
+
+
     return jsonResponse({
       type: 4,
       data: { content: 'Comando não reconhecido', flags: 64 },
