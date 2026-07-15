@@ -500,7 +500,7 @@ export async function handleIaButton(
         })
         .eq('id', reqId);
       await editMessage(appId, interactionToken, {
-        content: `⚠️ Falha ao executar em **${row.target_name}**: ${e?.message || 'erro desconhecido'}`,
+        content: `⚠️ Falha ao executar em **${rowPath}**: ${e?.message || 'erro desconhecido'}`,
         components: [],
         embeds: [],
       });
