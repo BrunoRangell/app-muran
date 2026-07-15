@@ -74,11 +74,11 @@ async function fetchMetaTargetsForAccount(accountId: string, token: string): Pro
     console.error('[ia-targets meta campaigns]', e);
   }
 
-  // Adsets
+  // Adsets (com campanha pai)
   try {
     const asUrl =
       `https://graph.facebook.com/${META_API_VERSION}/act_${accountId}/adsets` +
-      `?effective_status=${statusFilter}&limit=50&fields=id,name,status,effective_status,daily_budget,lifetime_budget,campaign_id` +
+      `?effective_status=${statusFilter}&limit=50&fields=id,name,status,effective_status,daily_budget,lifetime_budget,campaign_id,campaign{id,name}` +
       `&access_token=${encodeURIComponent(token)}`;
     const asData = await metaFetch(asUrl);
     for (const a of asData.data || []) {
@@ -91,6 +91,10 @@ async function fetchMetaTargetsForAccount(accountId: string, token: string): Pro
         budget_amount: a.daily_budget ? Number(a.daily_budget) / 100 : a.lifetime_budget ? Number(a.lifetime_budget) / 100 : null,
         budget_type: a.daily_budget ? 'daily' : a.lifetime_budget ? 'lifetime' : null,
         account_id: accountId,
+        hierarchy: {
+          campaign_id: a.campaign?.id || a.campaign_id,
+          campaign_name: a.campaign?.name,
+        },
         extra: { campaign_id: a.campaign_id },
       });
     }
@@ -98,11 +102,11 @@ async function fetchMetaTargetsForAccount(accountId: string, token: string): Pro
     console.error('[ia-targets meta adsets]', e);
   }
 
-  // Ads
+  // Ads (com adset e campanha pais)
   try {
     const adUrl =
       `https://graph.facebook.com/${META_API_VERSION}/act_${accountId}/ads` +
-      `?effective_status=${statusFilter}&limit=50&fields=id,name,status,effective_status,adset_id,campaign_id` +
+      `?effective_status=${statusFilter}&limit=50&fields=id,name,status,effective_status,adset_id,campaign_id,campaign{id,name},adset{id,name}` +
       `&access_token=${encodeURIComponent(token)}`;
     const adData = await metaFetch(adUrl);
     for (const a of adData.data || []) {
@@ -113,6 +117,12 @@ async function fetchMetaTargetsForAccount(accountId: string, token: string): Pro
         name: a.name,
         status: a.effective_status || a.status,
         account_id: accountId,
+        hierarchy: {
+          campaign_id: a.campaign?.id || a.campaign_id,
+          campaign_name: a.campaign?.name,
+          adset_id: a.adset?.id || a.adset_id,
+          adset_name: a.adset?.name,
+        },
         extra: { adset_id: a.adset_id, campaign_id: a.campaign_id },
       });
     }
