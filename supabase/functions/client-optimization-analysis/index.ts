@@ -4,8 +4,8 @@
 // envia a resposta como follow-up para o webhook da interação do Discord.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { fetchMetaInsights } from '../traffic-insights/meta-insights.ts';
-import { fetchGoogleInsights } from '../traffic-insights/google-insights.ts';
+import { fetchMetaInsights } from './meta-insights.ts';
+import { fetchGoogleInsights } from './google-insights.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
