@@ -485,7 +485,7 @@ export async function handleIaButton(
 
       const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
       await editMessage(appId, interactionToken, {
-        content: `✅ **${row.target_name}** ${acaoTxt} com sucesso.`,
+        content: `✅ **${rowPath}** ${acaoTxt} com sucesso.`,
         components: [],
         embeds: [],
       });
