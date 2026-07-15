@@ -373,6 +373,56 @@ export async function handleIaCommand(
       return;
     }
 
+    // Caso especial conversacional: mudar_orcamento sem novo_valor válido → pedir via modal
+    const needsValue =
+      decisao.acao === 'mudar_orcamento' &&
+      (decisao.novo_valor == null || !isFinite(Number(decisao.novo_valor)) || Number(decisao.novo_valor) <= 0);
+
+    if (needsValue) {
+      // Validar que o item é elegível para mudar orçamento (nível/plataforma), antes de pedir valor
+      const structuralErr = validateActionStructural(decisao.acao, target);
+      if (structuralErr) {
+        await editOriginal(appId, interactionToken, { content: structuralErr });
+        return;
+      }
+
+      const snapshot = buildSnapshot(target);
+      const { data: inserted, error: insErr } = await supabase
+        .from('bot_action_requests')
+        .insert({
+          client_id: client.id,
+          platform: target.platform,
+          level: target.level,
+          target_id: target.id,
+          target_name: target.name,
+          action: decisao.acao,
+          new_value: null,
+          previous_value_snapshot: snapshot,
+          hierarchy_snapshot: target.hierarchy || null,
+          comando,
+          requested_by_discord_user: discordUser,
+          channel_id: channelId,
+          status: 'awaiting_value',
+        })
+        .select('id')
+        .single();
+
+      if (insErr || !inserted) {
+        console.error('[ia-handler insert awaiting_value]', insErr);
+        await editOriginal(appId, interactionToken, {
+          content: `⚠️ Erro ao registrar a solicitação: ${insErr?.message || 'desconhecido'}`,
+        });
+        return;
+      }
+
+      await editOriginal(
+        appId,
+        interactionToken,
+        buildAskValuePayload(client.company_name, target.hierarchy, target.level, target.name, target.budget_amount, inserted.id),
+      );
+      return;
+    }
+
     const validationError = validateAction(decisao.acao, decisao.novo_valor, target);
     if (validationError) {
       await editOriginal(appId, interactionToken, { content: validationError });
