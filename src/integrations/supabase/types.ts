@@ -126,6 +126,7 @@ export type Database = {
           client_id: string | null
           comando: string | null
           created_at: string
+          creative_draft: Json | null
           executed_at: string | null
           hierarchy_snapshot: Json | null
           id: string
@@ -146,6 +147,7 @@ export type Database = {
           client_id?: string | null
           comando?: string | null
           created_at?: string
+          creative_draft?: Json | null
           executed_at?: string | null
           hierarchy_snapshot?: Json | null
           id?: string
@@ -166,6 +168,7 @@ export type Database = {
           client_id?: string | null
           comando?: string | null
           created_at?: string
+          creative_draft?: Json | null
           executed_at?: string | null
           hierarchy_snapshot?: Json | null
           id?: string
