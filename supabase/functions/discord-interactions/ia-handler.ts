@@ -359,17 +359,29 @@ export async function handleIaButton(
 
   const { data: row, error } = await supabase
     .from('bot_action_requests')
-    .select('*, clients:client_id(company_name)')
+    .select('*')
     .eq('id', reqId)
     .maybeSingle();
 
   if (error || !row) {
+    console.error('[handleIaButton] lookup falhou', { reqId, customId, error });
     await editMessage(appId, interactionToken, {
       content: '❌ Solicitação não encontrada ou expirada.',
       components: [],
       embeds: [],
     });
     return;
+  }
+
+  // Nome do cliente (busca separada — não há FK declarada para embed)
+  let clientCompanyName = 'cliente';
+  if (row.client_id) {
+    const { data: c } = await supabase
+      .from('clients')
+      .select('company_name')
+      .eq('id', row.client_id)
+      .maybeSingle();
+    if (c?.company_name) clientCompanyName = c.company_name;
   }
 
   // ===== Seleção de candidato =====
