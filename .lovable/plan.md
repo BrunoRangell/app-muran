@@ -1,40 +1,39 @@
-## Diagnóstico
+Plano para corrigir o aviso final da autorização MCP
 
-O erro da imagem não parece ser da rota do app agora. A rota `/oauth/consent` já existe e carrega a página correta.
+1. Confirmar onde a falha acontece
+- Validar se o erro ocorre depois de clicar em Aprovar no app, ou seja, no retorno para o conector/Lovable.
+- Usar a referência exibida no alerta (`ofid_bb0f4eae...`) apenas como indício de falha no fluxo OAuth, sem expor dados sensíveis.
 
-O problema atual é que a página carregou, mas o cliente Supabase do navegador não encontrou o namespace beta `supabase.auth.oauth`. Isso normalmente acontece por um destes motivos:
+2. Verificar configuração OAuth do Supabase
+- Conferir se o Authorization Server está ativo.
+- Confirmar se o Authorization Path configurado no Supabase bate com as rotas públicas existentes:
+  - `/oauth/consent`
+  - `/.lovable/oauth/consent`
+- Confirmar se o Site URL está em `https://app.muranmarketing.com.br`.
+- Verificar se Dynamic OAuth Apps continua habilitado, pois conectores como Lovable/Claude precisam registrar cliente automaticamente.
 
-1. O Authorization Server OAuth 2.1 ainda não está habilitado no projeto Supabase; ou
-2. A versão instalada de `@supabase/supabase-js` é antiga para expor `supabase.auth.oauth` no frontend.
+3. Testar o endpoint MCP publicado
+- Validar o endpoint:
+  - `https://socrnutfpqtcjmetskta.supabase.co/functions/v1/mcp`
+- Conferir os metadados OAuth expostos pelo MCP, principalmente issuer, protected resource e audience.
+- Checar se o MCP está anunciando o issuer direto do Supabase:
+  - `https://socrnutfpqtcjmetskta.supabase.co/auth/v1`
 
-## Plano
+4. Revisar o fluxo do app
+- Confirmar que a página de consentimento carrega detalhes da autorização com `supabase.auth.oauth.getAuthorizationDetails`.
+- Confirmar que o botão Aprovar chama `approveAuthorization` e redireciona exatamente para a URL retornada pelo Supabase.
+- Ajustar o login para preservar o retorno ao consentimento em todos os caminhos necessários, se ainda houver algum ponto perdendo o `returnTo`.
 
-1. **Habilitar OAuth 2.1 no Supabase**
-   - Ativar o Authorization Server do projeto Supabase usado pelo Muran APP.
-   - Isso é necessário para Claude/ChatGPT/Cursor conseguirem abrir a tela de consentimento e trocar tokens OAuth.
+5. Conferir logs da Edge Function MCP
+- Ler os logs recentes da função `mcp` durante a tentativa de vinculação.
+- Procurar erros de token, issuer, audience, DCR, CORS, protected resource metadata ou callback OAuth.
 
-2. **Atualizar o SDK Supabase se necessário**
-   - Atualizar `@supabase/supabase-js` para uma versão que exponha `supabase.auth.oauth`.
-   - Manter o client atual e o `storageKey` existente para não quebrar login.
+6. Aplicar correção mínima
+- Se for configuração: orientar/ajustar o valor correto no Supabase.
+- Se for código: corrigir apenas a rota/redirect/issuer necessário.
+- Depois, regenerar o manifesto MCP e redeployar a função `mcp`.
 
-3. **Validar a rota de consentimento**
-   - Confirmar que `/oauth/consent?authorization_id=...` continua pública.
-   - Confirmar que usuários sem sessão são enviados para `/login?returnTo=...` e voltam para a tela de consentimento após login.
-
-4. **Reextrair e redeployar o MCP**
-   - Regenerar o manifesto MCP.
-   - Redeployar a Edge Function `mcp`, porque alterações de MCP/OAuth precisam refletir no endpoint usado pelo Claude.
-
-## Depois da correção
-
-Você deve tentar vincular novamente no Claude usando:
-
-```text
-https://socrnutfpqtcjmetskta.supabase.co/functions/v1/mcp
-```
-
-Se o Supabase pedir Client ID/Client Secret, use o OAuth App criado no painel do Supabase com redirect URI:
-
-```text
-https://claude.ai/api/mcp/auth_callback
-```
+7. Validar novamente
+- Repetir o vínculo pelo conector.
+- Confirmar que o fluxo termina conectado, sem o aviso final.
+- Se o erro persistir, usar a referência do alerta junto dos logs para isolar se a falha está no callback do conector ou na resposta OAuth do Supabase.
