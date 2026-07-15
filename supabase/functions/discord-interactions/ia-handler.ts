@@ -105,6 +105,84 @@ function buildConfirmationPayload(
   };
 }
 
+// ============== "Awaiting value" flow (modal) ==============
+
+export function parseBRL(input: string | null | undefined): number | null {
+  if (input == null) return null;
+  let x = String(input).replace(/R\$/gi, '').replace(/\s/g, '').trim();
+  if (!x) return null;
+  if (x.includes(',')) {
+    // formato pt-BR: pontos = milhar, vírgula = decimal
+    x = x.replace(/\./g, '').replace(',', '.');
+  }
+  const n = parseFloat(x);
+  if (!isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function buildAskValuePayload(
+  clientName: string,
+  hierarchy: any,
+  level: string,
+  targetName: string,
+  currentBudget: number | null | undefined,
+  reqId: string,
+) {
+  const path = formatHierarchyPath(hierarchy, level, targetName);
+  const atual = currentBudget != null
+    ? `Orçamento diário atual: **${formatBRL(currentBudget)}/dia**`
+    : `Orçamento diário atual: _não identificado_`;
+  return {
+    content: '',
+    embeds: [
+      {
+        title: '💰 Faltou informar o novo orçamento',
+        description: `${path}\n\n${atual}\n\nClique no botão abaixo para informar o novo valor.`,
+        color: MURAN_ORANGE,
+        fields: [{ name: 'Cliente', value: clientName, inline: true }],
+      },
+    ],
+    components: [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 1, label: '💰 Informar novo orçamento', custom_id: `ia_ask_value:${reqId}` },
+          { type: 2, style: 4, label: '❌ Cancelar', custom_id: `ia_cancel:${reqId}` },
+        ],
+      },
+    ],
+  };
+}
+
+// Modal payload — devolvido SÍNCRONO como resposta type=9 pela interação de botão.
+export function buildValueModal(reqId: string, errorHint?: string) {
+  return {
+    type: 9,
+    data: {
+      custom_id: `ia_value_modal:${reqId}`,
+      title: 'Novo orçamento diário',
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 4, // TEXT_INPUT
+              custom_id: 'novo_valor',
+              style: 1, // SHORT
+              label: errorHint || 'Novo orçamento diário (R$)',
+              placeholder: 'Ex: 800  ou  R$ 1.200,50',
+              required: true,
+              min_length: 1,
+              max_length: 20,
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+
 
 export async function handleIaCommand(
   appId: string,
