@@ -144,12 +144,16 @@ export async function fetchMetaInsights(
   const previousEnd = new Date(startDate);
   previousEnd.setDate(previousEnd.getDate() - 1);
 
+  // Buscar objetivos das campanhas (uma única chamada, cachear para topAds também)
+  const campaignObjectiveMap = await fetchCampaignObjectives(metaAccountId, accessToken);
+
   // Buscar insights do período atual (agora incluindo demographics)
   const currentInsights = await fetchMetaApiInsights(
     metaAccountId,
     accessToken,
     dateRange.start,
-    dateRange.end
+    dateRange.end,
+    campaignObjectiveMap,
   );
 
   // Buscar insights do período anterior se solicitado
@@ -159,17 +163,19 @@ export async function fetchMetaInsights(
       metaAccountId,
       accessToken,
       previousStart.toISOString().split('T')[0],
-      previousEnd.toISOString().split('T')[0]
+      previousEnd.toISOString().split('T')[0],
+      campaignObjectiveMap,
     );
   }
 
-  // Buscar top ads
+  // Buscar top ads (objetivo por campanha vai influenciar o cálculo de "conversions" por anúncio)
   const topAds = await fetchMetaTopAds(
     metaAccountId,
     accessToken,
     dateRange.start,
     dateRange.end,
-    10
+    10,
+    campaignObjectiveMap,
   );
 
   // Deltas por anúncio (só na janela pedida, ex: 7d)
@@ -181,13 +187,15 @@ export async function fetchMetaInsights(
         accessToken,
         previousStart.toISOString().split('T')[0],
         previousEnd.toISOString().split('T')[0],
-        50
+        50,
+        campaignObjectiveMap,
       );
       adDeltas = computeAdDeltas(topAds, prevTopAds, 'meta');
     } catch (e) {
       console.warn('[META-INSIGHTS] adDeltas skipped:', e);
     }
   }
+
 
 
   // Processar dados agregados
