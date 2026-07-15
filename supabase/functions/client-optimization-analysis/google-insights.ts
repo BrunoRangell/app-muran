@@ -166,6 +166,25 @@ export async function fetchGoogleInsights(
     dateRange.end
   );
 
+  // Deltas por anúncio (só na janela pedida)
+  let adDeltas: any[] | undefined;
+  if (includeAdDeltas) {
+    try {
+      const prevTopAds = await fetchGoogleTopAds(
+        customerId,
+        accessToken,
+        developerToken,
+        managerId,
+        previousStart.toISOString().split('T')[0],
+        previousEnd.toISOString().split('T')[0]
+      );
+      adDeltas = computeGoogleAdDeltas(topAds, prevTopAds);
+    } catch (e) {
+      console.warn('[GOOGLE-INSIGHTS] adDeltas skipped:', e);
+    }
+  }
+
+
   // Buscar insights do período anterior
   let previousInsights = null;
   if (compareWithPrevious) {
