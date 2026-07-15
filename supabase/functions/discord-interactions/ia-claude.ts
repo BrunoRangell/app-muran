@@ -73,6 +73,7 @@ Schema:
   "item_nome": "<nome exato>",
   "novo_valor": <número em BRL, só se mudar_orcamento>,
   "plataforma_filtro": "meta" | "google" | null,
+  "status_filtro": "ativo" | "pausado" | "todos" | null,
   "candidatos": [{"id":"...","nome":"..."}],
   "mensagem": "<explicação curta quando ambíguo/nao_encontrado>"
 }`;
