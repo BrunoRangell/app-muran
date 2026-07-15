@@ -512,8 +512,18 @@ async function runAnalysis(
     return;
   }
 
-  const embed = buildEmbed(clientName, parsed, hasMeta, hasGoogle, platformErrors);
-  await editOriginal(appId, interactionToken, { embeds: [embed] });
+  const embeds: any[] = [buildOverviewEmbed(clientName, parsed, hasMeta, hasGoogle)];
+
+  if (hasMeta) {
+    const metaErr = platformErrors.meta ? 'Meta Ads: falha ao coletar métricas nesta análise.' : null;
+    embeds.push(buildPlatformEmbed('📘 Meta Ads', 0x1877f2, parsed.meta ?? null, metaErr));
+  }
+  if (hasGoogle) {
+    const gErr = platformErrors.google ? 'Google Ads: falha ao coletar métricas nesta análise (verifique acesso da conta).' : null;
+    embeds.push(buildPlatformEmbed('🟡 Google Ads', 0x4285f4, parsed.google ?? null, gErr));
+  }
+
+  await editOriginal(appId, interactionToken, { embeds });
 }
 
 // ---------- Entry point ----------
