@@ -17,6 +17,17 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const META_API_VERSION = 'v24.0';
 const MURAN_ORANGE = 0xff6e00;
 
+// ============= Erro customizado com detalhe técnico da Meta =============
+
+export class MetaApiError extends Error {
+  detail: any;
+  constructor(message: string, detail: any) {
+    super(message);
+    this.name = 'MetaApiError';
+    this.detail = detail;
+  }
+}
+
 // ============= Helpers de resposta =============
 
 export async function editOriginal(appId: string, token: string, payload: unknown) {
