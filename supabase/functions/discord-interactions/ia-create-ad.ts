@@ -116,7 +116,7 @@ async function uploadImageToMetaAdImages(
   const data = await res.json();
   if (!res.ok) {
     console.error('[adimages upload]', data);
-    throw new Error(data?.error?.message || `Falha ao subir imagem para Meta (${res.status})`);
+    throw new MetaApiError(data?.error?.message || `Falha ao subir imagem para Meta (${res.status})`, data?.error || null);
   }
   // Resposta: { "images": { "<filename>": { "hash": "...", "url": "..." } } }
   const imgs = data?.images || {};
