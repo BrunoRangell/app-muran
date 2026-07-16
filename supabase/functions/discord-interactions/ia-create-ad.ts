@@ -282,6 +282,14 @@ const CTA_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Sem botão (NO_BUTTON)', value: 'NO_BUTTON' },
 ];
 
+const CTA_TYPE_TO_TEXT: Record<string, string> = {
+  SHOP_NOW: 'comprar agora', LEARN_MORE: 'saiba mais', SIGN_UP: 'cadastre-se', SUBSCRIBE: 'assinar',
+  DOWNLOAD: 'baixar', GET_OFFER: 'oferta', CONTACT_US: 'fale conosco', WHATSAPP_MESSAGE: 'mensagem whatsapp',
+  INSTALL_MOBILE_APP: 'instalar', PLAY_GAME: 'jogar', BOOK_TRAVEL: 'reservar', ORDER_NOW: 'pedir agora',
+  DONATE_NOW: 'doar', APPLY_NOW: 'candidatar', GET_QUOTE: 'orçamento', LISTEN_MUSIC: 'ouvir',
+  WATCH_VIDEO: 'assistir vídeo', NO_BUTTON: 'sem botão',
+};
+
 // ============= FLOW: início =============
 
 export type CreateAdStartInput = {
