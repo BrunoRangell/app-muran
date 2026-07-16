@@ -7,7 +7,7 @@ import { fetchTargetsForClient, type Target } from './ia-targets.ts';
 import { interpretarComandoIA } from './ia-claude.ts';
 import { metaSetStatus, metaSetDailyBudget, googleSetStatus, googleSetDailyBudget } from './ia-writes.ts';
 import { buildCampaignsListPayload, buildAdSetsListPayload, buildAdsListPayload } from './ia-listing.ts';
-import { startCreateAdFlow, executeCreateAd } from './ia-create-ad.ts';
+import { startCreateAdFlow, executeCreateAd, MetaApiError } from './ia-create-ad.ts';
 
 const MURAN_ORANGE = 0xff6e00;
 
