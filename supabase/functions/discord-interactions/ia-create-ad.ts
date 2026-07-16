@@ -190,7 +190,7 @@ async function createAd(
   const data = await res.json();
   if (!res.ok) {
     console.error('[ads create]', data);
-    throw new Error(data?.error?.message || `Falha ao criar anúncio (${res.status})`);
+    throw new MetaApiError(data?.error?.message || `Falha ao criar anúncio (${res.status})`, data?.error || null);
   }
   return data.id as string;
 }
