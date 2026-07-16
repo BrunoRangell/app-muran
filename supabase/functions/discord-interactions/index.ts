@@ -4,7 +4,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import nacl from 'npm:tweetnacl@1.0.3';
-import { handleIaCommand, handleIaButton, handleIaModalSubmit, buildValueModal } from './ia-handler.ts';
+import { handleIaCommand, handleIaButton, handleIaModalSubmit, buildValueModal, handleIaCampaignPick } from './ia-handler.ts';
 import {
   handleImageSourceClick, handleMessageAttachImage,
   buildDriveModal, buildInstagramModal, buildCopyModal,
@@ -316,6 +316,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ type: 6 });
     }
 
+    // Wizard criar_anuncio: seleção da CAMPANHA (etapa 1 dos 2 selects)
+    if (typeof customId === 'string' && customId.startsWith('ia_pick_campaign:')) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(handleIaCampaignPick(appId, token, customId, interaction.data, supabase));
+      return jsonResponse({ type: 6 });
+    }
+
     // Botão "Informar novo orçamento" → modal SÍNCRONO
     if (typeof customId === 'string' && customId.startsWith('ia_ask_value:')) {
       const [, reqId] = customId.split(':');
@@ -335,10 +342,15 @@ Deno.serve(async (req) => {
       return jsonResponse({ type: 6 });
     }
 
-    // Wizard: botão que abre o modal de copy
+    // Wizard: botão que abre o modal de copy (com prefill do último anúncio ativo, se houver)
     if (typeof customId === 'string' && customId.startsWith('ia_create_open_copy:')) {
       const [, reqId] = customId.split(':');
-      return jsonResponse(buildCopyModal(reqId));
+      const { data: rowForModal } = await supabase
+        .from('bot_action_requests')
+        .select('creative_draft')
+        .eq('id', reqId)
+        .maybeSingle();
+      return jsonResponse(buildCopyModal(reqId, (rowForModal?.creative_draft as any)?.prefill || null));
     }
 
     // Wizard: seleção de CTA fallback

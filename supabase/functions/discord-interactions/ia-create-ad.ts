@@ -17,6 +17,17 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const META_API_VERSION = 'v24.0';
 const MURAN_ORANGE = 0xff6e00;
 
+// ============= Erro customizado com detalhe técnico da Meta =============
+
+export class MetaApiError extends Error {
+  detail: any;
+  constructor(message: string, detail: any) {
+    super(message);
+    this.name = 'MetaApiError';
+    this.detail = detail;
+  }
+}
+
 // ============= Helpers de resposta =============
 
 export async function editOriginal(appId: string, token: string, payload: unknown) {
@@ -87,6 +98,42 @@ async function fetchPromotePages(accountId: string, token: string): Promise<Arra
   return (data.data || []).map((p: any) => ({ id: p.id, name: p.name }));
 }
 
+async function fetchLastActiveAdConfig(
+  _accountId: string,
+  adsetId: string,
+  token: string,
+): Promise<{
+  name?: string; message?: string; headline?: string; link?: string; page_id?: string; cta_type?: string;
+} | null> {
+  try {
+    const url =
+      `https://graph.facebook.com/${META_API_VERSION}/${adsetId}/ads` +
+      `?effective_status=["ACTIVE"]&limit=5&fields=name,created_time,creative{object_story_spec}` +
+      `&access_token=${encodeURIComponent(token)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok || !data?.data?.length) return null;
+    const sorted = [...data.data].sort(
+      (a: any, b: any) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime(),
+    );
+    const ad = sorted[0];
+    const oss = ad?.creative?.object_story_spec;
+    const linkData = oss?.link_data;
+    if (!linkData) return null;
+    return {
+      name: ad?.name,
+      message: linkData?.message,
+      headline: linkData?.name,
+      link: linkData?.link,
+      page_id: oss?.page_id,
+      cta_type: linkData?.call_to_action?.type,
+    };
+  } catch (e) {
+    console.error('[fetchLastActiveAdConfig]', e);
+    return null;
+  }
+}
+
 async function uploadImageToMetaAdImages(
   accountId: string,
   token: string,
@@ -105,7 +152,7 @@ async function uploadImageToMetaAdImages(
   const data = await res.json();
   if (!res.ok) {
     console.error('[adimages upload]', data);
-    throw new Error(data?.error?.message || `Falha ao subir imagem para Meta (${res.status})`);
+    throw new MetaApiError(data?.error?.message || `Falha ao subir imagem para Meta (${res.status})`, data?.error || null);
   }
   // Resposta: { "images": { "<filename>": { "hash": "...", "url": "..." } } }
   const imgs = data?.images || {};
@@ -154,7 +201,7 @@ async function createAdCreative(
   const data = await res.json();
   if (!res.ok) {
     console.error('[adcreatives]', data);
-    throw new Error(data?.error?.message || `Falha ao criar creative (${res.status})`);
+    throw new MetaApiError(data?.error?.message || `Falha ao criar creative (${res.status})`, data?.error || null);
   }
   return data.id as string;
 }
@@ -179,7 +226,7 @@ async function createAd(
   const data = await res.json();
   if (!res.ok) {
     console.error('[ads create]', data);
-    throw new Error(data?.error?.message || `Falha ao criar anúncio (${res.status})`);
+    throw new MetaApiError(data?.error?.message || `Falha ao criar anúncio (${res.status})`, data?.error || null);
   }
   return data.id as string;
 }
@@ -235,6 +282,14 @@ const CTA_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Sem botão (NO_BUTTON)', value: 'NO_BUTTON' },
 ];
 
+const CTA_TYPE_TO_TEXT: Record<string, string> = {
+  SHOP_NOW: 'comprar agora', LEARN_MORE: 'saiba mais', SIGN_UP: 'cadastre-se', SUBSCRIBE: 'assinar',
+  DOWNLOAD: 'baixar', GET_OFFER: 'oferta', CONTACT_US: 'fale conosco', WHATSAPP_MESSAGE: 'mensagem whatsapp',
+  INSTALL_MOBILE_APP: 'instalar', PLAY_GAME: 'jogar', BOOK_TRAVEL: 'reservar', ORDER_NOW: 'pedir agora',
+  DONATE_NOW: 'doar', APPLY_NOW: 'candidatar', GET_QUOTE: 'orçamento', LISTEN_MUSIC: 'ouvir',
+  WATCH_VIDEO: 'assistir vídeo', NO_BUTTON: 'sem botão',
+};
+
 // ============= FLOW: início =============
 
 export type CreateAdStartInput = {
@@ -256,7 +311,7 @@ export async function startCreateAdFlow(
   interactionToken: string,
   input: CreateAdStartInput,
 ) {
-  const draft = {
+  const draft: any = {
     account_id: input.accountId,
     adset_id: input.adsetTargetId,
     adset_name: input.adsetName,
@@ -275,6 +330,16 @@ export async function startCreateAdFlow(
     link: null,
     cta_type: null,
   };
+
+  // Best-effort: buscar config do último anúncio ATIVO no mesmo adset para prefill dos campos de texto.
+  let prefill: Awaited<ReturnType<typeof fetchLastActiveAdConfig>> = null;
+  try {
+    const token = await getMetaToken(supabase);
+    prefill = await fetchLastActiveAdConfig(input.accountId, input.adsetTargetId, token);
+  } catch (e) {
+    console.error('[startCreateAdFlow prefill]', e);
+  }
+  draft.prefill = prefill;
 
   const { data: inserted, error } = await supabase
     .from('bot_action_requests')
@@ -612,7 +677,10 @@ export async function handleMessageAttachImage(
 
 // ============= Modal de copy =============
 
-export function buildCopyModal(reqId: string) {
+export function buildCopyModal(
+  reqId: string,
+  prefill?: { name?: string; message?: string; headline?: string; link?: string; cta_type?: string } | null,
+) {
   return {
     type: 9,
     data: {
@@ -625,6 +693,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_name', style: 1, label: 'Nome do anúncio',
               placeholder: 'Ex: AD12 - Promo Julho', required: true, min_length: 1, max_length: 200,
+              ...(prefill?.name ? { value: prefill.name.slice(0, 200) } : {}),
             },
           ],
         },
@@ -634,6 +703,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_message', style: 2, label: 'Texto principal (message)',
               placeholder: 'Texto que aparece acima da imagem', required: true, min_length: 1, max_length: 2000,
+              ...(prefill?.message ? { value: prefill.message.slice(0, 2000) } : {}),
             },
           ],
         },
@@ -643,6 +713,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_headline', style: 1, label: 'Título (headline, opcional)',
               placeholder: 'Ex: Frete grátis hoje!', required: false, max_length: 250,
+              ...(prefill?.headline ? { value: prefill.headline.slice(0, 250) } : {}),
             },
           ],
         },
@@ -652,6 +723,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_link', style: 1, label: 'Link de destino',
               placeholder: 'https://...', required: true, min_length: 4, max_length: 500,
+              ...(prefill?.link ? { value: prefill.link.slice(0, 500) } : {}),
             },
           ],
         },
@@ -661,6 +733,9 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_cta', style: 1, label: 'CTA (ex: "comprar agora", "saiba mais")',
               placeholder: 'Deixe vazio para nenhum botão', required: false, max_length: 60,
+              ...(prefill?.cta_type && CTA_TYPE_TO_TEXT[prefill.cta_type]
+                ? { value: CTA_TYPE_TO_TEXT[prefill.cta_type] }
+                : {}),
             },
           ],
         },
