@@ -677,7 +677,10 @@ export async function handleMessageAttachImage(
 
 // ============= Modal de copy =============
 
-export function buildCopyModal(reqId: string) {
+export function buildCopyModal(
+  reqId: string,
+  prefill?: { name?: string; message?: string; headline?: string; link?: string; cta_type?: string } | null,
+) {
   return {
     type: 9,
     data: {
@@ -690,6 +693,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_name', style: 1, label: 'Nome do anúncio',
               placeholder: 'Ex: AD12 - Promo Julho', required: true, min_length: 1, max_length: 200,
+              ...(prefill?.name ? { value: prefill.name.slice(0, 200) } : {}),
             },
           ],
         },
@@ -699,6 +703,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_message', style: 2, label: 'Texto principal (message)',
               placeholder: 'Texto que aparece acima da imagem', required: true, min_length: 1, max_length: 2000,
+              ...(prefill?.message ? { value: prefill.message.slice(0, 2000) } : {}),
             },
           ],
         },
@@ -708,6 +713,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_headline', style: 1, label: 'Título (headline, opcional)',
               placeholder: 'Ex: Frete grátis hoje!', required: false, max_length: 250,
+              ...(prefill?.headline ? { value: prefill.headline.slice(0, 250) } : {}),
             },
           ],
         },
@@ -717,6 +723,7 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_link', style: 1, label: 'Link de destino',
               placeholder: 'https://...', required: true, min_length: 4, max_length: 500,
+              ...(prefill?.link ? { value: prefill.link.slice(0, 500) } : {}),
             },
           ],
         },
@@ -726,6 +733,9 @@ export function buildCopyModal(reqId: string) {
             {
               type: 4, custom_id: 'ad_cta', style: 1, label: 'CTA (ex: "comprar agora", "saiba mais")',
               placeholder: 'Deixe vazio para nenhum botão', required: false, max_length: 60,
+              ...(prefill?.cta_type && CTA_TYPE_TO_TEXT[prefill.cta_type]
+                ? { value: CTA_TYPE_TO_TEXT[prefill.cta_type] }
+                : {}),
             },
           ],
         },
