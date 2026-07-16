@@ -282,8 +282,10 @@ export async function handleIaCommand(
       const statusInicial: 'ativo' | 'pausado' = decisao.status_inicial === 'ativo' ? 'ativo' : 'pausado';
 
       if (!adsetTarget) {
-        // Slice A2: em vez de travar pedindo pra reformular, mostra select menu de desambiguação
-        const metaAdsets = targets.filter((t) => t.platform === 'meta' && t.level === 'adset');
+        // Só considera adsets ATIVOS do Meta pra criação.
+        const metaAdsets = targets.filter(
+          (t) => t.platform === 'meta' && t.level === 'adset' && (t.status || '').toUpperCase() === 'ACTIVE',
+        );
 
         if (!metaAdsets.length) {
           await editOriginal(appId, interactionToken, {
@@ -292,7 +294,7 @@ export async function handleIaCommand(
           return;
         }
 
-        // Tenta restringir aos candidatos que a IA sugeriu; senão oferece todos os adsets Meta do cliente
+        // Restringir aos candidatos que a IA sugeriu (se houver), mas mantendo só ativos
         const candIds = new Set((decisao.candidatos || []).map((c) => c.id).filter(Boolean));
         let candidates = metaAdsets.filter((t) => candIds.has(t.id));
         if (!candidates.length && decisao.candidatos?.length) {
@@ -300,8 +302,67 @@ export async function handleIaCommand(
           candidates = metaAdsets.filter((t) => names.some((n) => n && t.name.toLowerCase().includes(n)));
         }
         if (!candidates.length) candidates = metaAdsets;
-        candidates = candidates.slice(0, 25);
 
+        // Deduplicar campanhas presentes nos candidatos
+        const campaignMap = new Map<string, string>();
+        for (const t of candidates) {
+          const cid = t.hierarchy?.campaign_id;
+          const cname = t.hierarchy?.campaign_name || '(sem nome)';
+          if (cid && !campaignMap.has(cid)) campaignMap.set(cid, cname);
+        }
+
+        // Se há mais de uma campanha, perguntar campanha primeiro
+        if (campaignMap.size > 1) {
+          const { data: inserted, error: insErr } = await supabase
+            .from('bot_action_requests')
+            .insert({
+              client_id: client.id,
+              platform: 'meta',
+              level: 'adset',
+              target_id: null,
+              target_name: null,
+              action: 'criar_anuncio',
+              comando,
+              candidates_snapshot: candidates,
+              creative_draft: { status_inicial: statusInicial },
+              requested_by_discord_user: discordUser,
+              channel_id: channelId,
+              status: 'awaiting_campaign_pick',
+            })
+            .select('id')
+            .single();
+
+          if (insErr || !inserted) {
+            console.error('[ia-handler insert awaiting_campaign_pick]', insErr);
+            await editOriginal(appId, interactionToken, {
+              content: `⚠️ Erro ao registrar a solicitação: ${insErr?.message || 'desconhecido'}`,
+            });
+            return;
+          }
+
+          const reqId = inserted.id;
+          const campaignOptions = Array.from(campaignMap.entries()).slice(0, 25).map(([id, name]) => ({
+            label: (name || '(sem nome)').slice(0, 100),
+            value: id,
+          }));
+
+          await editOriginal(appId, interactionToken, {
+            content: `🤔 Pra criar o anúncio, primeiro escolha em qual **campanha** ativa do Meta ele deve entrar (${campaignMap.size} opções):`,
+            embeds: [],
+            components: [
+              {
+                type: 1,
+                components: [
+                  { type: 3, custom_id: `ia_pick_campaign:${reqId}`, placeholder: 'Selecione a campanha', options: campaignOptions },
+                ],
+              },
+            ],
+          });
+          return;
+        }
+
+        // Só 1 campanha (ou nenhuma resolvida) → vai direto pro select de conjunto
+        candidates = candidates.slice(0, 25);
         const { data: inserted, error: insErr } = await supabase
           .from('bot_action_requests')
           .insert({
@@ -329,29 +390,7 @@ export async function handleIaCommand(
           return;
         }
 
-        const reqId = inserted.id;
-        const options = candidates.map((t) => {
-          const h = t.hierarchy || {};
-          const desc = `${h.campaign_name ? `${h.campaign_name} · ` : ''}Conjunto · Meta`;
-          return {
-            label: t.name.slice(0, 100),
-            description: desc.slice(0, 100),
-            value: t.id,
-          };
-        });
-
-        await editOriginal(appId, interactionToken, {
-          content: `🤔 Pra criar o anúncio, em qual **conjunto (adset)** do Meta ele deve entrar? Escolha na lista (${candidates.length} opç${candidates.length === 1 ? 'ão' : 'ões'}):`,
-          embeds: [],
-          components: [
-            {
-              type: 1,
-              components: [
-                { type: 3, custom_id: `ia_pick:${reqId}`, placeholder: 'Selecione o conjunto', options },
-              ],
-            },
-          ],
-        });
+        await editOriginal(appId, interactionToken, buildAdsetPickPayload(client.company_name, candidates, inserted.id));
         return;
       }
 
