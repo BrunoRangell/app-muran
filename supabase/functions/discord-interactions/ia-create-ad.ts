@@ -165,7 +165,7 @@ async function createAdCreative(
   const data = await res.json();
   if (!res.ok) {
     console.error('[adcreatives]', data);
-    throw new Error(data?.error?.message || `Falha ao criar creative (${res.status})`);
+    throw new MetaApiError(data?.error?.message || `Falha ao criar creative (${res.status})`, data?.error || null);
   }
   return data.id as string;
 }
