@@ -1061,3 +1061,68 @@ export async function handleIaModalSubmit(
     buildConfirmationPayload(clientCompanyName, pseudoTarget, 'mudar_orcamento', parsed, discordUser, reqId),
   );
 }
+
+// ============== Helpers do wizard criar_anuncio (2 selects) ==============
+
+function buildAdsetPickPayload(_clientName: string, candidates: Target[], reqId: string) {
+  const options = candidates.slice(0, 25).map((t) => {
+    const h = t.hierarchy || {};
+    const desc = `${h.campaign_name ? `${h.campaign_name} · ` : ''}Conjunto · Meta`;
+    return { label: t.name.slice(0, 100), description: desc.slice(0, 100), value: t.id };
+  });
+  return {
+    content: `🤔 Pra criar o anúncio, em qual **conjunto (adset)** do Meta ele deve entrar? Escolha na lista (${candidates.length} opç${candidates.length === 1 ? 'ão' : 'ões'}):`,
+    embeds: [],
+    components: [
+      {
+        type: 1,
+        components: [
+          { type: 3, custom_id: `ia_pick:${reqId}`, placeholder: 'Selecione o conjunto', options },
+        ],
+      },
+    ],
+  };
+}
+
+export async function handleIaCampaignPick(
+  appId: string,
+  interactionToken: string,
+  customId: string,
+  interactionData: any,
+  supabase: ReturnType<typeof createClient>,
+) {
+  const [, reqId] = customId.split(':');
+  const { data: row } = await supabase.from('bot_action_requests').select('*').eq('id', reqId).maybeSingle();
+  if (!row || row.status !== 'awaiting_campaign_pick') {
+    await editMessage(appId, interactionToken, {
+      content: `ℹ️ Esta solicitação já não está esperando a escolha de campanha (status: ${row?.status || 'inexistente'}).`,
+      components: [],
+    });
+    return;
+  }
+
+  const chosenCampaignId: string | undefined = interactionData?.values?.[0];
+  const allAdsets: Target[] = Array.isArray(row.candidates_snapshot) ? row.candidates_snapshot : [];
+  const filtered = allAdsets.filter((t) => t.hierarchy?.campaign_id === chosenCampaignId);
+
+  if (!filtered.length) {
+    await editMessage(appId, interactionToken, {
+      content: '❌ Não encontrei conjuntos ativos para a campanha escolhida.',
+      components: [],
+    });
+    return;
+  }
+
+  await supabase
+    .from('bot_action_requests')
+    .update({ status: 'ambiguous', candidates_snapshot: filtered })
+    .eq('id', reqId);
+
+  let clientCompanyName = 'cliente';
+  if (row.client_id) {
+    const { data: c } = await supabase.from('clients').select('company_name').eq('id', row.client_id).maybeSingle();
+    if (c?.company_name) clientCompanyName = c.company_name;
+  }
+
+  await editMessage(appId, interactionToken, buildAdsetPickPayload(clientCompanyName, filtered, reqId));
+}
