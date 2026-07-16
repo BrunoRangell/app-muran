@@ -894,16 +894,30 @@ export async function handleIaButton(
       });
     } catch (e: any) {
       console.error('[ia_confirm] erro', e);
+      const detail = e instanceof MetaApiError ? e.detail : null;
       await supabase
         .from('bot_action_requests')
         .update({
           status: 'failed',
           executed_at: new Date().toISOString(),
-          result: { error: e?.message || String(e) },
+          result: { error: e?.message || String(e), detail },
         })
         .eq('id', reqId);
+
+      let content = `⚠️ Falha ao executar em **${rowPath}**: ${e?.message || 'erro desconhecido'}`;
+      if (detail) {
+        const tech = {
+          code: detail.code,
+          error_subcode: detail.error_subcode,
+          type: detail.type,
+          error_user_title: detail.error_user_title,
+          error_user_msg: detail.error_user_msg,
+          fbtrace_id: detail.fbtrace_id,
+        };
+        content += `\n\n🔧 Detalhe técnico (Meta):\n||\`\`\`json\n${JSON.stringify(tech, null, 2)}\n\`\`\`||`;
+      }
       await editMessage(appId, interactionToken, {
-        content: `⚠️ Falha ao executar em **${rowPath}**: ${e?.message || 'erro desconhecido'}`,
+        content,
         components: [],
         embeds: [],
       });
