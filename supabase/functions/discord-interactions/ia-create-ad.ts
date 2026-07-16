@@ -311,7 +311,7 @@ export async function startCreateAdFlow(
   interactionToken: string,
   input: CreateAdStartInput,
 ) {
-  const draft = {
+  const draft: any = {
     account_id: input.accountId,
     adset_id: input.adsetTargetId,
     adset_name: input.adsetName,
@@ -330,6 +330,16 @@ export async function startCreateAdFlow(
     link: null,
     cta_type: null,
   };
+
+  // Best-effort: buscar config do último anúncio ATIVO no mesmo adset para prefill dos campos de texto.
+  let prefill: Awaited<ReturnType<typeof fetchLastActiveAdConfig>> = null;
+  try {
+    const token = await getMetaToken(supabase);
+    prefill = await fetchLastActiveAdConfig(input.accountId, input.adsetTargetId, token);
+  } catch (e) {
+    console.error('[startCreateAdFlow prefill]', e);
+  }
+  draft.prefill = prefill;
 
   const { data: inserted, error } = await supabase
     .from('bot_action_requests')
