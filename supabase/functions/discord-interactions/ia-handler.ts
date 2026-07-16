@@ -276,21 +276,85 @@ export async function handleIaCommand(
 
     // ===== CRIAR ANÚNCIO NOVO (só Meta, dentro de adset existente) =====
     if (decisao.acao === 'criar_anuncio') {
-      // Precisa de adset resolvido, confiante. Ambiguidade fica pra Slice A2.
       const adsetTarget =
         decisao.item_id ? targets.find((t) => t.id === decisao.item_id && t.level === 'adset' && t.platform === 'meta') : undefined;
+
+      const statusInicial: 'ativo' | 'pausado' = decisao.status_inicial === 'ativo' ? 'ativo' : 'pausado';
+
       if (!adsetTarget) {
-        // Filtrar candidatos possíveis pra dar hint
+        // Slice A2: em vez de travar pedindo pra reformular, mostra select menu de desambiguação
         const metaAdsets = targets.filter((t) => t.platform === 'meta' && t.level === 'adset');
-        const hint = metaAdsets.length
-          ? `\nConjuntos disponíveis: ${metaAdsets.slice(0, 8).map((t) => `\`${t.name}\``).join(', ')}${metaAdsets.length > 8 ? '…' : ''}`
-          : '';
+
+        if (!metaAdsets.length) {
+          await editOriginal(appId, interactionToken, {
+            content: `❌ Não encontrei nenhum conjunto (adset) do Meta ativo em **${client.company_name}** pra criar o anúncio.`,
+          });
+          return;
+        }
+
+        // Tenta restringir aos candidatos que a IA sugeriu; senão oferece todos os adsets Meta do cliente
+        const candIds = new Set((decisao.candidatos || []).map((c) => c.id).filter(Boolean));
+        let candidates = metaAdsets.filter((t) => candIds.has(t.id));
+        if (!candidates.length && decisao.candidatos?.length) {
+          const names = (decisao.candidatos || []).map((c) => (c.nome || '').toLowerCase());
+          candidates = metaAdsets.filter((t) => names.some((n) => n && t.name.toLowerCase().includes(n)));
+        }
+        if (!candidates.length) candidates = metaAdsets;
+        candidates = candidates.slice(0, 25);
+
+        const { data: inserted, error: insErr } = await supabase
+          .from('bot_action_requests')
+          .insert({
+            client_id: client.id,
+            platform: 'meta',
+            level: 'adset',
+            target_id: null,
+            target_name: null,
+            action: 'criar_anuncio',
+            comando,
+            candidates_snapshot: candidates,
+            creative_draft: { status_inicial: statusInicial },
+            requested_by_discord_user: discordUser,
+            channel_id: channelId,
+            status: 'ambiguous',
+          })
+          .select('id')
+          .single();
+
+        if (insErr || !inserted) {
+          console.error('[ia-handler insert ambiguous criar_anuncio]', insErr);
+          await editOriginal(appId, interactionToken, {
+            content: `⚠️ Erro ao registrar a solicitação: ${insErr?.message || 'desconhecido'}`,
+          });
+          return;
+        }
+
+        const reqId = inserted.id;
+        const options = candidates.map((t) => {
+          const h = t.hierarchy || {};
+          const desc = `${h.campaign_name ? `${h.campaign_name} · ` : ''}Conjunto · Meta`;
+          return {
+            label: t.name.slice(0, 100),
+            description: desc.slice(0, 100),
+            value: t.id,
+          };
+        });
+
         await editOriginal(appId, interactionToken, {
-          content: `🤔 Pra criar anúncio, preciso identificar o **conjunto (adset)** do Meta onde ele vai. Reformule mencionando o nome exato do conjunto.${hint}`,
+          content: `🤔 Pra criar o anúncio, em qual **conjunto (adset)** do Meta ele deve entrar? Escolha na lista (${candidates.length} opç${candidates.length === 1 ? 'ão' : 'ões'}):`,
+          embeds: [],
+          components: [
+            {
+              type: 1,
+              components: [
+                { type: 3, custom_id: `ia_pick:${reqId}`, placeholder: 'Selecione o conjunto', options },
+              ],
+            },
+          ],
         });
         return;
       }
-      const statusInicial: 'ativo' | 'pausado' = decisao.status_inicial === 'ativo' ? 'ativo' : 'pausado';
+
       await startCreateAdFlow(supabase, appId, interactionToken, {
         clientId: client.id,
         clientName: client.company_name,
