@@ -719,6 +719,34 @@ export async function handleIaButton(
       return;
     }
 
+    // ===== Criar anúncio: seleção do conjunto (adset) via menu (Slice A2) =====
+    if (row.action === 'criar_anuncio') {
+      await supabase
+        .from('bot_action_requests')
+        .update({
+          status: 'cancelled',
+          executed_at: new Date().toISOString(),
+          result: { note: 'substituído pelo wizard de criação de anúncio' },
+        })
+        .eq('id', reqId);
+
+      const statusInicial: 'ativo' | 'pausado' = row.creative_draft?.status_inicial === 'ativo' ? 'ativo' : 'pausado';
+
+      await startCreateAdFlow(supabase, appId, interactionToken, {
+        clientId: row.client_id,
+        clientName: clientCompanyName,
+        discordUser: row.requested_by_discord_user || 'gestor',
+        channelId: row.channel_id,
+        comando: row.comando,
+        adsetTargetId: target.id,
+        adsetName: target.name,
+        accountId: (target as any).account_id || '',
+        hierarchy: (target as any).hierarchy || {},
+        statusInicial,
+      });
+      return;
+    }
+
     // Se for mudar_orcamento sem valor ainda, pula pro fluxo awaiting_value (modal)
     const hasValidValue =
       row.new_value != null && isFinite(Number(row.new_value)) && Number(row.new_value) > 0;
