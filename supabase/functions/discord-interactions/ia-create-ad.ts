@@ -98,6 +98,42 @@ async function fetchPromotePages(accountId: string, token: string): Promise<Arra
   return (data.data || []).map((p: any) => ({ id: p.id, name: p.name }));
 }
 
+async function fetchLastActiveAdConfig(
+  _accountId: string,
+  adsetId: string,
+  token: string,
+): Promise<{
+  name?: string; message?: string; headline?: string; link?: string; page_id?: string; cta_type?: string;
+} | null> {
+  try {
+    const url =
+      `https://graph.facebook.com/${META_API_VERSION}/${adsetId}/ads` +
+      `?effective_status=["ACTIVE"]&limit=5&fields=name,created_time,creative{object_story_spec}` +
+      `&access_token=${encodeURIComponent(token)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok || !data?.data?.length) return null;
+    const sorted = [...data.data].sort(
+      (a: any, b: any) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime(),
+    );
+    const ad = sorted[0];
+    const oss = ad?.creative?.object_story_spec;
+    const linkData = oss?.link_data;
+    if (!linkData) return null;
+    return {
+      name: ad?.name,
+      message: linkData?.message,
+      headline: linkData?.name,
+      link: linkData?.link,
+      page_id: oss?.page_id,
+      cta_type: linkData?.call_to_action?.type,
+    };
+  } catch (e) {
+    console.error('[fetchLastActiveAdConfig]', e);
+    return null;
+  }
+}
+
 async function uploadImageToMetaAdImages(
   accountId: string,
   token: string,
