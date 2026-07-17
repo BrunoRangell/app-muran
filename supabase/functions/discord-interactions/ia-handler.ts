@@ -23,6 +23,41 @@ async function editOriginal(appId: string, token: string, payload: unknown) {
 
 const editMessage = editOriginal;
 
+// Publica uma mensagem NOVA e pública no canal (sem flags de efêmero) — usada só para o
+// resultado final de uma ação, já que todo o resto do wizard passou a ser efêmero.
+async function sendFollowup(appId: string, token: string, payload: unknown) {
+  const url = `https://discord.com/api/v10/webhooks/${appId}/${token}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) console.error('[ia sendFollowup]', res.status, await res.text());
+}
+
+// Trava atômica contra processamento duplicado (ex.: clique duplo no "Confirmar"). Só retorna
+// true se ESTA chamada conseguiu mudar o status de fromStatus pra toStatus — se outra execução
+// já mudou antes (ou o status já não era mais fromStatus por qualquer motivo), a atualização não
+// afeta nenhuma linha e devolvemos false, sem chamar a Meta de novo.
+async function claimRequest(
+  supabase: ReturnType<typeof createClient>,
+  reqId: string,
+  fromStatus: string,
+  toStatus: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('bot_action_requests')
+    .update({ status: toStatus })
+    .eq('id', reqId)
+    .eq('status', fromStatus)
+    .select('id');
+  if (error) {
+    console.error('[claimRequest]', error);
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}
+
 function nivelLabel(n: string) {
   return n === 'anuncio' ? 'anúncio' : n === 'adset' ? 'conjunto' : 'campanha';
 }
@@ -270,7 +305,9 @@ export async function handleIaCommand(
       } else {
         payload = await buildAdsListPayload(supabase, client.company_name, filtered, statusF);
       }
-      await editOriginal(appId, interactionToken, payload);
+      // Listagem é o resultado final pedido — publica no canal; a mensagem efêmera só recebe uma nota curta.
+      await editOriginal(appId, interactionToken, { content: '✅ Resultado enviado abaixo.', embeds: [], components: [] });
+      await sendFollowup(appId, interactionToken, payload);
       return;
     }
 
@@ -294,24 +331,16 @@ export async function handleIaCommand(
           return;
         }
 
-        // Restringir aos candidatos que a IA sugeriu (se houver), mas mantendo só ativos
-        const candIds = new Set((decisao.candidatos || []).map((c) => c.id).filter(Boolean));
-        let candidates = metaAdsets.filter((t) => candIds.has(t.id));
-        if (!candidates.length && decisao.candidatos?.length) {
-          const names = (decisao.candidatos || []).map((c) => (c.nome || '').toLowerCase());
-          candidates = metaAdsets.filter((t) => names.some((n) => n && t.name.toLowerCase().includes(n)));
-        }
-        if (!candidates.length) candidates = metaAdsets;
-
-        // Deduplicar campanhas presentes nos candidatos
+        // Fluxo determinístico: sempre pergunta a CAMPANHA ativa primeiro (ignora candidatos
+        // da IA aqui de propósito, pra não pular a etapa por engano). Só pergunta o CONJUNTO
+        // se a campanha escolhida tiver mais de um conjunto ativo.
         const campaignMap = new Map<string, string>();
-        for (const t of candidates) {
+        for (const t of metaAdsets) {
           const cid = t.hierarchy?.campaign_id;
           const cname = t.hierarchy?.campaign_name || '(sem nome)';
           if (cid && !campaignMap.has(cid)) campaignMap.set(cid, cname);
         }
 
-        // Se há mais de uma campanha, perguntar campanha primeiro
         if (campaignMap.size > 1) {
           const { data: inserted, error: insErr } = await supabase
             .from('bot_action_requests')
@@ -323,7 +352,7 @@ export async function handleIaCommand(
               target_name: null,
               action: 'criar_anuncio',
               comando,
-              candidates_snapshot: candidates,
+              candidates_snapshot: metaAdsets,
               creative_draft: { status_inicial: statusInicial },
               requested_by_discord_user: discordUser,
               channel_id: channelId,
@@ -347,7 +376,7 @@ export async function handleIaCommand(
           }));
 
           await editOriginal(appId, interactionToken, {
-            content: `🤔 Pra criar o anúncio, primeiro escolha em qual **campanha** ativa do Meta ele deve entrar (${campaignMap.size} opções):`,
+            content: `🤔 Pra criar o anúncio, primeiro escolha em qual **campanha ativa** do Meta ele deve entrar (${campaignMap.size} opções):`,
             embeds: [],
             components: [
               {
@@ -361,8 +390,29 @@ export async function handleIaCommand(
           return;
         }
 
-        // Só 1 campanha (ou nenhuma resolvida) → vai direto pro select de conjunto
-        candidates = candidates.slice(0, 25);
+        // Só 1 campanha ativa com conjuntos ativos → auto-seleciona ela e olha os conjuntos dela.
+        const onlyCampaignId = campaignMap.size === 1 ? [...campaignMap.keys()][0] : null;
+        const scoped = onlyCampaignId ? metaAdsets.filter((t) => t.hierarchy?.campaign_id === onlyCampaignId) : metaAdsets;
+
+        if (scoped.length === 1) {
+          // Só 1 conjunto ativo nessa campanha → não pergunta nada, já entra no fluxo.
+          const target = scoped[0];
+          await startCreateAdFlow(supabase, appId, interactionToken, {
+            clientId: client.id,
+            clientName: client.company_name,
+            discordUser,
+            channelId,
+            comando,
+            adsetTargetId: target.id,
+            adsetName: target.name,
+            accountId: target.account_id || '',
+            hierarchy: target.hierarchy || {},
+            statusInicial,
+          });
+          return;
+        }
+
+        const candidates = scoped.slice(0, 25);
         const { data: inserted, error: insErr } = await supabase
           .from('bot_action_requests')
           .insert({
@@ -855,24 +905,22 @@ export async function handleIaButton(
   }
 
   // ===== Confirmar / Cancelar =====
-  // Cancelar aceita tanto pending quanto awaiting_value; confirmar exige pending.
-  const cancelAllowed = [
-    'pending', 'awaiting_value',
-    'draft_image_source', 'awaiting_image_upload', 'awaiting_drive_link',
-    'awaiting_instagram_link', 'draft_copy', 'awaiting_cta_pick', 'awaiting_page_pick',
-  ];
-  const allowedStatuses = prefix === 'ia_cancel' ? cancelAllowed : ['pending'];
-  if (!allowedStatuses.includes(row.status)) {
-    await editMessage(appId, interactionToken, {
-      content: `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`,
-      components: [],
-    });
-    return;
-  }
-
   const rowPath = formatHierarchyPath(row.hierarchy_snapshot, row.level, row.target_name);
 
   if (prefix === 'ia_cancel') {
+    // Cancelar aceita vários estados intermediários do wizard, não só 'pending'.
+    const cancelAllowed = [
+      'pending', 'awaiting_value',
+      'draft_image_source', 'awaiting_image_upload', 'awaiting_drive_link',
+      'awaiting_instagram_link', 'draft_copy', 'awaiting_cta_pick', 'awaiting_page_pick',
+    ];
+    if (!cancelAllowed.includes(row.status)) {
+      await editMessage(appId, interactionToken, {
+        content: `ℹ️ Esta solicitação já foi processada (status: ${row.status}).`,
+        components: [],
+      });
+      return;
+    }
     await supabase
       .from('bot_action_requests')
       .update({ status: 'cancelled', executed_at: new Date().toISOString() })
@@ -886,6 +934,19 @@ export async function handleIaButton(
   }
 
   if (prefix === 'ia_confirm') {
+    // Trava atômica contra clique duplo: só seguimos se CONSEGUIRMOS mudar pending -> processing
+    // nós mesmos. Se outro clique já pegou essa solicitação (ou ela não é mais 'pending'), a troca
+    // não afeta nenhuma linha e abortamos aqui — sem chamar a Meta de novo.
+    const claimed = await claimRequest(supabase, reqId, 'pending', 'processing');
+    if (!claimed) {
+      await editMessage(appId, interactionToken, {
+        content: 'ℹ️ Esta solicitação já foi processada ou já está sendo processada agora — nenhuma ação duplicada foi executada.',
+        components: [],
+        embeds: [],
+      });
+      return;
+    }
+
     try {
       const snap = row.previous_value_snapshot || {};
       let result: any;
@@ -894,9 +955,21 @@ export async function handleIaButton(
       if (row.action === 'criar_anuncio') {
         const created = await executeCreateAd(supabase, row);
         result = created;
-        successMsg =
-          `✅ Anúncio **${row.creative_draft?.name || 'novo'}** criado (${created.status}) no conjunto **${row.creative_draft?.adset_name || row.target_name}**.\n` +
-          `🔗 <${created.ad_manager_url}>`;
+        if (created.batch) {
+          const links = created.ads
+            .map((a, i) => `${i + 1}. **${a.image_name}** → <${a.ad_manager_url}>`)
+            .join('\n');
+          const failedNote = created.failed.length
+            ? `\n\n⚠️ ${created.failed.length} imagem(ns) falharam (mesmo após 2 tentativas) e foram puladas:\n` +
+              created.failed.map((f) => `• **${f.image_name}**: ${f.error}`).join('\n')
+            : '';
+          successMsg =
+            `✅ **${created.ads.length} anúncios** criados (lote) no conjunto **${row.creative_draft?.adset_name || row.target_name}**:\n${links}${failedNote}`;
+        } else {
+          successMsg =
+            `✅ Anúncio **${row.creative_draft?.name || 'novo'}** criado (${created.status}) no conjunto **${row.creative_draft?.adset_name || row.target_name}**.\n` +
+            `🔗 <${created.ad_manager_url}>`;
+        }
       } else if (row.platform === 'meta') {
         if (row.action === 'pausar') {
           result = await metaSetStatus(supabase, row.target_id, 'PAUSED');
@@ -926,8 +999,10 @@ export async function handleIaButton(
         const acaoTxt = row.action === 'pausar' ? 'pausado' : row.action === 'ativar' ? 'ativado' : `com orçamento alterado para ${formatBRL(Number(row.new_value))}/dia`;
         successMsg = `✅ **${rowPath}** ${acaoTxt} com sucesso.`;
       }
+      // Resultado final da ação fica PÚBLICO no canal; a mensagem efêmera do wizard só recebe uma nota curta.
+      await sendFollowup(appId, interactionToken, { content: successMsg });
       await editMessage(appId, interactionToken, {
-        content: successMsg,
+        content: '✅ Concluído — resultado publicado no canal.',
         components: [],
         embeds: [],
       });
@@ -955,8 +1030,9 @@ export async function handleIaButton(
         };
         content += `\n\n🔧 Detalhe técnico (Meta):\n||\`\`\`json\n${JSON.stringify(tech, null, 2)}\n\`\`\`||`;
       }
+      await sendFollowup(appId, interactionToken, { content });
       await editMessage(appId, interactionToken, {
-        content,
+        content: '⚠️ Falha — detalhe publicado no canal.',
         components: [],
         embeds: [],
       });
@@ -1113,16 +1189,45 @@ export async function handleIaCampaignPick(
     return;
   }
 
-  await supabase
-    .from('bot_action_requests')
-    .update({ status: 'ambiguous', candidates_snapshot: filtered })
-    .eq('id', reqId);
-
   let clientCompanyName = 'cliente';
   if (row.client_id) {
     const { data: c } = await supabase.from('clients').select('company_name').eq('id', row.client_id).maybeSingle();
     if (c?.company_name) clientCompanyName = c.company_name;
   }
+
+  // Só 1 conjunto ativo nessa campanha → não pergunta nada, já entra direto no fluxo de criação.
+  if (filtered.length === 1) {
+    await supabase
+      .from('bot_action_requests')
+      .update({
+        status: 'cancelled',
+        executed_at: new Date().toISOString(),
+        result: { note: 'único conjunto ativo na campanha — avançado automaticamente' },
+      })
+      .eq('id', reqId);
+
+    const target = filtered[0];
+    const statusInicial: 'ativo' | 'pausado' = row.creative_draft?.status_inicial === 'ativo' ? 'ativo' : 'pausado';
+
+    await startCreateAdFlow(supabase, appId, interactionToken, {
+      clientId: row.client_id,
+      clientName: clientCompanyName,
+      discordUser: row.requested_by_discord_user || 'gestor',
+      channelId: row.channel_id,
+      comando: row.comando,
+      adsetTargetId: target.id,
+      adsetName: target.name,
+      accountId: (target as any).account_id || '',
+      hierarchy: (target as any).hierarchy || {},
+      statusInicial,
+    });
+    return;
+  }
+
+  await supabase
+    .from('bot_action_requests')
+    .update({ status: 'ambiguous', candidates_snapshot: filtered })
+    .eq('id', reqId);
 
   await editMessage(appId, interactionToken, buildAdsetPickPayload(clientCompanyName, filtered, reqId));
 }
