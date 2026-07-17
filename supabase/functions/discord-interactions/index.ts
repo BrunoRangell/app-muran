@@ -7,8 +7,8 @@ import nacl from 'npm:tweetnacl@1.0.3';
 import { handleIaCommand, handleIaButton, handleIaModalSubmit, buildValueModal, handleIaCampaignPick } from './ia-handler.ts';
 import {
   handleImageSourceClick, handleMessageAttachImage,
-  buildDriveModal, buildInstagramModal, buildCopyModal,
-  handleCopyModalSubmit, handleCtaPick, handlePagePick,
+  buildDriveModal, buildInstagramModal, buildCopyModal, buildCopyModalClone,
+  handleCopyModalSubmit, handleCtaPick, handlePagePick, handleDriveModalSubmit,
 } from './ia-create-ad.ts';
 
 const META_API_VERSION = 'v24.0';
@@ -292,9 +292,10 @@ Deno.serve(async (req) => {
       EdgeRuntime.waitUntil(
         handleIaCommand(appId, token, String(comando), channelId, channelName, discordUser, supabase),
       );
+      // Efêmero: só quem rodou o comando vê o wizard. O resultado final é publicado à parte, no canal.
       return jsonResponse({
         type: 5,
-        data: { content: '🤖 Interpretando sua solicitação… (pode levar até 30s)' },
+        data: { content: '🤖 Interpretando sua solicitação… (pode levar até 30s)', flags: 64 },
       });
     }
 
@@ -320,7 +321,7 @@ Deno.serve(async (req) => {
     if (typeof customId === 'string' && customId.startsWith('ia_pick_campaign:')) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleIaCampaignPick(appId, token, customId, interaction.data, supabase));
-      return jsonResponse({ type: 6 });
+      return jsonResponse({ type: 7, data: { content: '⏳ Processando…', embeds: [], components: [] } });
     }
 
     // Botão "Informar novo orçamento" → modal SÍNCRONO
@@ -339,10 +340,10 @@ Deno.serve(async (req) => {
       // upload → async
       // @ts-ignore
       EdgeRuntime.waitUntil(handleImageSourceClick(supabase, appId, token, customId, msgCtx as any));
-      return jsonResponse({ type: 6 });
+      return jsonResponse({ type: 7, data: { content: '⏳ Processando…', embeds: [], components: [] } });
     }
 
-    // Wizard: botão que abre o modal de copy (com prefill do último anúncio ativo, se houver)
+    // Wizard: botão que abre o modal de copy — modo clone (enxuto) ou scratch (completo com CTA)
     if (typeof customId === 'string' && customId.startsWith('ia_create_open_copy:')) {
       const [, reqId] = customId.split(':');
       const { data: rowForModal } = await supabase
@@ -350,27 +351,38 @@ Deno.serve(async (req) => {
         .select('creative_draft')
         .eq('id', reqId)
         .maybeSingle();
-      return jsonResponse(buildCopyModal(reqId, (rowForModal?.creative_draft as any)?.prefill || null));
+      const draft: any = rowForModal?.creative_draft || {};
+      if (draft.mode === 'clone') {
+        return jsonResponse(
+          buildCopyModalClone(reqId, {
+            name: draft.name || undefined,
+            message: draft.message || undefined,
+            headline: draft.headline || undefined,
+            link: draft.link || undefined,
+          }),
+        );
+      }
+      return jsonResponse(buildCopyModal(reqId, null));
     }
 
-    // Wizard: seleção de CTA fallback
+    // Wizard: seleção de CTA fallback (só modo scratch)
     if (typeof customId === 'string' && customId.startsWith('ia_create_cta_pick:')) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleCtaPick(supabase, appId, token, customId, interaction.data));
-      return jsonResponse({ type: 6 });
+      return jsonResponse({ type: 7, data: { content: '⏳ Processando…', embeds: [], components: [] } });
     }
 
-    // Wizard: seleção de página promovível
+    // Wizard: seleção de página promovível (só modo scratch)
     if (typeof customId === 'string' && customId.startsWith('ia_create_page_pick:')) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handlePagePick(supabase, appId, token, customId, interaction.data));
-      return jsonResponse({ type: 6 });
+      return jsonResponse({ type: 7, data: { content: '⏳ Processando…', embeds: [], components: [] } });
     }
 
     if (typeof customId === 'string' && (customId.startsWith('ia_confirm:') || customId.startsWith('ia_cancel:') || customId.startsWith('ia_pick:'))) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleIaButton(appId, token, customId, interaction.data, supabase));
-      return jsonResponse({ type: 6 });
+      return jsonResponse({ type: 7, data: { content: '⏳ Processando…', embeds: [], components: [] } });
     }
   }
 
@@ -385,48 +397,32 @@ Deno.serve(async (req) => {
       return jsonResponse({ type: 6 });
     }
 
+    // type 6 = DEFERRED_UPDATE_MESSAGE: como esses modais foram abertos a partir de um botão da
+    // mensagem do wizard, isso faz a resposta final (editOriginal, dentro dos handlers) atualizar
+    // ESSA MESMA mensagem em vez de criar uma mensagem efêmera nova avulsa — reduz poluição no canal.
     if (typeof customId === 'string' && customId.startsWith('ia_create_copy_modal:')) {
       // @ts-ignore
       EdgeRuntime.waitUntil(handleCopyModalSubmit(supabase, appId, token, customId, interaction.data));
-      return jsonResponse({ type: 5, data: { flags: 64 } });
+      return jsonResponse({ type: 6 });
     }
 
     if (typeof customId === 'string' && customId.startsWith('ia_create_drive_modal:')) {
-      // Fase B — ainda não implementado
       // @ts-ignore
-      EdgeRuntime.waitUntil(
-        (async () => {
-          const url = `https://discord.com/api/v10/webhooks/${appId}/${token}`;
-          await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: '🚧 Fonte "Link do Drive" ainda não implementada (Fase B). Use "📤 Novo upload" por enquanto.',
-              flags: 64,
-            }),
-          });
-        })(),
-      );
-      return jsonResponse({ type: 5, data: { flags: 64 } });
+      EdgeRuntime.waitUntil(handleDriveModalSubmit(supabase, appId, token, customId, interaction.data));
+      return jsonResponse({ type: 6 });
     }
 
     if (typeof customId === 'string' && customId.startsWith('ia_create_ig_modal:')) {
-      // Fase C — ainda não implementado
-      // @ts-ignore
-      EdgeRuntime.waitUntil(
-        (async () => {
-          const url = `https://discord.com/api/v10/webhooks/${appId}/${token}`;
-          await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: '🚧 Fonte "Post do Instagram" ainda não implementada (Fase C). Use "📤 Novo upload" por enquanto.',
-              flags: 64,
-            }),
-          });
-        })(),
-      );
-      return jsonResponse({ type: 5, data: { flags: 64 } });
+      // Fase C — ainda não implementado. Resposta síncrona (type 7) já atualiza a mesma mensagem
+      // do wizard, sem precisar de followup separado.
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: '🚧 Fonte "Post do Instagram" ainda não implementada. Use "📤 Novo upload" ou "🔗 Link do Drive" por enquanto.',
+          embeds: [],
+          components: [],
+        },
+      });
     }
   }
 
