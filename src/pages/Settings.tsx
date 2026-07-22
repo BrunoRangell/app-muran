@@ -11,6 +11,7 @@ import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/sche
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
+import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
 import { ProfileSection } from "@/components/settings/sections/ProfileSection";
 import { SecuritySection } from "@/components/settings/sections/SecuritySection";
 import { SocialSection } from "@/components/settings/sections/SocialSection";
@@ -148,6 +149,8 @@ export default function Settings() {
         return <SocialSection form={form} />;
       case "professional":
         return <ProfessionalSection form={form} isAdmin={isAdmin} isMember={isMember} />;
+      case "api":
+        return <ApiConfigurationPanel />;
       default:
         return <ProfileSection form={form} />;
     }
@@ -186,6 +189,7 @@ export default function Settings() {
           onSave={form.handleSubmit(handleSubmit)}
           isLoading={isLoading}
           hasChanges={hasChanges}
+          isAdmin={isAdmin}
         >
           {renderSection()}
         </SettingsLayout>
