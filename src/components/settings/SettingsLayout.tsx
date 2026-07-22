@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -7,7 +6,8 @@ import {
   Shield, 
   Share2, 
   Briefcase,
-  Check
+  Check,
+  Plug
 } from "lucide-react";
 
 interface SettingsSection {
@@ -15,6 +15,7 @@ interface SettingsSection {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   description: string;
+  adminOnly?: boolean;
 }
 
 const settingsSections: SettingsSection[] = [
@@ -41,6 +42,13 @@ const settingsSections: SettingsSection[] = [
     label: "Configurações Profissionais",
     icon: Briefcase,
     description: "Cargo e permissões"
+  },
+  {
+    id: "api",
+    label: "Configurações de API",
+    icon: Plug,
+    description: "Tokens e integrações externas",
+    adminOnly: true
   }
 ];
 
@@ -51,6 +59,7 @@ interface SettingsLayoutProps {
   onSave: () => void;
   isLoading: boolean;
   hasChanges: boolean;
+  isAdmin?: boolean;
 }
 
 export const SettingsLayout = ({ 
@@ -59,8 +68,13 @@ export const SettingsLayout = ({
   onSectionChange, 
   onSave, 
   isLoading, 
-  hasChanges 
+  hasChanges,
+  isAdmin = false
 }: SettingsLayoutProps) => {
+  const visibleSections = settingsSections.filter(
+    section => !section.adminOnly || isAdmin
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex min-h-screen">
@@ -81,7 +95,7 @@ export const SettingsLayout = ({
 
           {/* Menu de Navegação */}
           <div className="flex-1 p-4 space-y-2">
-            {settingsSections.map((section) => {
+            {visibleSections.map((section) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
               
@@ -139,10 +153,10 @@ export const SettingsLayout = ({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-[#321e32]">
-                  {settingsSections.find(s => s.id === activeSection)?.label}
+                  {visibleSections.find(s => s.id === activeSection)?.label}
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  {settingsSections.find(s => s.id === activeSection)?.description}
+                  {visibleSections.find(s => s.id === activeSection)?.description}
                 </p>
               </div>
             </div>
