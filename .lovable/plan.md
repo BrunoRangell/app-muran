@@ -1,32 +1,24 @@
-## Problema confirmado
+## Problema
 
-O componente `ApiConfigurationPanel` existe em `src/components/settings/ApiConfigurationPanel.tsx`, mas não é renderizado em lugar nenhum. A `SettingsLayout` só lista 4 seções, sem "Configurações de API". Por isso a aba Meta Ads não aparece para você.
+O guard `TeamMemberCheck` bloqueia o acesso à página **Configurações** mesmo para admins reais. A consulta inicial que ele faz é:
 
-## O que será feito
+```ts
+supabase.from('team_members').select('id, permission, role')
+```
 
-### 1. Adicionar "Configurações de API" ao menu de Configurações
-- Incluir nova seção `api` em `src/components/settings/SettingsLayout.tsx` (ícone de plug/chave, label "Configurações de API").
-- Renderizar `<ApiConfigurationPanel />` em `src/pages/Settings.tsx` quando `activeSection === "api"`.
-- Esconder a seção de usuários não-admin (verificação via `useUserRole` / `isAdmin`), já que envolve tokens sensíveis.
+A coluna `permission` **não existe** na tabela `team_members` (confirmado nas requisições de rede: `column team_members.permission does not exist`, HTTP 400). Como a chamada retorna erro, o componente cai no `catch` e define `isTeamMember = false`, exibindo "Acesso Negado" — apesar de o usuário ter `role = 'admin'` em `user_roles`.
 
-### 2. Tornar funcional a aba "Meta Ads"
-Hoje a aba Meta Ads só mostra um texto dizendo pra inserir o token na tabela `api_tokens`. Será substituída por um formulário funcional:
-- Campo de texto (type password com toggle de visibilidade) para colar o token Meta Ads.
-- Botão "Salvar Token Meta Ads" que faz upsert na tabela `api_tokens` com `name = 'meta_access_token'` (mesmo padrão do `GoogleAdsTokenManager`).
-- Exibição do status atual: token salvo / não salvo, e aviso sobre renovação automática.
-- Integridade com o trigger `trigger_convert_meta_token`: ao salvar `meta_access_token`, o Supabase dispara a edge function `convert-meta-token` para converter em long-lived token automaticamente.
+## Correção
 
-### 3. Ajustes de UX
-- Manter o padrão visual dos cards brancos com borda e a cor `#ff6e00` nos botões primários.
-- Reutilizar o componente `TeamMemberCheck` com `requireAdmin={true}` dentro do painel, garantindo que apenas admins vejam/editem tokens.
-- Garantir que a página de Configurações continue funcionando normalmente para os outros usuários.
+Editar `src/components/auth/TeamMemberCheck.tsx`:
 
-## Arquivos que serão alterados
-- `src/components/settings/SettingsLayout.tsx` — adicionar seção "api" na sidebar.
-- `src/pages/Settings.tsx` — renderizar `ApiConfigurationPanel` na nova seção e aplicar gate de admin.
-- `src/components/settings/ApiConfigurationPanel.tsx` — substituir texto estático da aba Meta Ads por formulário funcional de token.
+1. Remover a consulta a `team_members` (usada só para "detectar" existência) e a referência à coluna inexistente `permission`.
+2. Basear a verificação exclusivamente em `user_roles` (fonte oficial de papéis, já usada logo abaixo no mesmo componente):
+   - `isTeamMember` = usuário tem role `admin` ou `member`.
+   - `isAdmin` = usuário tem role `admin`.
+3. Manter o restante do fluxo (loading, telas de acesso negado, `requireAdmin`) sem alterações.
 
-## Resultado esperado
-- O menu lateral de Configurações passa a exibir "Configurações de API" para administradores.
-- Dentro dela, as abas "Google Ads" e "Meta Ads" ficam acessíveis.
-- Na aba Meta Ads será possível colar e salvar o novo token direto pela interface, sem precisar editar a tabela no Supabase.
+## Observações
+
+- Mudança escopo frontend apenas. Nenhuma migração de banco.
+- Outros arquivos que ainda referenciam `permission` (ex.: `useUserRole.ts`, formulários de equipe) não estão bloqueando esta tela, mas podem ser tratados em uma próxima rodada se você quiser eu já sinalizo.
