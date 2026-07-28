@@ -71,6 +71,9 @@ verify_jwt = false
 [functions.meta-active-ads]
 verify_jwt = true
 
+[functions.retry-clickup-onboarding]
+verify_jwt = false
+
 
 
 
