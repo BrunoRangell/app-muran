@@ -253,9 +253,21 @@ export const OnboardingResult = ({ result: initialResult, onClose }: OnboardingR
                   Ver Projeto <ExternalLink className="h-4 w-4" />
                 </Button>
               ) : (
-                <p className="text-sm text-red-600 text-center">
-                  {result.results.clickup.error || 'Falhou'}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-red-600 text-center">
+                    {result.results.clickup.error || 'Falhou'}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleRetryClickup}
+                    disabled={retryingClickup}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${retryingClickup ? 'animate-spin' : ''}`} />
+                    {retryingClickup ? 'Retentando...' : 'Retentar ClickUp'}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
