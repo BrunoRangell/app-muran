@@ -1,13 +1,52 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExternalLink, CheckCircle2, XCircle, AlertCircle, HardDrive, MessageSquare, FolderKanban, PartyPopper } from "lucide-react";
+import { ExternalLink, CheckCircle2, XCircle, AlertCircle, HardDrive, MessageSquare, FolderKanban, PartyPopper, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface OnboardingResultProps {
   result: any;
   onClose: () => void;
 }
 
-export const OnboardingResult = ({ result, onClose }: OnboardingResultProps) => {
+export const OnboardingResult = ({ result: initialResult, onClose }: OnboardingResultProps) => {
+  const [result, setResult] = useState<any>(initialResult);
+  const [retryingClickup, setRetryingClickup] = useState(false);
+
+  const handleRetryClickup = async () => {
+    setRetryingClickup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("retry-clickup-onboarding", {
+        body: { clientName: result.clientName },
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast.error(data?.error || "Falha ao retentar ClickUp");
+        return;
+      }
+      const created = data.summary?.created?.length ?? 0;
+      const errors = data.summary?.errors?.length ?? 0;
+      toast.success(`ClickUp: ${created} lista(s) criada(s)${errors ? `, ${errors} erro(s)` : ""}`);
+      setResult((prev: any) => ({
+        ...prev,
+        results: {
+          ...prev.results,
+          clickup: {
+            success: errors === 0,
+            folderLink: data.folderLink,
+            error: errors > 0 ? `${errors} lista(s) com erro` : undefined,
+          },
+        },
+      }));
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao retentar ClickUp");
+    } finally {
+      setRetryingClickup(false);
+    }
+  };
+
+
   if (!result.success) {
     return (
       <Card className="border-red-200 bg-red-50/50 shadow-lg animate-scale-in">
@@ -214,9 +253,21 @@ export const OnboardingResult = ({ result, onClose }: OnboardingResultProps) => 
                   Ver Projeto <ExternalLink className="h-4 w-4" />
                 </Button>
               ) : (
-                <p className="text-sm text-red-600 text-center">
-                  {result.results.clickup.error || 'Falhou'}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-red-600 text-center">
+                    {result.results.clickup.error || 'Falhou'}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleRetryClickup}
+                    disabled={retryingClickup}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${retryingClickup ? 'animate-spin' : ''}`} />
+                    {retryingClickup ? 'Retentando...' : 'Retentar ClickUp'}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
