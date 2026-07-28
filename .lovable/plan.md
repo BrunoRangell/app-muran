@@ -1,24 +1,48 @@
-## Problema
+## Objetivo
 
-O guard `TeamMemberCheck` bloqueia o acesso à página **Configurações** mesmo para admins reais. A consulta inicial que ele faz é:
+Permitir refazer o onboarding parcialmente concluído da Dra. Fernanda Almeida (e casos futuros) sem duplicar o que já foi criado. Google Drive, Discord e a lista **Onboarding** do ClickUp já estão prontos — falta apenas criar as demais listas do template (Relacionamento, Vendas, etc.) dentro da pasta existente.
 
-```ts
-supabase.from('team_members').select('id, permission, role')
-```
+## Pré-requisito importante
 
-A coluna `permission` **não existe** na tabela `team_members` (confirmado nas requisições de rede: `column team_members.permission does not exist`, HTTP 400). Como a chamada retorna erro, o componente cai no `catch` e define `isTeamMember = false`, exibindo "Acesso Negado" — apesar de o usuário ter `role = 'admin'` em `user_roles`.
+O erro original foi `HLIMIT_005 — list limit for this space`. Antes de retentar, o limite do Space precisa estar liberado (upgrade do plano, arquivamento de listas antigas, ou movendo clientes antigos para outro Space). Caso contrário o retry vai falhar com o mesmo erro.
 
-## Correção
+## O que será feito
 
-Editar `src/components/auth/TeamMemberCheck.tsx`:
+### 1. Nova edge function `retry-clickup-onboarding`
 
-1. Remover a consulta a `team_members` (usada só para "detectar" existência) e a referência à coluna inexistente `permission`.
-2. Basear a verificação exclusivamente em `user_roles` (fonte oficial de papéis, já usada logo abaixo no mesmo componente):
-   - `isTeamMember` = usuário tem role `admin` ou `member`.
-   - `isAdmin` = usuário tem role `admin`.
-3. Manter o restante do fluxo (loading, telas de acesso negado, `requireAdmin`) sem alterações.
+Fluxo:
+1. Recebe `clientName`.
+2. Busca a pasta existente no Space (`GET /space/{SPACE_ID}/folder`) pelo nome exato do cliente. Se não existir, retorna erro claro pedindo para rodar o onboarding completo.
+3. Lista as listas atuais da pasta e as listas do template.
+4. Calcula o diff: apenas listas do template que **não existem** na pasta do cliente serão criadas.
+5. Para cada lista faltante, reaproveita a mesma lógica de `create-clickup-project`:
+   - cria a lista;
+   - copia tarefas do template (com nome customizado por cliente, assignees, tags, status, due date da lista de Onboarding se aplicável);
+   - configura a view customizada se for "Onboarding" (não deve ocorrer aqui, já existe).
+6. Retorna resumo: listas criadas, listas puladas (já existiam), erros por lista (sem quebrar tudo se uma falhar).
 
-## Observações
+### 2. UI: botão "Retentar ClickUp" na tela de resultado do onboarding
 
-- Mudança escopo frontend apenas. Nenhuma migração de banco.
-- Outros arquivos que ainda referenciam `permission` (ex.: `useUserRole.ts`, formulários de equipe) não estão bloqueando esta tela, mas podem ser tratados em uma próxima rodada se você quiser eu já sinalizo.
+Na tela que mostra o status `partial`/`failed`, quando o ClickUp falhou ou ficou incompleto:
+- Adicionar botão **"Retentar ClickUp"**.
+- Ao clicar, chama a nova edge function com o `clientName`.
+- Mostra toast/dialog com o resumo (listas criadas x puladas x erros).
+- Se hit no `HLIMIT_005`, mostra mensagem explicando que o Space está no limite e o que fazer.
+
+### Ação imediata para a Dra. Fernanda
+
+Depois de fazer o deploy, basta clicar em "Retentar ClickUp" na tela dela (ou eu disparo a função direto pelo painel/tool caso prefira, sem precisar reabrir o fluxo).
+
+## Detalhes técnicos
+
+- Arquivos novos:
+  - `supabase/functions/retry-clickup-onboarding/index.ts`
+- Arquivos alterados:
+  - `src/pages/Onboarding.tsx` (ou o componente que exibe o resultado do orchestrator) para incluir o botão condicional e chamar `supabase.functions.invoke('retry-clickup-onboarding', { body: { clientName } })`.
+- Sem migrações de banco.
+- Reaproveita os secrets já existentes (`CLICKUP_TOKEN`, `CLICKUP_SPACE_ID`, `CLICKUP_TEMPLATE_FOLDER_ID`).
+
+## Fora de escopo
+
+- Retentar Google Drive / Discord (já concluíram).
+- Alterar limite de listas no ClickUp (ação manual do usuário na conta ClickUp).
