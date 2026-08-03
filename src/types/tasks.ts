@@ -143,12 +143,14 @@ export const GROUP_BY_LABEL: Record<GroupBy, string> = {
   status: "Status",
   assignee: "Responsável",
   priority: "Prioridade",
+  none: "Nenhum",
 };
 
 export const SORT_BY_LABEL: Record<SortBy, string> = {
   due: "Prazo",
   priority: "Prioridade",
-  created: "Criação",
+  created: "Criado em",
+  name: "Nome",
 };
 
 
