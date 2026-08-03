@@ -30,11 +30,11 @@ export const useAllTasks = (enabled = true) =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select(TASK_SELECT)
+        .select(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`)
         .order("due_date", { ascending: true, nullsFirst: false })
         .order("created_at");
       if (error) throw error;
-      return (data || []) as Task[];
+      return (data || []) as unknown as Task[];
     },
   });
 

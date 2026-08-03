@@ -30,6 +30,8 @@ export interface Task {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Origem (preenchida nas visões consolidadas). */
+  task_lists?: { name: string | null; task_folders?: { name: string | null } | null } | null;
 }
 
 /** Membro do módulo de tarefas (isolado de team_members). */

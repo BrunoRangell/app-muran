@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -7,30 +6,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
-import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
-import { useMyTasks } from "@/hooks/useTasks";
-import {
-  CLIENT_TASK_STATUSES,
-  TaskStatus,
-  TASK_PRIORITY_META,
-  TASK_STATUS_META,
-} from "@/types/tasks";
-import { cn } from "@/lib/utils";
-import { CalendarDays, CheckSquare } from "lucide-react";
+import { TaskListView } from "@/components/tasks/TaskListView";
+import { TasksToolbar, ToolbarState } from "@/components/tasks/TasksToolbar";
 import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { parseLocalDate } from "@/utils/dateHelpers";
-
-const ALL = "__all__";
+import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
+import { useMyTasks } from "@/hooks/useTasks";
+import { CLIENT_TASK_STATUSES } from "@/types/tasks";
+import { CheckSquare } from "lucide-react";
 
 const MyTasks = () => {
   const { data: members = [], isLoading: loadingMembers } = useTaskMembers();
   const { data: me, isLoading: loadingMe } = useCurrentTaskMember();
   const [memberId, setMemberId] = usePersistentState<string | null>("tasks:minhas:member", null);
+  const [toolbar, setToolbar] = usePersistentState<ToolbarState>("tasks:minhas:toolbar", {
+    group_by: "status",
+    sort_by: null,
+    filters: {},
+  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loadingMe && memberId === null && me) {
@@ -40,29 +35,16 @@ const MyTasks = () => {
 
   const currentMember = members.find((m) => m.id === memberId) ?? null;
   const { data: tasks = [], isLoading } = useMyTasks(currentMember?.id);
-  const [statusFilter, setStatusFilter] = useState<string>(ALL);
-  const [order, setOrder] = useState<"due_asc" | "due_desc">("due_asc");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const filtered = useMemo(() => {
-    const list = tasks.filter((t) => (statusFilter === ALL ? true : t.status === statusFilter));
-    return [...list].sort((a, b) => {
-      const av = a.due_date ?? "9999-12-31";
-      const bv = b.due_date ?? "9999-12-31";
-      return order === "due_asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-  }, [tasks, statusFilter, order]);
-
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <section className="min-w-0 flex-1 overflow-x-auto p-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <h1 className="mr-auto flex items-center gap-2 text-[15px] font-semibold">
           <CheckSquare className="h-4 w-4 text-primary" /> Minhas tarefas
         </h1>
         <Select value={memberId ?? ""} onValueChange={(v) => setMemberId(v)}>
-          <SelectTrigger className="w-[190px]">
+          <SelectTrigger className="h-7 w-[180px] text-[12px]">
             <SelectValue placeholder="Selecionar membro" />
           </SelectTrigger>
           <SelectContent className="tasks-dark">
@@ -73,90 +55,36 @@ const MyTasks = () => {
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="tasks-dark">
-            <SelectItem value={ALL}>Todos os status</SelectItem>
-            {CLIENT_TASK_STATUSES.map((s: TaskStatus) => (
-              <SelectItem key={s} value={s}>
-                {TASK_STATUS_META[s].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={order} onValueChange={(v) => setOrder(v as typeof order)}>
-          <SelectTrigger className="w-[170px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="tasks-dark">
-            <SelectItem value="due_asc">Prazo (mais próximo)</SelectItem>
-            <SelectItem value="due_desc">Prazo (mais distante)</SelectItem>
-          </SelectContent>
-        </Select>
+        <TasksToolbar
+          members={members}
+          statuses={CLIENT_TASK_STATUSES}
+          value={toolbar}
+          onChange={setToolbar}
+          allowOriginColumn
+        />
       </div>
 
-      <Card className="divide-y p-0">
-        {!currentMember && !loadingMembers && (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Selecione um membro para ver as tarefas atribuídas.
-          </p>
-        )}
-        {currentMember && isLoading && <TaskListSkeleton />}
-        {currentMember && !isLoading && filtered.length === 0 && (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Nenhuma tarefa atribuída a {currentMember.name}.
-          </p>
-        )}
-        {currentMember &&
-          !isLoading &&
-          filtered.map((t) => {
-            const status = TASK_STATUS_META[t.status];
-            const origem = t.is_internal
-              ? `Interna · ${t.internal_area}`
-              : `${t.task_lists?.task_folders?.name ?? "Pasta"} · ${t.task_lists?.name ?? ""}`;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setSelectedId(t.id)}
-                className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/50"
-              >
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", status.dot)} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{t.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{origem}</p>
-                </div>
-                {t.priority && (
-                  <span
-                    className={cn(
-                      "hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold sm:inline",
-                      TASK_PRIORITY_META[t.priority].badge
-                    )}
-                  >
-                    {TASK_PRIORITY_META[t.priority].label}
-                  </span>
-                )}
-                <span
-                  className={cn(
-                    "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                    status.badge
-                  )}
-                >
-                  {status.label}
-                </span>
-                {t.due_date && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <CalendarDays className="h-3 w-3" />
-                    {format(parseLocalDate(t.due_date), "dd MMM", { locale: ptBR })}
-                  </span>
-                )}
-                <MemberAvatar member={currentMember} className="h-6 w-6" />
-              </button>
-            );
-          })}
-      </Card>
+      {!currentMember && !loadingMembers ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">
+          Selecione um membro para ver as tarefas atribuídas.
+        </p>
+      ) : isLoading || loadingMembers ? (
+        <TaskListSkeleton />
+      ) : (
+        <TaskListView
+          statuses={CLIENT_TASK_STATUSES}
+          tasks={tasks}
+          members={members}
+          onOpenTask={(t) => setSelectedId(t.id)}
+          newTaskScope={{ is_internal: false }}
+          allowCreate={false}
+          allowOriginColumn
+          storageKey="tasks:list:collapsed:mine"
+          groupBy={toolbar.group_by}
+          sortBy={toolbar.sort_by}
+          filters={toolbar.filters}
+        />
+      )}
 
       <TaskDetailModal
         task={selected}
@@ -165,7 +93,7 @@ const MyTasks = () => {
         open={!!selected}
         onOpenChange={(open) => !open && setSelectedId(null)}
       />
-    </div>
+    </section>
   );
 };
 

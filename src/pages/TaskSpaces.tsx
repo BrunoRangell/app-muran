@@ -119,6 +119,7 @@ const TaskSpaces = () => {
                   statuses={CLIENT_TASK_STATUSES}
                   value={allToolbar}
                   onChange={setAllToolbar}
+                  allowOriginColumn
                 />
               </div>
               {loadingAll ? (
@@ -131,6 +132,7 @@ const TaskSpaces = () => {
                   onOpenTask={(t) => setSelectedId(t.id)}
                   newTaskScope={{ is_internal: false }}
                   allowCreate={false}
+                  allowOriginColumn
                   storageKey="tasks:list:collapsed:all"
                   groupBy={allToolbar.group_by}
                   sortBy={allToolbar.sort_by}
