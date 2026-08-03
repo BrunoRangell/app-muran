@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TaskListSkeleton } from "./TasksSkeleton";
 
 const railItems = [
-  { icon: LayoutGrid, label: "Clientes", path: "/tarefas/clientes" },
+  { icon: LayoutGrid, label: "Pastas", path: "/tarefas/clientes" },
   { icon: Building2, label: "Internas", path: "/tarefas/internas" },
   { icon: CheckSquare, label: "Minhas", path: "/tarefas/minhas" },
   { icon: Target, label: "Leads", path: "/tarefas/leads" },
