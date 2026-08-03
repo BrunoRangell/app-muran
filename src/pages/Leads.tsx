@@ -276,9 +276,7 @@ const Leads = () => {
 
       <Card className="p-3 md:p-5">
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <TaskListSkeleton />
         ) : (
           <Tabs defaultValue="kanban" className="space-y-4">
             <TabsList>
