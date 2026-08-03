@@ -27,6 +27,7 @@ export const SidebarMenuItem = ({
   label, 
   path, 
   submenu,
+  external = false,
   isActive,
   onClick,
   isCollapsed = false
@@ -69,6 +70,8 @@ export const SidebarMenuItem = ({
   const MenuLink = () => (
     <Link
       to={hasSubmenu ? "#" : path}
+      target={external && !hasSubmenu ? "_blank" : undefined}
+      rel={external && !hasSubmenu ? "noopener noreferrer" : undefined}
       onClick={(e) => {
         if (hasSubmenu && !isCollapsed) {
           toggleSubmenu(e);
