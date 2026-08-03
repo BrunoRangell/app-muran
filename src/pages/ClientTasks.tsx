@@ -21,6 +21,29 @@ const columns: KanbanColumnDef<TaskStatus>[] = CLIENT_TASK_STATUSES.map((s) => (
   header: TASK_STATUS_META[s].header,
 }));
 
+const ListRow = ({
+  listId,
+  label,
+  active,
+  onClick,
+}: {
+  listId: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) => {
+  const { data: tasks = [] } = useListTasks(listId);
+  return (
+    <TasksTreeItem
+      label={label}
+      icon={ListChecks}
+      count={tasks.length}
+      active={active}
+      onClick={onClick}
+    />
+  );
+};
+
 const ClientNode = ({
   clientId,
   name,
@@ -43,23 +66,23 @@ const ClientNode = ({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+        className="flex w-full items-center gap-1.5 rounded-[4px] px-2 py-[5px] text-left text-[12.5px] text-foreground/80 transition-colors hover:bg-accent/60 hover:text-foreground"
       >
         {expanded ? (
           <ChevronDown className="h-3.5 w-3.5 shrink-0" />
         ) : (
           <ChevronRight className="h-3.5 w-3.5 shrink-0" />
         )}
-        <Folder className="h-3.5 w-3.5 shrink-0 opacity-70" />
+        <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
         <span className="truncate">{name}</span>
       </button>
       {expanded && (
-        <div className="ml-4 border-l border-border pl-1">
+        <div className="ml-[18px] border-l border-border/70 pl-1">
           {lists.map((l) => (
-            <TasksTreeItem
+            <ListRow
               key={l.id}
+              listId={l.id}
               label={l.name}
-              icon={ListChecks}
               active={selectedList === l.id}
               onClick={() => onSelectList(l.id, name, l.name)}
             />
