@@ -5,7 +5,7 @@ import { MemberAvatar } from "./MemberAvatar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { parseLocalDate } from "@/utils/dateUtils";
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface Props {
   task: Task;
