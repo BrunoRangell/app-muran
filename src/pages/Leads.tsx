@@ -30,7 +30,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { KanbanBoard, KanbanColumnDef } from "@/components/tasks/KanbanBoard";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import { useCreateLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/useLeads";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useTaskMembers } from "@/hooks/useTaskMembers";
 import { Lead, LEAD_STATUSES, LEAD_STATUS_META, LeadStatus } from "@/types/tasks";
 import { cn } from "@/lib/utils";
 import { Plus, Target, Trash2 } from "lucide-react";
@@ -54,7 +54,7 @@ const NewLeadDialog = () => {
   const [status, setStatus] = useState<LeadStatus>("novo_lead");
   const [assignee, setAssignee] = useState(NONE);
   const [notes, setNotes] = useState("");
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTaskMembers();
   const createLead = useCreateLead();
 
   const submit = () => {
@@ -165,7 +165,7 @@ const LeadDetailModal = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTaskMembers();
   const updateLead = useUpdateLead();
   const deleteLead = useDeleteLead();
   const [notes, setNotes] = useState(lead?.notes ?? "");
@@ -259,7 +259,7 @@ const LeadDetailModal = ({
 
 const Leads = () => {
   const { data: leads = [], isLoading } = useLeads();
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTaskMembers();
   const updateLead = useUpdateLead();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = leads.find((l) => l.id === selectedId) ?? null;
