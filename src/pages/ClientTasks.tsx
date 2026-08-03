@@ -93,8 +93,22 @@ const ClientTasks = () => {
             members={members}
             activeId={view.id}
             onChange={setView}
+            currentMemberId={currentMember?.id ?? null}
+            toolbar={
+              <TasksToolbar
+                members={members}
+                statuses={CLIENT_TASK_STATUSES}
+                value={{
+                  group_by: view.group_by,
+                  sort_by: view.sort_by,
+                  filters: view.filters ?? {},
+                }}
+                onChange={handleToolbarChange}
+              />
+            }
           />
         )}
+
 
         {!listId ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
