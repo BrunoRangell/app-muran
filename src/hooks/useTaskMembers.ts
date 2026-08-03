@@ -16,6 +16,23 @@ export const useTaskMembers = () =>
     },
   });
 
+/** task_members do usuário logado (via task_members.auth_user_id). */
+export const useCurrentTaskMember = () =>
+  useQuery({
+    queryKey: ["task-members", "current"],
+    queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return null;
+      const { data, error } = await supabase
+        .from("task_members")
+        .select(SELECT)
+        .eq("auth_user_id", auth.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as TaskMember | null;
+    },
+  });
+
 export interface TaskMemberInput {
   name: string;
   email?: string | null;

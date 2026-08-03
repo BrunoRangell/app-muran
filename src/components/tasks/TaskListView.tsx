@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import {
   GroupBy,
-  SortBy,
+  SortValue,
   Task,
   TaskMember,
   TaskStatus,
@@ -58,7 +58,7 @@ interface Props {
   /** Chave para persistir os grupos recolhidos (localStorage). */
   storageKey?: string;
   groupBy?: GroupBy;
-  sortBy?: SortBy | null;
+  sortBy?: SortValue | null;
   filters?: TaskViewFilters | null;
 }
 

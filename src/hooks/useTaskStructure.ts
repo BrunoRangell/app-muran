@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const FOLDER_SELECT = "id, name, color, icon, position, created_at";
 const LIST_SELECT = "id, folder_id, name, position, created_at";
-const VIEW_SELECT = "id, list_id, name, view_type, group_by, sort_by, filters, position, created_at";
+const VIEW_SELECT =
+  "id, list_id, name, view_type, group_by, sort_by, filters, position, is_private, owner_id, created_at";
 
 /* ---------------------------------- pastas --------------------------------- */
 
@@ -190,9 +191,11 @@ export interface ViewInput {
   name: string;
   view_type: ViewType;
   group_by: GroupBy;
-  sort_by?: SortBy | null;
+  sort_by?: string | null;
   filters?: TaskViewFilters;
   position?: number;
+  is_private?: boolean;
+  owner_id?: string | null;
 }
 
 export const useCreateView = () => {

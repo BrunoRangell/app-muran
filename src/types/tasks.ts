@@ -61,13 +61,31 @@ export interface TaskList {
 }
 
 export type ViewType = "list" | "board";
-export type GroupBy = "status" | "assignee" | "priority";
-export type SortBy = "due" | "priority" | "created";
+export type GroupBy = "status" | "assignee" | "priority" | "none";
+export type SortBy = "due" | "priority" | "created" | "name";
+export type SortDir = "asc" | "desc";
 
 export interface TaskViewFilters {
+  /** multi-seleção (formato atual) */
+  assignee_ids?: string[];
+  priorities?: TaskPriority[];
+  statuses?: TaskStatus[];
+  /** formato legado (uma opção) — ainda respeitado na leitura */
   assignee_id?: string | null;
   priority?: TaskPriority | null;
 }
+
+/** `sort_by` é persistido como "campo" ou "campo:desc". */
+export type SortValue = string;
+
+export const serializeSort = (field: SortBy | null, dir: SortDir): SortValue | null =>
+  field ? (dir === "desc" ? `${field}:desc` : field) : null;
+
+export const parseSort = (value?: SortValue | null): { field: SortBy | null; dir: SortDir } => {
+  if (!value) return { field: null, dir: "asc" };
+  const [field, dir] = value.split(":");
+  return { field: field as SortBy, dir: dir === "desc" ? "desc" : "asc" };
+};
 
 export interface TaskView {
   id: string;
@@ -75,9 +93,11 @@ export interface TaskView {
   name: string;
   view_type: ViewType;
   group_by: GroupBy;
-  sort_by: SortBy | null;
+  sort_by: SortValue | null;
   filters: TaskViewFilters;
   position: number;
+  is_private: boolean;
+  owner_id: string | null;
   created_at?: string;
 }
 
@@ -123,12 +143,14 @@ export const GROUP_BY_LABEL: Record<GroupBy, string> = {
   status: "Status",
   assignee: "Responsável",
   priority: "Prioridade",
+  none: "Nenhum",
 };
 
 export const SORT_BY_LABEL: Record<SortBy, string> = {
   due: "Prazo",
   priority: "Prioridade",
-  created: "Criação",
+  created: "Criado em",
+  name: "Nome",
 };
 
 

@@ -1,6 +1,6 @@
 import {
   GroupBy,
-  SortBy,
+  SortValue,
   Task,
   TaskMember,
   TaskPriority,
@@ -8,6 +8,7 @@ import {
   TaskViewFilters,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
+  parseSort,
 } from "@/types/tasks";
 
 export interface TaskGroup {
@@ -23,11 +24,27 @@ export interface TaskGroup {
 
 const NEUTRAL_PILL = "bg-accent/70 text-foreground/90";
 
+/** Normaliza filtros (aceita o formato legado de uma opção só). */
+export const normalizeFilters = (filters?: TaskViewFilters | null) => {
+  const assignee_ids = filters?.assignee_ids ?? (filters?.assignee_id ? [filters.assignee_id] : []);
+  const priorities = filters?.priorities ?? (filters?.priority ? [filters.priority] : []);
+  const statuses = filters?.statuses ?? [];
+  return { assignee_ids, priorities, statuses };
+};
+
+export const countActiveFilters = (filters?: TaskViewFilters | null) => {
+  const f = normalizeFilters(filters);
+  return f.assignee_ids.length + f.priorities.length + f.statuses.length;
+};
+
 export const applyViewFilters = (tasks: Task[], filters?: TaskViewFilters | null) => {
-  if (!filters) return tasks;
+  const f = normalizeFilters(filters);
+  if (!f.assignee_ids.length && !f.priorities.length && !f.statuses.length) return tasks;
   return tasks.filter((t) => {
-    if (filters.assignee_id && t.assignee_id !== filters.assignee_id) return false;
-    if (filters.priority && t.priority !== filters.priority) return false;
+    if (f.assignee_ids.length && (!t.assignee_id || !f.assignee_ids.includes(t.assignee_id)))
+      return false;
+    if (f.priorities.length && (!t.priority || !f.priorities.includes(t.priority))) return false;
+    if (f.statuses.length && !f.statuses.includes(t.status)) return false;
     return true;
   });
 };
@@ -39,19 +56,29 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = {
   baixa: 3,
 };
 
-export const sortTasks = (tasks: Task[], sortBy?: SortBy | null) => {
+export const sortTasks = (tasks: Task[], sortBy?: SortValue | null) => {
+  const { field, dir } = parseSort(sortBy);
+  if (!field) return [...tasks];
+  const mult = dir === "desc" ? -1 : 1;
   const list = [...tasks];
-  if (sortBy === "due") {
-    return list.sort((a, b) => (a.due_date ?? "9999-12-31").localeCompare(b.due_date ?? "9999-12-31"));
-  }
-  if (sortBy === "priority") {
+  if (field === "due") {
     return list.sort(
       (a, b) =>
-        (a.priority ? PRIORITY_ORDER[a.priority] : 9) - (b.priority ? PRIORITY_ORDER[b.priority] : 9)
+        mult * (a.due_date ?? "9999-12-31").localeCompare(b.due_date ?? "9999-12-31")
     );
   }
-  if (sortBy === "created") {
-    return list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  if (field === "priority") {
+    return list.sort(
+      (a, b) =>
+        mult *
+        ((a.priority ? PRIORITY_ORDER[a.priority] : 9) - (b.priority ? PRIORITY_ORDER[b.priority] : 9))
+    );
+  }
+  if (field === "created") {
+    return list.sort((a, b) => mult * a.created_at.localeCompare(b.created_at));
+  }
+  if (field === "name") {
+    return list.sort((a, b) => mult * a.title.localeCompare(b.title, "pt-BR"));
   }
   return list;
 };
@@ -68,10 +95,23 @@ export const buildTaskGroups = ({
   statuses: TaskStatus[];
   members: TaskMember[];
   groupBy?: GroupBy;
-  sortBy?: SortBy | null;
+  sortBy?: SortValue | null;
   filters?: TaskViewFilters | null;
 }): TaskGroup[] => {
   const visible = sortTasks(applyViewFilters(tasks, filters), sortBy);
+
+  if (groupBy === "none") {
+    return [
+      {
+        key: "__all__",
+        label: "Tarefas",
+        pill: NEUTRAL_PILL,
+        pillDot: "bg-primary",
+        tasks: visible,
+        patch: null,
+      },
+    ];
+  }
 
   if (groupBy === "assignee") {
     const groups: TaskGroup[] = members.map((m) => ({
