@@ -6,7 +6,10 @@ export type TaskColumnId = "assignee" | "due" | "priority" | "created" | "origin
 export interface TaskColumnPref {
   id: TaskColumnId;
   show: boolean;
+  /** Largura em px (ajustável arrastando a borda do cabeçalho). */
+  width?: number;
 }
+
 
 export const TASK_COLUMN_LABEL: Record<TaskColumnId, string> = {
   assignee: "Responsável",
@@ -16,25 +19,37 @@ export const TASK_COLUMN_LABEL: Record<TaskColumnId, string> = {
   origin: "Lista/Pasta",
 };
 
-export const TASK_COLUMN_WIDTH: Record<TaskColumnId, string> = {
-  assignee: "w-[110px]",
-  due: "w-[120px]",
-  priority: "w-[100px]",
-  created: "w-[110px]",
-  origin: "w-[180px]",
+/** Largura padrão (px) de cada coluna. */
+export const TASK_COLUMN_DEFAULT_WIDTH: Record<TaskColumnId, number> = {
+  assignee: 110,
+  due: 120,
+  priority: 100,
+  created: 110,
+  origin: 180,
 };
 
+/** Largura mínima permitida ao arrastar. */
+export const TASK_COLUMN_MIN_WIDTH = 60;
+
 export const DEFAULT_TASK_COLUMNS: TaskColumnPref[] = [
-  { id: "assignee", show: true },
-  { id: "due", show: true },
-  { id: "priority", show: true },
-  { id: "created", show: false },
-  { id: "origin", show: false },
+  { id: "assignee", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.assignee },
+  { id: "due", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.due },
+  { id: "priority", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.priority },
+  { id: "created", show: false, width: TASK_COLUMN_DEFAULT_WIDTH.created },
+  { id: "origin", show: false, width: TASK_COLUMN_DEFAULT_WIDTH.origin },
 ];
 
-/** Garante que novas colunas apareçam em preferências antigas salvas. */
+/** Garante que novas colunas/larguras apareçam em preferências antigas salvas. */
 const reconcile = (saved: TaskColumnPref[]): TaskColumnPref[] => {
-  const known = saved.filter((c) => c.id in TASK_COLUMN_LABEL);
+  const known = saved
+    .filter((c) => c.id in TASK_COLUMN_LABEL)
+    .map((c) => ({
+      ...c,
+      width: Math.max(
+        TASK_COLUMN_MIN_WIDTH,
+        c.width ?? TASK_COLUMN_DEFAULT_WIDTH[c.id]
+      ),
+    }));
   const missing = DEFAULT_TASK_COLUMNS.filter((d) => !known.some((c) => c.id === d.id));
   return [...known, ...missing];
 };
