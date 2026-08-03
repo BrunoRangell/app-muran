@@ -16,8 +16,7 @@ import {
   Target,
   TrendingUp,
   UserX,
-  Megaphone,
-  Building2
+  Megaphone
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
