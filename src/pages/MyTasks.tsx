@@ -18,7 +18,8 @@ import {
   TASK_STATUS_META,
 } from "@/types/tasks";
 import { cn } from "@/lib/utils";
-import { CalendarDays, CheckSquare, Loader2 } from "lucide-react";
+import { CalendarDays, CheckSquare } from "lucide-react";
+import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseLocalDate } from "@/utils/dateHelpers";

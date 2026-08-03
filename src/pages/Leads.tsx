@@ -33,7 +33,8 @@ import { useCreateLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/u
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Lead, LEAD_STATUSES, LEAD_STATUS_META, LeadStatus } from "@/types/tasks";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Target, Trash2 } from "lucide-react";
+import { Plus, Target, Trash2 } from "lucide-react";
+import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 
 const NONE = "__none__";
 
