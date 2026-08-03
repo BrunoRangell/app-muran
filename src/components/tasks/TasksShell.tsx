@@ -21,11 +21,11 @@ const railItems = [
   { icon: Building2, label: "Internas", path: "/tarefas/internas" },
   { icon: CheckSquare, label: "Minhas", path: "/tarefas/minhas" },
   { icon: Target, label: "Leads", path: "/tarefas/leads" },
+  { icon: Users, label: "Membros", path: "/tarefas/membros" },
 ];
 
 const railStatic = [
   { icon: Sparkles, label: "IA" },
-  { icon: Users, label: "Equipes" },
   { icon: ListChecks, label: "Painéis" },
 ];
 
