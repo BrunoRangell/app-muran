@@ -86,7 +86,10 @@ const ClientTasks = () => {
     searchParams.get("clientId")
   );
   const [listId, setListId] = usePersistentState<string | null>("tasks:clientes:listId", null);
-  const [crumb, setCrumb] = useState<{ client: string; list: string } | null>(null);
+  const [crumb, setCrumb] = usePersistentState<{ client: string; list: string } | null>(
+    "tasks:clientes:crumb",
+    null
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = usePersistentState<"lista" | "quadro">("tasks:clientes:view", "lista");
 

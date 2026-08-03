@@ -65,6 +65,7 @@ export const TaskDetailModal = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [comment, setComment] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
 
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -75,6 +76,7 @@ export const TaskDetailModal = ({
     setTitle(task?.title ?? "");
     setDescription(task?.description ?? "");
     setComment("");
+    setEditingTitle(false);
   }, [task?.id, task?.title, task?.description]);
 
   if (!task) return null;
@@ -99,12 +101,34 @@ export const TaskDetailModal = ({
         <div className="grid max-h-[calc(90vh-3rem)] grid-cols-1 overflow-hidden lg:grid-cols-[1fr_320px]">
           {/* Coluna principal */}
           <div className="overflow-y-auto px-6 py-5">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
-              className="border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
-            />
+            {editingTitle ? (
+              <Input
+                autoFocus
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => {
+                  setEditingTitle(false);
+                  if (title.trim() && title.trim() !== task.title) patch({ title: title.trim() });
+                  else setTitle(task.title);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") {
+                    setTitle(task.title);
+                    setEditingTitle(false);
+                  }
+                }}
+                className="h-auto border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
+              />
+            ) : (
+              <h2
+                onClick={() => setEditingTitle(true)}
+                title="Clique para editar"
+                className="cursor-text rounded-[4px] px-0 py-0.5 text-2xl font-semibold leading-tight transition-colors hover:bg-accent/40"
+              >
+                {task.title}
+              </h2>
+            )}
 
             <div className="mt-4 divide-y divide-border/60">
               <Field icon={Circle} label="Status">
@@ -123,8 +147,13 @@ export const TaskDetailModal = ({
                   <SelectContent className="tasks-dark">
                     {statuses.map((s) => (
                       <SelectItem key={s} value={s}>
-                        <span className="flex items-center gap-2">
-                          <span className={cn("h-2 w-2 rounded-full", TASK_STATUS_META[s].dot)} />
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-[3px] px-1.5 py-[2px] text-[11px] font-semibold uppercase tracking-wide",
+                            TASK_STATUS_META[s].pill
+                          )}
+                        >
+                          <span className={cn("h-[7px] w-[7px] rounded-full", TASK_STATUS_META[s].pillDot)} />
                           {TASK_STATUS_META[s].label}
                         </span>
                       </SelectItem>
@@ -184,7 +213,10 @@ export const TaskDetailModal = ({
                     <SelectItem value={NONE}>Sem prioridade</SelectItem>
                     {(Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => (
                       <SelectItem key={p} value={p}>
-                        {TASK_PRIORITY_META[p].label}
+                        <span className={cn("flex items-center gap-1.5", TASK_PRIORITY_META[p].flag)}>
+                          <Flag className="h-3 w-3 fill-current" />
+                          {TASK_PRIORITY_META[p].label}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
