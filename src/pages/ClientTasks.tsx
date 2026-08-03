@@ -1,145 +1,69 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { KanbanBoard, KanbanColumnDef } from "@/components/tasks/KanbanBoard";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { TaskListView } from "@/components/tasks/TaskListView";
-import { TasksTree, TasksTreeFolder, TasksTreeItem } from "@/components/tasks/TasksShell";
+import { FolderTreePanel } from "@/components/tasks/FolderTreePanel";
+import { ActiveView, DEFAULT_VIEWS, ViewTabs } from "@/components/tasks/ViewTabs";
 import { TaskBoardSkeleton, TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
-import { useClientTaskLists, useListTasks, useUpdateTask } from "@/hooks/useTasks";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
-import { CLIENT_TASK_STATUSES, Task, TaskStatus, TASK_STATUS_META } from "@/types/tasks";
-import { LayoutGrid, List, ListChecks } from "lucide-react";
-
-const columns: KanbanColumnDef<TaskStatus>[] = CLIENT_TASK_STATUSES.map((s) => ({
-  id: s,
-  label: TASK_STATUS_META[s].label,
-  dot: TASK_STATUS_META[s].dot,
-  border: TASK_STATUS_META[s].border,
-  header: TASK_STATUS_META[s].header,
-}));
-
-const ListRow = ({
-  listId,
-  label,
-  active,
-  onClick,
-}: {
-  listId: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) => {
-  const { data: tasks = [] } = useListTasks(listId);
-  return (
-    <TasksTreeItem
-      label={label}
-      icon={ListChecks}
-      count={tasks.length}
-      active={active}
-      onClick={onClick}
-    />
-  );
-};
-
-const ClientNode = ({
-  clientId,
-  name,
-  expanded,
-  onToggle,
-  selectedList,
-  onSelectList,
-}: {
-  clientId: string;
-  name: string;
-  expanded: boolean;
-  onToggle: () => void;
-  selectedList: string | null;
-  onSelectList: (listId: string, clientName: string, listName: string) => void;
-}) => {
-  const { data: lists = [] } = useClientTaskLists(expanded ? clientId : undefined);
-  const hasSelected = lists.some((l) => l.id === selectedList);
-
-  return (
-    <TasksTreeFolder label={name} expanded={expanded} active={hasSelected} onToggle={onToggle}>
-      {lists.map((l) => (
-        <ListRow
-          key={l.id}
-          listId={l.id}
-          label={l.name}
-          active={selectedList === l.id}
-          onClick={() => onSelectList(l.id, name, l.name)}
-        />
-      ))}
-    </TasksTreeFolder>
-  );
-};
+import { buildTaskGroups } from "@/components/tasks/taskGrouping";
+import { useListTasks, useUpdateTask } from "@/hooks/useTasks";
+import { useTaskMembers } from "@/hooks/useTaskMembers";
+import { CLIENT_TASK_STATUSES, Task, TaskStatus } from "@/types/tasks";
 
 const ClientTasks = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [expanded, setExpanded] = usePersistentState<string | null>(
-    "tasks:clientes:expanded",
-    searchParams.get("clientId")
-  );
-  const [listId, setListId] = usePersistentState<string | null>("tasks:clientes:listId", null);
-  const [crumb, setCrumb] = usePersistentState<{ client: string; list: string } | null>(
-    "tasks:clientes:crumb",
+  const [listId, setListId] = usePersistentState<string | null>("tasks:folders:listId", null);
+  const [crumb, setCrumb] = usePersistentState<{ folder: string; list: string } | null>(
+    "tasks:folders:crumb",
     null
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = usePersistentState<"lista" | "quadro">("tasks:clientes:view", "lista");
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients-for-tasks"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, company_name")
-        .order("company_name");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const [view, setView] = usePersistentState<ActiveView>("tasks:folders:view", DEFAULT_VIEWS[0]);
 
   const { data: tasks = [], isLoading } = useListTasks(listId ?? undefined);
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTaskMembers();
   const updateTask = useUpdateTask();
   const selected: Task | null = tasks.find((t) => t.id === selectedId) ?? null;
 
-  useEffect(() => {
-    if (expanded) setSearchParams({ clientId: expanded }, { replace: true });
-  }, [expanded, setSearchParams]);
+  const groups = buildTaskGroups({
+    tasks,
+    statuses: CLIENT_TASK_STATUSES,
+    members,
+    groupBy: view.group_by,
+    sortBy: view.sort_by,
+    filters: view.filters,
+  });
+
+  const columns: KanbanColumnDef<string>[] = groups.map((g) => ({
+    id: g.key,
+    label: g.label,
+    dot: g.pillDot,
+    border: "border-t-transparent",
+    header: "text-foreground/90",
+  }));
+
+  const groupOf = (task: Task) =>
+    groups.find((g) => g.tasks.some((t) => t.id === task.id))?.key ?? groups[0]?.key ?? "";
 
   return (
     <>
-      <TasksTree title="Gestão de Clientes">
-        {clients.map((c) => (
-          <ClientNode
-            key={c.id}
-            clientId={c.id}
-            name={c.company_name}
-            expanded={expanded === c.id}
-            onToggle={() => setExpanded((e) => (e === c.id ? null : c.id))}
-            selectedList={listId}
-            onSelectList={(id, client, list) => {
-              setListId(id);
-              setCrumb({ client, list });
-            }}
-          />
-        ))}
-      </TasksTree>
+      <FolderTreePanel
+        selectedList={listId}
+        onSelectList={(id, folder, list) => {
+          setListId(id);
+          setCrumb({ folder, list });
+        }}
+      />
 
       <section className="min-w-0 flex-1 overflow-x-auto p-4">
         <div className="mb-4 flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          <span>Gestão de Clientes</span>
+          <span>Pastas</span>
           {crumb && (
             <>
               <span className="opacity-40">/</span>
-              <span>{crumb.client}</span>
+              <span>{crumb.folder}</span>
               <span className="opacity-40">/</span>
               <span className="font-semibold text-foreground">{crumb.list}</span>
             </>
@@ -147,54 +71,45 @@ const ClientTasks = () => {
         </div>
 
         {listId && (
-          <div className="mb-3 flex items-center gap-1 border-b border-border/70 pb-0 text-[12px]">
-            {([
-              { id: "lista" as const, label: "Lista", icon: List },
-              { id: "quadro" as const, label: "Quadro", icon: LayoutGrid },
-            ]).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setView(tab.id)}
-                className={
-                  "flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 transition-colors " +
-                  (view === tab.id
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground")
-                }
-              >
-                <tab.icon className="h-3.5 w-3.5" />
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <ViewTabs
+            listId={listId}
+            members={members}
+            activeId={view.id}
+            onChange={setView}
+          />
         )}
 
         {!listId ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            Escolha um cliente e uma lista na barra lateral.
+            Escolha uma pasta e uma lista na barra lateral.
           </p>
         ) : isLoading ? (
-          view === "lista" ? (
+          view.view_type === "list" ? (
             <TaskListSkeleton />
           ) : (
             <TaskBoardSkeleton />
           )
-        ) : view === "lista" ? (
+        ) : view.view_type === "list" ? (
           <TaskListView
             statuses={CLIENT_TASK_STATUSES}
             tasks={tasks}
             members={members}
             onOpenTask={(t) => setSelectedId(t.id)}
             newTaskScope={{ list_id: listId, is_internal: false }}
-            storageKey="tasks:list:collapsed:clientes"
+            storageKey={`tasks:list:collapsed:${view.id}`}
+            groupBy={view.group_by}
+            sortBy={view.sort_by}
+            filters={view.filters}
           />
         ) : (
           <KanbanBoard
             columns={columns}
-            items={tasks}
-            getStatus={(t) => t.status}
-            onStatusChange={(t, status) => updateTask.mutate({ id: t.id, status })}
+            items={groups.flatMap((g) => g.tasks)}
+            getStatus={groupOf}
+            onStatusChange={(t, key) => {
+              const patch = groups.find((g) => g.key === key)?.patch;
+              if (patch) updateTask.mutate({ id: t.id, ...patch });
+            }}
             renderCard={(t) => (
               <TaskCard
                 task={t}
@@ -202,14 +117,18 @@ const ClientTasks = () => {
                 onClick={() => setSelectedId(t.id)}
               />
             )}
-            footer={(status) => (
-              <NewTaskDialog
-                members={members}
-                status={status}
-                scope={{ list_id: listId, is_internal: false }}
-                label="Adicionar Tarefa"
-              />
-            )}
+            footer={(key) => {
+              const patch = groups.find((g) => g.key === key)?.patch ?? {};
+              return (
+                <NewTaskDialog
+                  members={members}
+                  status={(patch.status as TaskStatus) ?? CLIENT_TASK_STATUSES[0]}
+                  scope={{ list_id: listId, is_internal: false }}
+                  defaults={{ assignee_id: patch.assignee_id, priority: patch.priority }}
+                  label="Adicionar Tarefa"
+                />
+              );
+            }}
           />
         )}
       </section>
@@ -218,7 +137,7 @@ const ClientTasks = () => {
         task={selected}
         statuses={CLIENT_TASK_STATUSES}
         members={members}
-        breadcrumb={crumb ? ["Gestão de Clientes", crumb.client, crumb.list] : undefined}
+        breadcrumb={crumb ? ["Pastas", crumb.folder, crumb.list] : undefined}
         open={!!selected}
         onOpenChange={(open) => !open && setSelectedId(null)}
       />
