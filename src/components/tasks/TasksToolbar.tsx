@@ -70,18 +70,96 @@ const CheckRow = ({
   </Label>
 );
 
-/** Barra fixa de Filtrar / Ordenar / Agrupar (estilo ClickUp). */
+/** Painel "Colunas" (equivalente ao "Campos" do ClickUp) com drag & drop nativo. */
+const ColumnsMenu = ({ allowOrigin }: { allowOrigin: boolean }) => {
+  const [prefs, setPrefs] = useTaskColumnPrefs();
+  const [dragId, setDragId] = useState<TaskColumnId | null>(null);
+
+  const list = prefs.filter((c) => (c.id === "origin" ? allowOrigin : true));
+  const visibleCount = list.filter((c) => c.show).length;
+
+  const move = (from: TaskColumnId, to: TaskColumnId) => {
+    if (from === to) return;
+    const next = [...prefs];
+    const fromIdx = next.findIndex((c) => c.id === from);
+    const toIdx = next.findIndex((c) => c.id === to);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [item] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, item);
+    setPrefs(next);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className={btn}>
+          <Columns3 className="h-3.5 w-3.5" />
+          Colunas
+          <span className="text-[11px] text-muted-foreground">· {visibleCount}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="tasks-dark w-64 p-2 text-foreground">
+        <p className="px-1.5 pb-1 text-[11px] font-semibold uppercase text-muted-foreground">
+          Campos
+        </p>
+        <div className="space-y-0.5">
+          {list.map((col) => (
+            <div
+              key={col.id}
+              draggable
+              onDragStart={() => setDragId(col.id)}
+              onDragEnd={() => setDragId(null)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId) move(dragId, col.id);
+                setDragId(null);
+              }}
+              className={cn(
+                "flex items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-accent/60",
+                dragId === col.id && "opacity-50"
+              )}
+            >
+              <GripVertical className="h-3.5 w-3.5 cursor-grab text-muted-foreground" />
+              <span className="flex-1 truncate">{TASK_COLUMN_LABEL[col.id]}</span>
+              <button
+                type="button"
+                aria-label={col.show ? "Esconder coluna" : "Mostrar coluna"}
+                onClick={() =>
+                  setPrefs(prefs.map((c) => (c.id === col.id ? { ...c, show: !c.show } : c)))
+                }
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {col.show ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="px-1.5 pt-2 text-[11px] text-muted-foreground">
+          Arraste para reordenar. "Nome" é sempre a primeira coluna.
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+/** Barra fixa de Filtrar / Ordenar / Agrupar / Colunas (estilo ClickUp). */
 export const TasksToolbar = ({
   members,
   statuses,
   value,
   onChange,
+  allowOriginColumn = false,
 }: {
   members: TaskMember[];
   statuses: TaskStatus[];
   value: ToolbarState;
   onChange: (next: ToolbarState) => void;
+  /** Habilita a coluna "Lista/Pasta" (visões consolidadas). */
+  allowOriginColumn?: boolean;
 }) => {
+  const [showCompleted, setShowCompleted] = useShowCompleted();
+
   const f = normalizeFilters(value.filters);
   const activeCount = countActiveFilters(value.filters);
   const { field: sortField, dir: sortDir } = parseSort(value.sort_by);
