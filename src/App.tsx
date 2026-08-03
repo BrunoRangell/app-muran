@@ -67,7 +67,6 @@ const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficRep
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
 const TaskSpaces = lazyWithTimeout(() => import("@/pages/TaskSpaces"));
-const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
 const TaskMembers = lazyWithTimeout(() => import("@/pages/TaskMembers"));
 const TasksShell = lazyWithTimeout(() => import("@/components/tasks/TasksShell"));
 
