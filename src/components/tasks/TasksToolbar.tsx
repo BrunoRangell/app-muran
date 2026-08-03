@@ -1,5 +1,25 @@
-import { ArrowDownAZ, ArrowUpAZ, Filter, Group, ListFilter, X } from "lucide-react";
+import { useState } from "react";
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  CheckCircle2,
+  Columns3,
+  Eye,
+  EyeOff,
+  Filter,
+  GripVertical,
+  Group,
+  ListFilter,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  TASK_COLUMN_LABEL,
+  TaskColumnId,
+  useShowCompleted,
+  useTaskColumnPrefs,
+} from "@/components/tasks/taskPreferences";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
