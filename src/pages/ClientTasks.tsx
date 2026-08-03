@@ -6,11 +6,12 @@ import { KanbanBoard, KanbanColumnDef } from "@/components/tasks/KanbanBoard";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { TaskListView } from "@/components/tasks/TaskListView";
 import { TasksTree, TasksTreeItem } from "@/components/tasks/TasksShell";
 import { useClientTaskLists, useListTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { CLIENT_TASK_STATUSES, Task, TaskStatus, TASK_STATUS_META } from "@/types/tasks";
-import { ChevronDown, ChevronRight, Folder, ListChecks, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, LayoutGrid, List, ListChecks, Loader2 } from "lucide-react";
 
 const columns: KanbanColumnDef<TaskStatus>[] = CLIENT_TASK_STATUSES.map((s) => ({
   id: s,
@@ -75,6 +76,7 @@ const ClientTasks = () => {
   const [listId, setListId] = useState<string | null>(null);
   const [crumb, setCrumb] = useState<{ client: string; list: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<"lista" | "quadro">("lista");
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-for-tasks"],
@@ -129,6 +131,30 @@ const ClientTasks = () => {
           )}
         </div>
 
+        {listId && (
+          <div className="mb-3 flex items-center gap-1 border-b border-border/70 pb-0 text-[12px]">
+            {([
+              { id: "lista" as const, label: "Lista", icon: List },
+              { id: "quadro" as const, label: "Quadro", icon: LayoutGrid },
+            ]).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setView(tab.id)}
+                className={
+                  "flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 transition-colors " +
+                  (view === tab.id
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground")
+                }
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {!listId ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
             Escolha um cliente e uma lista na barra lateral.
@@ -137,6 +163,14 @@ const ClientTasks = () => {
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        ) : view === "lista" ? (
+          <TaskListView
+            statuses={CLIENT_TASK_STATUSES}
+            tasks={tasks}
+            members={members}
+            onOpenTask={(t) => setSelectedId(t.id)}
+            newTaskScope={{ list_id: listId, is_internal: false }}
+          />
         ) : (
           <KanbanBoard
             columns={columns}
