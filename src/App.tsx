@@ -95,9 +95,9 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route index element={<MyTasks />} />
+          <Route index element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="espacos" element={<TaskSpaces />} />
-          <Route path="minhas" element={<Navigate to="/tarefas" replace />} />
+          <Route path="minhas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="clientes" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="internas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="leads" element={<Navigate to="/tarefas/espacos" replace />} />
