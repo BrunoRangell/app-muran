@@ -60,6 +60,8 @@ interface Props {
   groupBy?: GroupBy;
   sortBy?: SortValue | null;
   filters?: TaskViewFilters | null;
+  /** Exibe o botão "Adicionar Tarefa" em cada grupo (desligado na visão consolidada). */
+  allowCreate?: boolean;
 }
 
 export const TaskListView = ({
@@ -72,6 +74,7 @@ export const TaskListView = ({
   groupBy = "status",
   sortBy,
   filters,
+  allowCreate = true,
 }: Props) => {
   const [collapsed, setCollapsed] = usePersistentState<Record<string, boolean>>(storageKey, {});
   const updateTask = useUpdateTask();
@@ -220,6 +223,7 @@ export const TaskListView = ({
                     );
                   })}
 
+                  {allowCreate && (
                   <div className="px-1 py-0.5">
                     <NewTaskDialog
                       members={members}
@@ -232,6 +236,7 @@ export const TaskListView = ({
                       label="Adicionar Tarefa"
                     />
                   </div>
+                  )}
                 </div>
               </div>
             </div>
