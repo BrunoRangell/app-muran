@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Select,
@@ -29,7 +29,15 @@ const ALL = "__all__";
 
 const MyTasks = () => {
   const { data: members = [], isLoading: loadingMembers } = useTaskMembers();
+  const { data: me, isLoading: loadingMe } = useCurrentTaskMember();
   const [memberId, setMemberId] = usePersistentState<string | null>("tasks:minhas:member", null);
+
+  useEffect(() => {
+    if (!loadingMe && memberId === null && me) {
+      setMemberId(me.id);
+    }
+  }, [loadingMe, memberId, me, setMemberId]);
+
   const currentMember = members.find((m) => m.id === memberId) ?? null;
   const { data: tasks = [], isLoading } = useMyTasks(currentMember?.id);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
