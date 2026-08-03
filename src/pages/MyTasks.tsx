@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
-import { useTaskMembers } from "@/hooks/useTaskMembers";
+import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
 import { useMyTasks } from "@/hooks/useTasks";
 import {
   CLIENT_TASK_STATUSES,
