@@ -45,9 +45,9 @@ const MyTasks = () => {
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-muran-dark md:text-3xl">
-        <CheckSquare className="h-6 w-6 text-muran-primary" />
+    <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
+      <h1 className="flex items-center gap-2 text-xl font-bold text-foreground md:text-2xl">
+        <CheckSquare className="h-6 w-6 text-primary" />
         Minhas Tarefas
       </h1>
 
@@ -79,7 +79,7 @@ const MyTasks = () => {
       <Card className="divide-y p-0">
         {(isLoading || loadingUser) && (
           <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muran-primary" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         )}
         {!isLoading && !loadingUser && filtered.length === 0 && (

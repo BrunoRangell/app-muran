@@ -84,7 +84,7 @@ const NewLeadDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-muran-primary hover:bg-muran-primary/90">
+        <Button className="">
           <Plus className="mr-1 h-4 w-4" /> Novo lead
         </Button>
       </DialogTrigger>
@@ -266,8 +266,8 @@ const Leads = () => {
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-muran-dark md:text-3xl">
-          <Target className="h-6 w-6 text-muran-primary" />
+        <h1 className="flex items-center gap-2 text-xl font-bold text-foreground md:text-2xl">
+          <Target className="h-6 w-6 text-primary" />
           Leads
         </h1>
         <NewLeadDialog />
@@ -276,7 +276,7 @@ const Leads = () => {
       <Card className="p-3 md:p-5">
         {isLoading ? (
           <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muran-primary" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
           <Tabs defaultValue="kanban" className="space-y-4">
