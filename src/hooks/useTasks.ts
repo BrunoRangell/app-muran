@@ -1,25 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ClientTaskList, InternalArea, Task, TaskComment } from "@/types/tasks";
+import { InternalArea, Task, TaskComment } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
 
 const TASK_SELECT =
   "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at";
-
-export const useClientTaskLists = (clientId?: string) =>
-  useQuery({
-    queryKey: ["client-task-lists", clientId],
-    enabled: !!clientId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_task_lists")
-        .select("id, client_id, name, position, created_at")
-        .eq("client_id", clientId!)
-        .order("position");
-      if (error) throw error;
-      return (data || []) as ClientTaskList[];
-    },
-  });
 
 export const useListTasks = (listId?: string) =>
   useQuery({
@@ -55,18 +40,19 @@ export const useInternalTasks = (area?: InternalArea) =>
   });
 
 export interface MyTaskRow extends Task {
-  client_task_lists: { name: string; clients: { company_name: string } | null } | null;
+  task_lists: { name: string; task_folders: { name: string } | null } | null;
 }
 
-export const useMyTasks = (teamMemberId?: string) =>
+/** Tarefas de um membro do módulo (task_members). */
+export const useMyTasks = (taskMemberId?: string) =>
   useQuery({
-    queryKey: ["tasks", "mine", teamMemberId],
-    enabled: !!teamMemberId,
+    queryKey: ["tasks", "mine", taskMemberId],
+    enabled: !!taskMemberId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select(`${TASK_SELECT}, client_task_lists ( name, clients ( company_name ) )`)
-        .eq("assignee_id", teamMemberId!)
+        .select(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`)
+        .eq("assignee_id", taskMemberId!)
         .order("due_date", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data || []) as unknown as MyTaskRow[];

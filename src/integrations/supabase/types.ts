@@ -924,7 +924,7 @@ export type Database = {
             foreignKeyName: "leads_assignee_id_fkey"
             columns: ["assignee_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "task_members"
             referencedColumns: ["id"]
           },
         ]
@@ -1146,6 +1146,139 @@ export type Database = {
           },
         ]
       }
+      task_folders: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      task_lists: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_lists_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "task_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_members: {
+        Row: {
+          avatar_url: string | null
+          color: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      task_views: {
+        Row: {
+          created_at: string
+          filters: Json
+          group_by: string
+          id: string
+          list_id: string
+          name: string
+          position: number
+          sort_by: string | null
+          view_type: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          group_by?: string
+          id?: string
+          list_id: string
+          name: string
+          position?: number
+          sort_by?: string | null
+          view_type?: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          group_by?: string
+          id?: string
+          list_id?: string
+          name?: string
+          position?: number
+          sort_by?: string | null
+          view_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_views_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "task_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assignee_id: string | null
@@ -1206,14 +1339,14 @@ export type Database = {
             foreignKeyName: "tasks_assignee_id_fkey"
             columns: ["assignee_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "task_members"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_list_id_fkey"
+            foreignKeyName: "tasks_new_list_id_fkey"
             columns: ["list_id"]
             isOneToOne: false
-            referencedRelation: "client_task_lists"
+            referencedRelation: "task_lists"
             referencedColumns: ["id"]
           },
         ]
