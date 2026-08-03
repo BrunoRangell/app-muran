@@ -295,7 +295,7 @@ export const ViewTabs = ({
                     className="text-destructive focus:text-destructive"
                     onClick={() => {
                       deleteView.mutate(savedView.id);
-                      if (active) onChange(DEFAULT_VIEWS[0]);
+                      if (active) onChange(baseViews[0]);
                     }}
                   >
                     <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
