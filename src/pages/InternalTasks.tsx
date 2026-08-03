@@ -4,6 +4,7 @@ import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { TasksTree, TasksTreeItem } from "@/components/tasks/TasksShell";
+import { TaskListView } from "@/components/tasks/TaskListView";
 import { useInternalTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import {
@@ -13,7 +14,7 @@ import {
   TaskStatus,
   TASK_STATUS_META,
 } from "@/types/tasks";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, LayoutGrid, List, Loader2 } from "lucide-react";
 
 const columns: KanbanColumnDef<TaskStatus>[] = INTERNAL_TASK_STATUSES.map((s) => ({
   id: s,
@@ -29,6 +30,7 @@ const InternalTasks = () => {
   const { data: members = [] } = useTeamMembers();
   const updateTask = useUpdateTask();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<"lista" | "quadro">("lista");
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
   return (
@@ -52,10 +54,40 @@ const InternalTasks = () => {
           <span className="font-semibold text-foreground">{area}</span>
         </div>
 
+        <div className="mb-3 flex items-center gap-1 border-b border-border/70 text-[12px]">
+          {([
+            { id: "lista" as const, label: "Lista", icon: List },
+            { id: "quadro" as const, label: "Quadro", icon: LayoutGrid },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setView(tab.id)}
+              className={
+                "flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 transition-colors " +
+                (view === tab.id
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground")
+              }
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        ) : view === "lista" ? (
+          <TaskListView
+            statuses={INTERNAL_TASK_STATUSES}
+            tasks={tasks}
+            members={members}
+            onOpenTask={(t) => setSelectedId(t.id)}
+            newTaskScope={{ is_internal: true, internal_area: area, list_id: null }}
+          />
         ) : (
           <KanbanBoard
             columns={columns}
