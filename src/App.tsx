@@ -65,6 +65,10 @@ const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
+const ClientTasks = lazyWithTimeout(() => import("@/pages/ClientTasks"));
+const InternalTasks = lazyWithTimeout(() => import("@/pages/InternalTasks"));
+const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
+const Leads = lazyWithTimeout(() => import("@/pages/Leads"));
 
 function App() {
   return (
