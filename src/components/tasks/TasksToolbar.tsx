@@ -345,6 +345,26 @@ export const TasksToolbar = ({
           ))}
         </PopoverContent>
       </Popover>
+
+      {/* Colunas */}
+      <ColumnsMenu allowOrigin={allowOriginColumn} />
+
+      {/* Mostrar concluídas */}
+      <label
+        className={cn(
+          "ml-1 flex h-7 cursor-pointer items-center gap-1.5 rounded px-2 text-[12px] transition-colors hover:bg-accent/60",
+          showCompleted ? "text-foreground" : "text-muted-foreground"
+        )}
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Mostrar concluídas
+        <Switch
+          checked={showCompleted}
+          onCheckedChange={setShowCompleted}
+          className="ml-0.5 h-4 w-7"
+        />
+      </label>
     </div>
+
   );
 };
