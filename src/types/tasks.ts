@@ -75,7 +75,7 @@ export interface TaskList {
 }
 
 export type ViewType = "list" | "board";
-export type GroupBy = "status" | "assignee" | "priority" | "none";
+export type GroupBy = "status" | "assignee" | "priority" | "due" | "none";
 export type SortBy = "due" | "priority" | "created" | "name";
 export type SortDir = "asc" | "desc";
 
@@ -157,6 +157,7 @@ export const GROUP_BY_LABEL: Record<GroupBy, string> = {
   status: "Status",
   assignee: "Responsável",
   priority: "Prioridade",
+  due: "Data de vencimento",
   none: "Nenhum",
 };
 
