@@ -1,9 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { LoadingState } from "@/components/ui/loading-state";
 import Login from "@/pages/Login";
 
 // Pré-carregamento das rotas principais com retry
@@ -84,6 +85,25 @@ function App() {
 
         <Route path="/login" element={<Login />} />
 
+        {/* Módulo de tarefas — app standalone, fora do layout do app-muran */}
+        <Route
+          path="/tarefas"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<LoadingState />}>
+                <TasksShell />
+              </Suspense>
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<Navigate to="/tarefas/clientes" replace />} />
+          <Route path="clientes" element={<ClientTasks />} />
+          <Route path="internas" element={<InternalTasks />} />
+          <Route path="minhas" element={<MyTasks />} />
+          <Route path="leads" element={<Leads />} />
+        </Route>
+
+
         <Route
           element={
             <PrivateRoute>
@@ -157,14 +177,8 @@ function App() {
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
           <Route path="/anuncios-ativos" element={<AnunciosAtivos />} />
 
-          {/* Módulo isolado de tarefas (navegação interna própria) */}
-          <Route path="/tarefas" element={<TasksShell />}>
-            <Route index element={<Navigate to="/tarefas/clientes" replace />} />
-            <Route path="clientes" element={<ClientTasks />} />
-            <Route path="internas" element={<InternalTasks />} />
-            <Route path="minhas" element={<MyTasks />} />
-            <Route path="leads" element={<Leads />} />
-          </Route>
+
+
 
           {/* Redirects das rotas antigas */}
           <Route path="/tarefas-clientes" element={<Navigate to="/tarefas/clientes" replace />} />

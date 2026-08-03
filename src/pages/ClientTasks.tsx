@@ -7,11 +7,13 @@ import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { TaskListView } from "@/components/tasks/TaskListView";
-import { TasksTree, TasksTreeItem } from "@/components/tasks/TasksShell";
+import { TasksTree, TasksTreeFolder, TasksTreeItem } from "@/components/tasks/TasksShell";
+import { TaskBoardSkeleton, TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
+import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { useClientTaskLists, useListTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { CLIENT_TASK_STATUSES, Task, TaskStatus, TASK_STATUS_META } from "@/types/tasks";
-import { ChevronDown, ChevronRight, Folder, LayoutGrid, List, ListChecks, Loader2 } from "lucide-react";
+import { LayoutGrid, List, ListChecks } from "lucide-react";
 
 const columns: KanbanColumnDef<TaskStatus>[] = CLIENT_TASK_STATUSES.map((s) => ({
   id: s,
@@ -60,46 +62,36 @@ const ClientNode = ({
   onSelectList: (listId: string, clientName: string, listName: string) => void;
 }) => {
   const { data: lists = [] } = useClientTaskLists(expanded ? clientId : undefined);
+  const hasSelected = lists.some((l) => l.id === selectedList);
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-1.5 rounded-[4px] px-2 py-[5px] text-left text-[12.5px] text-foreground/80 transition-colors hover:bg-accent/60 hover:text-foreground"
-      >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        )}
-        <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-        <span className="truncate">{name}</span>
-      </button>
-      {expanded && (
-        <div className="ml-[18px] border-l border-border/70 pl-1">
-          {lists.map((l) => (
-            <ListRow
-              key={l.id}
-              listId={l.id}
-              label={l.name}
-              active={selectedList === l.id}
-              onClick={() => onSelectList(l.id, name, l.name)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    <TasksTreeFolder label={name} expanded={expanded} active={hasSelected} onToggle={onToggle}>
+      {lists.map((l) => (
+        <ListRow
+          key={l.id}
+          listId={l.id}
+          label={l.name}
+          active={selectedList === l.id}
+          onClick={() => onSelectList(l.id, name, l.name)}
+        />
+      ))}
+    </TasksTreeFolder>
   );
 };
 
 const ClientTasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [expanded, setExpanded] = useState<string | null>(searchParams.get("clientId"));
-  const [listId, setListId] = useState<string | null>(null);
-  const [crumb, setCrumb] = useState<{ client: string; list: string } | null>(null);
+  const [expanded, setExpanded] = usePersistentState<string | null>(
+    "tasks:clientes:expanded",
+    searchParams.get("clientId")
+  );
+  const [listId, setListId] = usePersistentState<string | null>("tasks:clientes:listId", null);
+  const [crumb, setCrumb] = usePersistentState<{ client: string; list: string } | null>(
+    "tasks:clientes:crumb",
+    null
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<"lista" | "quadro">("lista");
+  const [view, setView] = usePersistentState<"lista" | "quadro">("tasks:clientes:view", "lista");
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-for-tasks"],
@@ -183,9 +175,11 @@ const ClientTasks = () => {
             Escolha um cliente e uma lista na barra lateral.
           </p>
         ) : isLoading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          view === "lista" ? (
+            <TaskListSkeleton />
+          ) : (
+            <TaskBoardSkeleton />
+          )
         ) : view === "lista" ? (
           <TaskListView
             statuses={CLIENT_TASK_STATUSES}
@@ -193,6 +187,7 @@ const ClientTasks = () => {
             members={members}
             onOpenTask={(t) => setSelectedId(t.id)}
             newTaskScope={{ list_id: listId, is_internal: false }}
+            storageKey="tasks:list:collapsed:clientes"
           />
         ) : (
           <KanbanBoard

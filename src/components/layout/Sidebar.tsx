@@ -47,7 +47,7 @@ const adminMenuItems: MenuItem[] = [
     path: "/clientes",
     submenu: financialSubMenu
   },
-  { icon: ListTodo, label: "Tarefas", path: "/tarefas" },
+  { icon: ListTodo, label: "Tarefas", path: "/tarefas", external: true },
   { icon: Settings2, label: "Onboarding", path: "/onboarding" },
   { icon: UserX, label: "Offboarding", path: "/offboarding" },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
@@ -59,7 +59,7 @@ const adminMenuItems: MenuItem[] = [
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { icon: ListTodo, label: "Tarefas", path: "/tarefas" },
+  { icon: ListTodo, label: "Tarefas", path: "/tarefas", external: true },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },

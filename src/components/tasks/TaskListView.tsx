@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import { TeamMember } from "@/types/team";
@@ -10,6 +9,13 @@ import {
 } from "@/types/tasks";
 import { useUpdateTask } from "@/hooks/useTasks";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { usePersistentState } from "@/components/tasks/usePersistentState";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
   ChevronRight,
@@ -22,7 +28,7 @@ import {
 const StatusCircle = ({ status }: { status: TaskStatus }) => (
   <span
     className={cn(
-      "inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border-[1.5px]",
+      "inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-transform",
       TASK_STATUS_META[status].ring
     )}
   >
@@ -45,10 +51,19 @@ interface Props {
   members: TeamMember[];
   onOpenTask: (task: Task) => void;
   newTaskScope: { list_id?: string | null; is_internal?: boolean; internal_area?: string | null };
+  /** Chave para persistir os grupos recolhidos (localStorage). */
+  storageKey?: string;
 }
 
-export const TaskListView = ({ statuses, tasks, members, onOpenTask, newTaskScope }: Props) => {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+export const TaskListView = ({
+  statuses,
+  tasks,
+  members,
+  onOpenTask,
+  newTaskScope,
+  storageKey = "tasks:list:collapsed",
+}: Props) => {
+  const [collapsed, setCollapsed] = usePersistentState<Record<string, boolean>>(storageKey, {});
   const updateTask = useUpdateTask();
 
   return (
@@ -60,20 +75,20 @@ export const TaskListView = ({ statuses, tasks, members, onOpenTask, newTaskScop
 
         return (
           <div key={status}>
-            {/* Cabeçalho do grupo */}
-            <div className="flex items-center gap-2 px-1 py-1">
-              <button
-                type="button"
-                onClick={() => setCollapsed((c) => ({ ...c, [status]: !c[status] }))}
-                className="text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={isCollapsed ? "Expandir" : "Recolher"}
-              >
+            {/* Cabeçalho do grupo — clique recolhe/expande */}
+            <button
+              type="button"
+              onClick={() => setCollapsed((c) => ({ ...c, [status]: !c[status] }))}
+              className="flex w-full items-center gap-2 rounded-[4px] px-1 py-1 text-left transition-colors hover:bg-accent/40"
+              aria-expanded={!isCollapsed}
+            >
+              <span className="text-muted-foreground">
                 {isCollapsed ? (
                   <ChevronRight className="h-3.5 w-3.5" />
                 ) : (
                   <ChevronDown className="h-3.5 w-3.5" />
                 )}
-              </button>
+              </span>
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-[3px] px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide",
@@ -84,78 +99,128 @@ export const TaskListView = ({ statuses, tasks, members, onOpenTask, newTaskScop
                 {meta.label}
               </span>
               <span className="text-[12px] text-muted-foreground">{rows.length}</span>
-            </div>
+            </button>
 
-            {!isCollapsed && (
-              <div className="mt-1 overflow-hidden rounded-[4px] border border-border/70">
-                {/* Cabeçalho de colunas */}
-                <div className="flex items-center border-b border-border/70 bg-card/40 px-3 py-[6px] text-[11px] text-muted-foreground">
-                  <span className="min-w-0 flex-1 pl-[26px]">Nome</span>
-                  <span className="w-[110px] shrink-0">Responsável</span>
-                  <span className="w-[120px] shrink-0">Data de vencimento</span>
-                  <span className="w-[100px] shrink-0">Prioridade</span>
-                </div>
+            <div
+              className={cn(
+                "grid transition-all duration-200 ease-out",
+                isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+              )}
+            >
+              <div className="overflow-hidden">
+                <div className="mt-1 overflow-hidden rounded-[4px] border border-border/70">
+                  {/* Cabeçalho de colunas */}
+                  <div className="flex items-center border-b border-border/70 bg-card/40 px-3 py-[6px] text-[11px] text-muted-foreground">
+                    <span className="min-w-0 flex-1 pl-[26px]">Nome</span>
+                    <span className="w-[110px] shrink-0">Responsável</span>
+                    <span className="w-[120px] shrink-0">Data de vencimento</span>
+                    <span className="w-[100px] shrink-0">Prioridade</span>
+                  </div>
 
-                {rows.map((task) => {
-                  const member = members.find((m) => m.id === task.assignee_id);
-                  const priority = task.priority ? TASK_PRIORITY_META[task.priority] : null;
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => onOpenTask(task)}
-                      className="flex cursor-pointer items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/40"
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const next =
-                              statuses[(statuses.indexOf(task.status) + 1) % statuses.length];
-                            updateTask.mutate({ id: task.id, status: next });
-                          }}
-                        >
-                          <StatusCircle status={task.status} />
-                        </span>
-                        <span className="truncate text-[13px] text-foreground">{task.title}</span>
-                        {task.description && (
-                          <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                        )}
-                      </div>
-                      <div className="w-[110px] shrink-0">
-                        {member ? (
-                          <MemberAvatar member={member} className="h-[22px] w-[22px]" />
-                        ) : (
-                          <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
-                        )}
-                      </div>
-                      <div className="flex w-[120px] shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground">
-                        <Repeat2 className="h-3 w-3 opacity-50" />
-                        {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
-                      </div>
-                      <div className="w-[100px] shrink-0">
-                        {priority ? (
-                          <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-                            <Flag className={cn("h-3 w-3", priority.flag)} />
-                            {priority.label}
+                  {rows.map((task) => {
+                    const member = members.find((m) => m.id === task.assignee_id);
+                    const priority = task.priority ? TASK_PRIORITY_META[task.priority] : null;
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => onOpenTask(task)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") onOpenTask(task);
+                        }}
+                        className="group flex cursor-pointer items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          {/* Dropdown de status direto na linha */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <span
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex cursor-pointer items-center rounded p-[1px] outline-none transition-colors hover:bg-accent"
+                                aria-label="Alterar status"
+                              >
+                                <StatusCircle status={task.status} />
+                              </span>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="start"
+                              className="tasks-dark min-w-[180px]"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {statuses.map((s) => (
+                                <DropdownMenuItem
+                                  key={s}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (s !== task.status) {
+                                      updateTask.mutate({ id: task.id, status: s });
+                                    }
+                                  }}
+                                  className="gap-2 text-[12.5px]"
+                                >
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 rounded-[3px] px-1.5 py-[2px] text-[11px] font-semibold uppercase tracking-wide",
+                                      TASK_STATUS_META[s].pill
+                                    )}
+                                  >
+                                    <span
+                                      className={cn(
+                                        "h-[7px] w-[7px] rounded-full",
+                                        TASK_STATUS_META[s].pillDot
+                                      )}
+                                    />
+                                    {TASK_STATUS_META[s].label}
+                                  </span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          <span className="truncate text-[13px] text-foreground group-hover:underline group-hover:decoration-border">
+                            {task.title}
                           </span>
-                        ) : (
-                          <Flag className="h-3 w-3 text-muted-foreground/30" />
-                        )}
+                          {task.description && (
+                            <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                          )}
+                        </div>
+                        <div className="w-[110px] shrink-0">
+                          {member ? (
+                            <MemberAvatar member={member} className="h-[22px] w-[22px]" />
+                          ) : (
+                            <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
+                          )}
+                        </div>
+                        <div className="flex w-[120px] shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+                          <Repeat2 className="h-3 w-3 opacity-50" />
+                          {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
+                        </div>
+                        <div className="w-[100px] shrink-0">
+                          {priority ? (
+                            <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                              <Flag className={cn("h-3 w-3", priority.flag)} />
+                              {priority.label}
+                            </span>
+                          ) : (
+                            <Flag className="h-3 w-3 text-muted-foreground/30" />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
-                <div className="px-1 py-0.5">
-                  <NewTaskDialog
-                    members={members}
-                    status={status}
-                    scope={newTaskScope as never}
-                    label="Adicionar Tarefa"
-                  />
+                  <div className="px-1 py-0.5">
+                    <NewTaskDialog
+                      members={members}
+                      status={status}
+                      scope={newTaskScope as never}
+                      label="Adicionar Tarefa"
+                    />
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         );
       })}
