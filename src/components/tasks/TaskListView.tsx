@@ -42,10 +42,16 @@ const StatusCircle = ({ status }: { status: TaskStatus }) => (
   </span>
 );
 
+
 const formatDue = (value: string | null) => {
   if (!value) return null;
   const [y, m, d] = value.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
+};
+
+const formatCreated = (value: string) => {
+  const date = new Date(value);
   return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
 };
 
@@ -62,6 +68,8 @@ interface Props {
   filters?: TaskViewFilters | null;
   /** Exibe o botão "Adicionar Tarefa" em cada grupo (desligado na visão consolidada). */
   allowCreate?: boolean;
+  /** Permite a coluna "Lista/Pasta" (visões consolidadas). */
+  allowOriginColumn?: boolean;
 }
 
 export const TaskListView = ({
@@ -75,10 +83,69 @@ export const TaskListView = ({
   sortBy,
   filters,
   allowCreate = true,
+  allowOriginColumn = false,
 }: Props) => {
   const [collapsed, setCollapsed] = usePersistentState<Record<string, boolean>>(storageKey, {});
+  const [columnPrefs] = useTaskColumnPrefs();
+  const [showCompleted] = useShowCompleted();
   const updateTask = useUpdateTask();
-  const groups = buildTaskGroups({ tasks, statuses, members, groupBy, sortBy, filters });
+  const visibleStatuses = showCompleted ? statuses : statuses.filter((s) => s !== "concluido");
+  const pool = showCompleted ? tasks : tasks.filter((t) => t.status !== "concluido");
+  const cols = columnPrefs.filter(
+    (c) => c.show && (c.id === "origin" ? allowOriginColumn : true)
+  );
+  const groups = buildTaskGroups({
+    tasks: pool,
+    statuses: visibleStatuses,
+    members,
+    groupBy,
+    sortBy,
+    filters,
+  });
+
+  const renderCell = (id: TaskColumnId, task: Task) => {
+    if (id === "assignee") {
+      const member = members.find((m) => m.id === task.assignee_id);
+      return member ? (
+        <MemberAvatar member={member} className="h-[22px] w-[22px]" />
+      ) : (
+        <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
+      );
+    }
+    if (id === "due") {
+      return (
+        <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <Repeat2 className="h-3 w-3 opacity-50" />
+          {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
+        </span>
+      );
+    }
+    if (id === "priority") {
+      const priority = task.priority ? TASK_PRIORITY_META[task.priority] : null;
+      return priority ? (
+        <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+          <Flag className={cn("h-3 w-3", priority.flag)} />
+          {priority.label}
+        </span>
+      ) : (
+        <Flag className="h-3 w-3 text-muted-foreground/30" />
+      );
+    }
+    if (id === "created") {
+      return (
+        <span className="text-[12px] text-muted-foreground">{formatCreated(task.created_at)}</span>
+      );
+    }
+    const origin = task.is_internal
+      ? `Interna · ${task.internal_area ?? ""}`
+      : [task.task_lists?.task_folders?.name, task.task_lists?.name].filter(Boolean).join(" · ");
+    return (
+      <span className="block truncate text-[12px] text-muted-foreground">
+        {origin || <span className="opacity-40">—</span>}
+      </span>
+    );
+  };
+
 
   return (
     <div className="space-y-5 text-[13px]">
