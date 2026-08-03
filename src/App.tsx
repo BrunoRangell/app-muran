@@ -65,6 +65,10 @@ const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
+const ClientTasks = lazyWithTimeout(() => import("@/pages/ClientTasks"));
+const InternalTasks = lazyWithTimeout(() => import("@/pages/InternalTasks"));
+const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
+const Leads = lazyWithTimeout(() => import("@/pages/Leads"));
 
 function App() {
   return (
@@ -152,7 +156,14 @@ function App() {
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
           <Route path="/anuncios-ativos" element={<AnunciosAtivos />} />
 
+          {/* Gestão de tarefas */}
+          <Route path="/tarefas-clientes" element={<ClientTasks />} />
+          <Route path="/tarefas-internas" element={<InternalTasks />} />
+          <Route path="/minhas-tarefas" element={<MyTasks />} />
+          <Route path="/leads" element={<Leads />} />
+
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
+
 
           <Route path="*" element={<NotFound />} />
         </Route>

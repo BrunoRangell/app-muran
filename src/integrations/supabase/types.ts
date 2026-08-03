@@ -498,6 +498,38 @@ export type Database = {
           },
         ]
       }
+      client_task_lists: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_task_lists_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           acquisition_channel: string | null
@@ -847,6 +879,56 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          assignee_id: string | null
+          company: string | null
+          contact_info: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          position: number
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          company?: string | null
+          contact_info?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          position?: number
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          company?: string | null
+          contact_info?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          position?: number
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       low_balance_alerts: {
         Row: {
           account_id: string
@@ -1031,6 +1113,110 @@ export type Database = {
           message?: string
         }
         Relationships: []
+      }
+      task_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          author_id?: string
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          internal_area:
+            | Database["public"]["Enums"]["task_internal_area"]
+            | null
+          is_internal: boolean
+          list_id: string | null
+          position: number
+          priority: Database["public"]["Enums"]["task_priority"] | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          internal_area?:
+            | Database["public"]["Enums"]["task_internal_area"]
+            | null
+          is_internal?: boolean
+          list_id?: string | null
+          position?: number
+          priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          internal_area?:
+            | Database["public"]["Enums"]["task_internal_area"]
+            | null
+          is_internal?: boolean
+          list_id?: string | null
+          position?: number
+          priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "client_task_lists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
@@ -1231,6 +1417,18 @@ export type Database = {
         | "responsabilidade_social"
         | "despesas_corriqueiras"
         | "despesas_nao_planejadas"
+      lead_status:
+        | "novo_lead"
+        | "contato_iniciado"
+        | "qualificacao"
+        | "reuniao_agendada"
+        | "proposta_enviada"
+        | "negociacao"
+        | "follow_up"
+        | "aguardando_documentos"
+        | "fechamento"
+        | "ganho"
+        | "perdido"
       payment_status:
         | "RECEIVED"
         | "CONFIRMED"
@@ -1238,6 +1436,14 @@ export type Database = {
         | "OVERDUE"
         | "REFUNDED"
         | "CANCELLED"
+      task_internal_area: "Operacional" | "Financeiro" | "Administrativo"
+      task_priority: "baixa" | "normal" | "alta" | "urgente"
+      task_status:
+        | "pendente"
+        | "fazendo"
+        | "em_aprovacao"
+        | "ajuste"
+        | "concluido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1426,6 +1632,19 @@ export const Constants = {
         "despesas_corriqueiras",
         "despesas_nao_planejadas",
       ],
+      lead_status: [
+        "novo_lead",
+        "contato_iniciado",
+        "qualificacao",
+        "reuniao_agendada",
+        "proposta_enviada",
+        "negociacao",
+        "follow_up",
+        "aguardando_documentos",
+        "fechamento",
+        "ganho",
+        "perdido",
+      ],
       payment_status: [
         "RECEIVED",
         "CONFIRMED",
@@ -1433,6 +1652,15 @@ export const Constants = {
         "OVERDUE",
         "REFUNDED",
         "CANCELLED",
+      ],
+      task_internal_area: ["Operacional", "Financeiro", "Administrativo"],
+      task_priority: ["baixa", "normal", "alta", "urgente"],
+      task_status: [
+        "pendente",
+        "fazendo",
+        "em_aprovacao",
+        "ajuste",
+        "concluido",
       ],
     },
   },
