@@ -64,7 +64,18 @@ export interface Lead {
 /** Paleta espelhando o ClickUp real (tema escuro). */
 export const TASK_STATUS_META: Record<
   TaskStatus,
-  { label: string; dot: string; header: string; border: string; badge: string }
+  {
+    label: string;
+    dot: string;
+    header: string;
+    border: string;
+    badge: string;
+    /** anel do ícone circular de status na visão Lista */
+    ring: string;
+    /** pill do cabeçalho de grupo na visão Lista */
+    pill: string;
+    pillDot: string;
+  }
 > = {
   pendente: {
     label: "PENDENTE",
@@ -72,6 +83,9 @@ export const TASK_STATUS_META: Record<
     header: "text-amber-300",
     border: "border-t-amber-400",
     badge: "bg-amber-400/15 text-amber-300 border-amber-400/30",
+    ring: "border-amber-400",
+    pill: "bg-[#2a2313] text-amber-300",
+    pillDot: "bg-amber-400",
   },
   fazendo: {
     label: "FAZENDO",
@@ -79,6 +93,9 @@ export const TASK_STATUS_META: Record<
     header: "text-sky-300",
     border: "border-t-sky-400",
     badge: "bg-sky-400/15 text-sky-300 border-sky-400/30",
+    ring: "border-sky-400",
+    pill: "bg-[#132330] text-sky-300",
+    pillDot: "bg-sky-400",
   },
   em_aprovacao: {
     label: "EM APROVAÇÃO",
@@ -86,6 +103,9 @@ export const TASK_STATUS_META: Record<
     header: "text-purple-300",
     border: "border-t-purple-400",
     badge: "bg-purple-400/15 text-purple-300 border-purple-400/30",
+    ring: "border-purple-400",
+    pill: "bg-[#231a33] text-purple-300",
+    pillDot: "bg-purple-400",
   },
   ajuste: {
     label: "AJUSTE",
@@ -93,6 +113,9 @@ export const TASK_STATUS_META: Record<
     header: "text-rose-300",
     border: "border-t-rose-500",
     badge: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+    ring: "border-rose-500",
+    pill: "bg-[#2e1620] text-rose-300",
+    pillDot: "bg-rose-500",
   },
   concluido: {
     label: "CONCLUÍDO",
@@ -100,6 +123,9 @@ export const TASK_STATUS_META: Record<
     header: "text-emerald-300",
     border: "border-t-emerald-400",
     badge: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
+    ring: "border-emerald-400",
+    pill: "bg-[#132a22] text-emerald-300",
+    pillDot: "bg-emerald-400",
   },
 };
 

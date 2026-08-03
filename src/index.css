@@ -192,7 +192,8 @@
 }
 /* ===== Módulo de Tarefas: tema escuro isolado (estilo ClickUp) ===== */
 .tasks-dark {
-  --background: 150 10% 6%;
+  font-family: Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --background: 150 8% 7%;
   --foreground: 0 0% 96%;
   --card: 150 8% 9%;
   --card-foreground: 0 0% 96%;

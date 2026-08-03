@@ -1,0 +1,164 @@
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { MemberAvatar } from "@/components/tasks/MemberAvatar";
+import { TeamMember } from "@/types/team";
+import {
+  Task,
+  TaskStatus,
+  TASK_PRIORITY_META,
+  TASK_STATUS_META,
+} from "@/types/tasks";
+import { useUpdateTask } from "@/hooks/useTasks";
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import {
+  ChevronDown,
+  ChevronRight,
+  Flag,
+  MessageSquare,
+  Repeat2,
+} from "lucide-react";
+
+/** Ícone circular de status (igual ao ClickUp: anel colorido + tracinhos). */
+const StatusCircle = ({ status }: { status: TaskStatus }) => (
+  <span
+    className={cn(
+      "inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border-[1.5px]",
+      TASK_STATUS_META[status].ring
+    )}
+  >
+    {status === "concluido" && (
+      <span className={cn("h-[7px] w-[7px] rounded-full", TASK_STATUS_META[status].dot)} />
+    )}
+  </span>
+);
+
+const formatDue = (value: string | null) => {
+  if (!value) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
+};
+
+interface Props {
+  statuses: TaskStatus[];
+  tasks: Task[];
+  members: TeamMember[];
+  onOpenTask: (task: Task) => void;
+  newTaskScope: { list_id?: string | null; is_internal?: boolean; internal_area?: string | null };
+}
+
+export const TaskListView = ({ statuses, tasks, members, onOpenTask, newTaskScope }: Props) => {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const updateTask = useUpdateTask();
+
+  return (
+    <div className="space-y-5 text-[13px]">
+      {statuses.map((status) => {
+        const meta = TASK_STATUS_META[status];
+        const rows = tasks.filter((t) => t.status === status);
+        const isCollapsed = collapsed[status];
+
+        return (
+          <div key={status}>
+            {/* Cabeçalho do grupo */}
+            <div className="flex items-center gap-2 px-1 py-1">
+              <button
+                type="button"
+                onClick={() => setCollapsed((c) => ({ ...c, [status]: !c[status] }))}
+                className="text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={isCollapsed ? "Expandir" : "Recolher"}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-[3px] px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide",
+                  meta.pill
+                )}
+              >
+                <span className={cn("h-[7px] w-[7px] rounded-full", meta.pillDot)} />
+                {meta.label}
+              </span>
+              <span className="text-[12px] text-muted-foreground">{rows.length}</span>
+            </div>
+
+            {!isCollapsed && (
+              <div className="mt-1 overflow-hidden rounded-[4px] border border-border/70">
+                {/* Cabeçalho de colunas */}
+                <div className="flex items-center border-b border-border/70 bg-card/40 px-3 py-[6px] text-[11px] text-muted-foreground">
+                  <span className="min-w-0 flex-1 pl-[26px]">Nome</span>
+                  <span className="w-[110px] shrink-0">Responsável</span>
+                  <span className="w-[120px] shrink-0">Data de vencimento</span>
+                  <span className="w-[100px] shrink-0">Prioridade</span>
+                </div>
+
+                {rows.map((task) => {
+                  const member = members.find((m) => m.id === task.assignee_id);
+                  const priority = task.priority ? TASK_PRIORITY_META[task.priority] : null;
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => onOpenTask(task)}
+                      className="flex cursor-pointer items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/40"
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next =
+                              statuses[(statuses.indexOf(task.status) + 1) % statuses.length];
+                            updateTask.mutate({ id: task.id, status: next });
+                          }}
+                        >
+                          <StatusCircle status={task.status} />
+                        </span>
+                        <span className="truncate text-[13px] text-foreground">{task.title}</span>
+                        {task.description && (
+                          <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                        )}
+                      </div>
+                      <div className="w-[110px] shrink-0">
+                        {member ? (
+                          <MemberAvatar member={member} className="h-[22px] w-[22px]" />
+                        ) : (
+                          <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
+                        )}
+                      </div>
+                      <div className="flex w-[120px] shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+                        <Repeat2 className="h-3 w-3 opacity-50" />
+                        {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
+                      </div>
+                      <div className="w-[100px] shrink-0">
+                        {priority ? (
+                          <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                            <Flag className={cn("h-3 w-3", priority.flag)} />
+                            {priority.label}
+                          </span>
+                        ) : (
+                          <Flag className="h-3 w-3 text-muted-foreground/30" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="px-1 py-0.5">
+                  <NewTaskDialog
+                    members={members}
+                    status={status}
+                    scope={newTaskScope as never}
+                    label="Adicionar Tarefa"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
