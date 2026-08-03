@@ -233,7 +233,7 @@ export const ViewTabs = ({
   currentMemberId,
   toolbar,
 }: {
-  listId: string;
+  listId: string | null;
   members: TaskMember[];
   activeId: string;
   onChange: (view: ActiveView) => void;

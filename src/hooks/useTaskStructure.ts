@@ -298,7 +298,7 @@ export const useCreateView = () => {
       return data as unknown as TaskView;
     },
     onSuccess: (view) => {
-      qc.invalidateQueries({ queryKey: ["task-views", view.list_id] });
+      qc.invalidateQueries({ queryKey: ["task-views", view.list_id ?? "global"] });
       toast({ title: "Visualização criada" });
     },
     onError: (e: Error) =>
