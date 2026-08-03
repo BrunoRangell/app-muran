@@ -184,7 +184,7 @@ function App() {
           {/* Redirects das rotas antigas */}
           <Route path="/tarefas-clientes" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="/tarefas-internas" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas" replace />} />
+          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="/leads" element={<Navigate to="/tarefas/espacos" replace />} />
 
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
