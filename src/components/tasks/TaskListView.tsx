@@ -95,14 +95,52 @@ export const TaskListView = ({
   allowOriginColumn = false,
 }: Props) => {
   const [collapsed, setCollapsed] = usePersistentState<Record<string, boolean>>(storageKey, {});
-  const [columnPrefs] = useTaskColumnPrefs();
+  const [columnPrefs, setColumnPrefs] = useTaskColumnPrefs();
   const [showCompleted] = useShowCompleted();
+  /** Largura em andamento durante o arraste (não persistida até soltar). */
+  const [dragging, setDragging] = useState<{ id: TaskColumnId; width: number } | null>(null);
   const updateTask = useUpdateTask();
   const visibleStatuses = showCompleted ? statuses : statuses.filter((s) => s !== "concluido");
   const pool = showCompleted ? tasks : tasks.filter((t) => t.status !== "concluido");
   const cols = columnPrefs.filter(
     (c) => c.show && (c.id === "origin" ? allowOriginColumn : true)
   );
+
+  const widthOf = (id: TaskColumnId) =>
+    dragging?.id === id
+      ? dragging.width
+      : columnPrefs.find((c) => c.id === id)?.width ?? TASK_COLUMN_DEFAULT_WIDTH[id];
+
+  /** Inicia o arraste do handle de resize do cabeçalho. */
+  const startResize = useCallback(
+    (id: TaskColumnId, event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const startX = event.clientX;
+      const startWidth =
+        columnPrefs.find((c) => c.id === id)?.width ?? TASK_COLUMN_DEFAULT_WIDTH[id];
+      let current = startWidth;
+
+      const onMove = (e: MouseEvent) => {
+        current = Math.max(TASK_COLUMN_MIN_WIDTH, startWidth + (e.clientX - startX));
+        setDragging({ id, width: current });
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        setDragging(null);
+        setColumnPrefs(
+          columnPrefs.map((c) => (c.id === id ? { ...c, width: current } : c))
+        );
+      };
+      document.body.style.cursor = "col-resize";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [columnPrefs, setColumnPrefs]
+  );
+
   const groups = buildTaskGroups({
     tasks: pool,
     statuses: visibleStatuses,
