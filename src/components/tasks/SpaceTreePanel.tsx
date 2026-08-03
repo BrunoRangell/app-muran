@@ -16,27 +16,38 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, ListChecks, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, KanbanSquare, ListChecks, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FOLDER_COLORS, FolderIconName, TaskFolder } from "@/types/tasks";
+import { FOLDER_COLORS, FolderIconName, TaskFolder, TaskList, TaskSpace } from "@/types/tasks";
 import {
   useCreateFolder,
   useCreateList,
+  useCreateSpace,
   useDeleteFolder,
   useDeleteList,
+  useDeleteSpace,
   useTaskFolders,
   useTaskLists,
+  useTaskSpaces,
   useUpdateFolder,
   useUpdateList,
+  useUpdateSpace,
 } from "@/hooks/useTaskStructure";
 import { useListTasks } from "@/hooks/useTasks";
 import { ColorPicker, FolderIconPicker, getFolderIcon } from "@/components/tasks/folderVisuals";
 import { TasksTree } from "@/components/tasks/TasksShell";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 
-/* --------------------------- diálogo de pasta ---------------------------- */
+/** Seleção emitida ao clicar numa lista da árvore. */
+export interface ListSelection {
+  list: TaskList;
+  spaceName: string;
+  folderName: string;
+}
 
-const FolderDialog = ({
+/* --------------------- diálogo de nome/cor/ícone (espaço e pasta) --------------------- */
+
+const VisualDialog = ({
   open,
   onOpenChange,
   initial,
@@ -142,23 +153,23 @@ const NameDialog = ({
   );
 };
 
-/* ------------------------------- lista ---------------------------------- */
+/* ------------------------------- nível 3: lista ------------------------------- */
 
 const ListRow = ({
-  listId,
-  label,
+  list,
   active,
   onClick,
 }: {
-  listId: string;
-  label: string;
+  list: TaskList;
   active: boolean;
   onClick: () => void;
 }) => {
-  const { data: tasks = [] } = useListTasks(listId);
+  const isLeads = list.kind === "leads";
+  const { data: tasks = [] } = useListTasks(isLeads ? undefined : list.id);
   const [renaming, setRenaming] = useState(false);
   const updateList = useUpdateList();
   const deleteList = useDeleteList();
+  const Icon = isLeads ? KanbanSquare : ListChecks;
 
   return (
     <div
@@ -170,11 +181,11 @@ const ListRow = ({
       )}
     >
       <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
-        <ListChecks className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "opacity-60")} />
-        <span className="truncate">{label}</span>
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "opacity-60")} />
+        <span className="truncate">{list.name}</span>
       </button>
       <span className="text-[11px] tabular-nums text-muted-foreground/80 group-hover:hidden">
-        {tasks.length || ""}
+        {isLeads ? "" : tasks.length || ""}
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -192,7 +203,7 @@ const ListRow = ({
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={() => {
-              if (confirm(`Excluir a lista "${label}" e suas tarefas?`)) deleteList.mutate(listId);
+              if (confirm(`Excluir a lista "${list.name}" e suas tarefas?`)) deleteList.mutate(list.id);
             }}
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
@@ -204,27 +215,29 @@ const ListRow = ({
         open={renaming}
         onOpenChange={setRenaming}
         title="Renomear lista"
-        initial={label}
-        onSubmit={(name) => updateList.mutate({ id: listId, name })}
+        initial={list.name}
+        onSubmit={(name) => updateList.mutate({ id: list.id, name })}
       />
     </div>
   );
 };
 
-/* -------------------------------- pasta --------------------------------- */
+/* ------------------------------- nível 2: pasta ------------------------------- */
 
 const FolderNode = ({
   folder,
+  spaceName,
   expanded,
   onToggle,
-  selectedList,
+  selectedListId,
   onSelectList,
 }: {
   folder: TaskFolder;
+  spaceName: string;
   expanded: boolean;
   onToggle: () => void;
-  selectedList: string | null;
-  onSelectList: (listId: string, folderName: string, listName: string) => void;
+  selectedListId: string | null;
+  onSelectList: (selection: ListSelection) => void;
 }) => {
   const { data: lists = [] } = useTaskLists(expanded ? folder.id : undefined);
   const [editing, setEditing] = useState(false);
@@ -233,7 +246,7 @@ const FolderNode = ({
   const deleteFolder = useDeleteFolder();
   const createList = useCreateList();
   const Icon = getFolderIcon(folder.icon);
-  const hasSelected = lists.some((l) => l.id === selectedList);
+  const hasSelected = lists.some((l) => l.id === selectedListId);
 
   return (
     <div>
@@ -267,9 +280,7 @@ const FolderNode = ({
             <DropdownMenuItem onClick={() => setNewList(true)}>
               <Plus className="mr-2 h-3.5 w-3.5" /> Nova lista
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEditing(true)}>
-              Renomear / cor / ícone
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setEditing(true)}>Renomear / cor / ícone</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
@@ -295,10 +306,9 @@ const FolderNode = ({
             {lists.map((l) => (
               <ListRow
                 key={l.id}
-                listId={l.id}
-                label={l.name}
-                active={selectedList === l.id}
-                onClick={() => onSelectList(l.id, folder.name, l.name)}
+                list={l}
+                active={selectedListId === l.id}
+                onClick={() => onSelectList({ list: l, spaceName, folderName: folder.name })}
               />
             ))}
             <button
@@ -312,7 +322,7 @@ const FolderNode = ({
         </div>
       </div>
 
-      <FolderDialog
+      <VisualDialog
         open={editing}
         onOpenChange={setEditing}
         title="Editar pasta"
@@ -323,35 +333,165 @@ const FolderNode = ({
         open={newList}
         onOpenChange={setNewList}
         title="Nova lista"
-        onSubmit={(name) => createList.mutate({ folder_id: folder.id, name })}
+        onSubmit={(name) => createList.mutate({ folder_id: folder.id, name, kind: "tasks" })}
       />
     </div>
   );
 };
 
-/* ------------------------------- painel --------------------------------- */
+/* ------------------------------- nível 1: espaço ------------------------------ */
 
-export const FolderTreePanel = ({
-  selectedList,
+const SpaceNode = ({
+  space,
+  expanded,
+  onToggle,
+  expandedFolder,
+  onToggleFolder,
+  selectedListId,
   onSelectList,
 }: {
-  selectedList: string | null;
-  onSelectList: (listId: string, folderName: string, listName: string) => void;
+  space: TaskSpace;
+  expanded: boolean;
+  onToggle: () => void;
+  expandedFolder: string | null;
+  onToggleFolder: (folderId: string) => void;
+  selectedListId: string | null;
+  onSelectList: (selection: ListSelection) => void;
 }) => {
-  const { data: folders = [] } = useTaskFolders();
-  const [expanded, setExpanded] = usePersistentState<string | null>("tasks:folders:expanded", null);
-  const [creating, setCreating] = useState(false);
+  const { data: folders = [] } = useTaskFolders(expanded ? space.id : undefined);
+  const [editing, setEditing] = useState(false);
+  const [newFolder, setNewFolder] = useState(false);
+  const updateSpace = useUpdateSpace();
+  const deleteSpace = useDeleteSpace();
   const createFolder = useCreateFolder();
+  const Icon = getFolderIcon(space.icon);
 
   return (
-    <TasksTree title="Pastas">
-      {folders.map((f) => (
-        <FolderNode
-          key={f.id}
-          folder={f}
-          expanded={expanded === f.id}
-          onToggle={() => setExpanded((e) => (e === f.id ? null : f.id))}
-          selectedList={selectedList}
+    <div className="mb-0.5">
+      <div className="group flex items-center gap-1.5 rounded-[4px] px-2 py-[6px] text-[12.5px] font-semibold text-foreground transition-colors hover:bg-accent/60">
+        <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+              expanded && "rotate-90"
+            )}
+          />
+          <span
+            className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px]"
+            style={{ backgroundColor: `${space.color}22` }}
+          >
+            <Icon className="h-3 w-3" style={{ color: space.color }} />
+          </span>
+          <span className="truncate">{space.name}</span>
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="hidden h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-foreground group-hover:flex"
+              aria-label="Opções do espaço"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="tasks-dark min-w-[180px]">
+            <DropdownMenuItem onClick={() => setNewFolder(true)}>
+              <Plus className="mr-2 h-3.5 w-3.5" /> Nova pasta
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setEditing(true)}>Renomear / cor / ícone</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                if (confirm(`Excluir o espaço "${space.name}" com pastas, listas e tarefas?`))
+                  deleteSpace.mutate(space.id);
+              }}
+            >
+              <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div
+        className={cn(
+          "grid transition-all duration-200 ease-out",
+          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-[18px] border-l border-border/70 pl-1">
+            {folders.map((f) => (
+              <FolderNode
+                key={f.id}
+                folder={f}
+                spaceName={space.name}
+                expanded={expandedFolder === f.id}
+                onToggle={() => onToggleFolder(f.id)}
+                selectedListId={selectedListId}
+                onSelectList={onSelectList}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={() => setNewFolder(true)}
+              className="flex w-full items-center gap-1.5 rounded-[4px] px-2 py-[5px] text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" /> Nova pasta
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <VisualDialog
+        open={editing}
+        onOpenChange={setEditing}
+        title="Editar espaço"
+        initial={{ name: space.name, color: space.color, icon: space.icon }}
+        onSubmit={(v) => updateSpace.mutate({ id: space.id, ...v })}
+      />
+      <VisualDialog
+        open={newFolder}
+        onOpenChange={setNewFolder}
+        title="Nova pasta"
+        onSubmit={(v) => createFolder.mutate({ space_id: space.id, ...v })}
+      />
+    </div>
+  );
+};
+
+/* --------------------------------- painel --------------------------------- */
+
+export const SpaceTreePanel = ({
+  selectedListId,
+  onSelectList,
+}: {
+  selectedListId: string | null;
+  onSelectList: (selection: ListSelection) => void;
+}) => {
+  const { data: spaces = [] } = useTaskSpaces();
+  const [expandedSpace, setExpandedSpace] = usePersistentState<string | null>(
+    "tasks:spaces:expandedSpace",
+    null
+  );
+  const [expandedFolder, setExpandedFolder] = usePersistentState<string | null>(
+    "tasks:spaces:expandedFolder",
+    null
+  );
+  const [creating, setCreating] = useState(false);
+  const createSpace = useCreateSpace();
+
+  return (
+    <TasksTree title="Espaços">
+      {spaces.map((s) => (
+        <SpaceNode
+          key={s.id}
+          space={s}
+          expanded={expandedSpace === s.id}
+          onToggle={() => setExpandedSpace((e) => (e === s.id ? null : s.id))}
+          expandedFolder={expandedFolder}
+          onToggleFolder={(folderId) => setExpandedFolder((e) => (e === folderId ? null : folderId))}
+          selectedListId={selectedListId}
           onSelectList={onSelectList}
         />
       ))}
@@ -360,15 +500,17 @@ export const FolderTreePanel = ({
         onClick={() => setCreating(true)}
         className="mt-1 flex w-full items-center gap-1.5 rounded-[4px] px-2 py-[6px] text-[12.5px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
       >
-        <Plus className="h-3.5 w-3.5" /> Nova pasta
+        <Plus className="h-3.5 w-3.5" /> Novo espaço
       </button>
 
-      <FolderDialog
+      <VisualDialog
         open={creating}
         onOpenChange={setCreating}
-        title="Nova pasta"
-        onSubmit={(v) => createFolder.mutate(v)}
+        title="Novo espaço"
+        onSubmit={(v) => createSpace.mutate(v)}
       />
     </TasksTree>
   );
 };
+
+export default SpaceTreePanel;
