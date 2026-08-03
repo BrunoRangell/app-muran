@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -27,7 +21,7 @@ import { TeamMember } from "@/types/team";
 import { useAddTaskComment, useDeleteTask, useTaskComments, useUpdateTask } from "@/hooks/useTasks";
 import { MemberAvatar } from "./MemberAvatar";
 import { cn } from "@/lib/utils";
-import { Loader2, Send, Trash2 } from "lucide-react";
+import { CalendarDays, Circle, Flag, Loader2, Send, Timer, Trash2, User2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -35,13 +29,39 @@ interface Props {
   task: Task | null;
   statuses: TaskStatus[];
   members: TeamMember[];
+  breadcrumb?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 const NONE = "__none__";
 
-export const TaskDetailModal = ({ task, statuses, members, open, onOpenChange }: Props) => {
+const Field = ({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof Circle;
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div className="flex items-center gap-3 py-1.5">
+    <span className="flex w-32 shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </span>
+    <div className="min-w-0 flex-1">{children}</div>
+  </div>
+);
+
+export const TaskDetailModal = ({
+  task,
+  statuses,
+  members,
+  breadcrumb,
+  open,
+  onOpenChange,
+}: Props) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [comment, setComment] = useState("");
@@ -60,118 +80,157 @@ export const TaskDetailModal = ({ task, statuses, members, open, onOpenChange }:
   if (!task) return null;
 
   const patch = (updates: Record<string, unknown>) => updateTask.mutate({ id: task.id, ...updates });
-
   const memberById = (id: string | null) => members.find((m) => m.id === id) || null;
+  const status = TASK_STATUS_META[task.status];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-sm font-medium text-muted-foreground">
-            Detalhes da tarefa
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="tasks-dark max-h-[90vh] max-w-5xl gap-0 overflow-hidden border-border bg-background p-0 text-foreground">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 border-b border-border px-5 py-3 text-[12px] text-muted-foreground">
+          {(breadcrumb ?? ["Tarefas"]).map((part, i, arr) => (
+            <span key={`${part}-${i}`} className="flex items-center gap-1.5">
+              <span className={i === arr.length - 1 ? "font-semibold text-foreground" : ""}>{part}</span>
+              {i < arr.length - 1 && <span className="opacity-40">/</span>}
+            </span>
+          ))}
+        </div>
 
-        <div className="space-y-5">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
-            className="border-0 px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
-          />
+        <div className="grid max-h-[calc(90vh-3rem)] grid-cols-1 overflow-hidden lg:grid-cols-[1fr_320px]">
+          {/* Coluna principal */}
+          <div className="overflow-y-auto px-6 py-5">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
+              className="border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
+            />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={task.status} onValueChange={(v) => patch({ status: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      <span className="flex items-center gap-2">
-                        <span className={cn("h-2 w-2 rounded-full", TASK_STATUS_META[s].dot)} />
-                        {TASK_STATUS_META[s].label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="mt-4 divide-y divide-border/60">
+              <Field icon={Circle} label="Status">
+                <Select value={task.status} onValueChange={(v) => patch({ status: v })}>
+                  <SelectTrigger className="h-8 w-auto gap-2 border-0 bg-transparent px-0 shadow-none focus:ring-0">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] font-bold",
+                        status.badge
+                      )}
+                    >
+                      <span className={cn("h-2 w-2 rounded-full", status.dot)} />
+                      {status.label}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="tasks-dark">
+                    {statuses.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        <span className="flex items-center gap-2">
+                          <span className={cn("h-2 w-2 rounded-full", TASK_STATUS_META[s].dot)} />
+                          {TASK_STATUS_META[s].label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field icon={User2} label="Responsável">
+                <Select
+                  value={task.assignee_id ?? NONE}
+                  onValueChange={(v) => patch({ assignee_id: v === NONE ? null : v })}
+                >
+                  <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus:ring-0">
+                    <span className="flex items-center gap-2">
+                      <MemberAvatar member={memberById(task.assignee_id)} className="h-5 w-5" />
+                      {memberById(task.assignee_id)?.name ?? "Sem responsável"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="tasks-dark">
+                    <SelectItem value={NONE}>Sem responsável</SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field icon={CalendarDays} label="Datas">
+                <Input
+                  type="date"
+                  value={task.due_date ?? ""}
+                  onChange={(e) => patch({ due_date: e.target.value || null })}
+                  className="h-8 w-40 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
+                />
+              </Field>
+
+              <Field icon={Flag} label="Prioridade">
+                <Select
+                  value={task.priority ?? NONE}
+                  onValueChange={(v) => patch({ priority: v === NONE ? null : (v as TaskPriority) })}
+                >
+                  <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus:ring-0">
+                    <span
+                      className={cn(
+                        "flex items-center gap-1.5",
+                        task.priority ? TASK_PRIORITY_META[task.priority].flag : "text-muted-foreground"
+                      )}
+                    >
+                      <Flag className="h-3.5 w-3.5 fill-current" />
+                      {task.priority ? TASK_PRIORITY_META[task.priority].label : "Sem prioridade"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="tasks-dark">
+                    <SelectItem value={NONE}>Sem prioridade</SelectItem>
+                    {(Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {TASK_PRIORITY_META[p].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field icon={Timer} label="Rastrear tempo">
+                <span className="text-[13px] text-muted-foreground/60">—</span>
+              </Field>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Responsável</Label>
-              <Select
-                value={task.assignee_id ?? NONE}
-                onValueChange={(v) => patch({ assignee_id: v === NONE ? null : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sem responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sem responsável</SelectItem>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Prazo</Label>
-              <Input
-                type="date"
-                value={task.due_date ?? ""}
-                onChange={(e) => patch({ due_date: e.target.value || null })}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Prioridade</Label>
-              <Select
-                value={task.priority ?? NONE}
-                onValueChange={(v) => patch({ priority: v === NONE ? null : (v as TaskPriority) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sem prioridade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sem prioridade</SelectItem>
-                  {(Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {TASK_PRIORITY_META[p].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Descrição</Label>
             <Textarea
-              rows={4}
+              rows={8}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() =>
                 description !== (task.description ?? "") && patch({ description: description || null })
               }
-              placeholder="Adicione detalhes da tarefa..."
+              placeholder="Adicione uma descrição..."
+              className="mt-5 resize-none border-0 bg-transparent px-0 text-[13px] leading-relaxed shadow-none focus-visible:ring-0"
             />
+
+            <div className="mt-4 border-t border-border pt-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => deleteTask.mutate(task.id, { onSuccess: () => onOpenChange(false) })}
+              >
+                <Trash2 className="mr-1 h-4 w-4" /> Excluir tarefa
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-3 rounded-xl border p-3">
-            <Label>Comentários</Label>
-            {loadingComments && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-            {!loadingComments && comments.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nenhum comentário ainda.</p>
-            )}
-            <div className="space-y-2">
+          {/* Painel de atividade */}
+          <div className="flex min-h-0 flex-col border-t border-border bg-card/40 lg:border-l lg:border-t-0">
+            <div className="border-b border-border px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Atividade
+            </div>
+            <div className="flex-1 space-y-2 overflow-y-auto p-4">
+              {loadingComments && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {!loadingComments && comments.length === 0 && (
+                <p className="text-[12px] text-muted-foreground">Nenhum comentário ainda.</p>
+              )}
               {comments.map((c) => (
-                <div key={c.id} className="rounded-lg bg-muted/50 p-2 text-sm">
+                <div key={c.id} className="rounded-lg bg-accent/50 p-2.5 text-[13px]">
                   <p className="whitespace-pre-wrap">{c.content}</p>
                   <span className="text-[10px] text-muted-foreground">
                     {format(new Date(c.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
@@ -179,11 +238,12 @@ export const TaskDetailModal = ({ task, statuses, members, open, onOpenChange }:
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 border-t border-border p-3">
               <Input
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Escreva um comentário..."
+                className="h-9 text-[13px]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && comment.trim()) {
                     addComment.mutate(comment.trim(), { onSuccess: () => setComment("") });
@@ -192,6 +252,7 @@ export const TaskDetailModal = ({ task, statuses, members, open, onOpenChange }:
               />
               <Button
                 size="icon"
+                className="h-9 w-9 shrink-0"
                 disabled={!comment.trim() || addComment.isPending}
                 onClick={() => addComment.mutate(comment.trim(), { onSuccess: () => setComment("") })}
               >
@@ -202,23 +263,6 @@ export const TaskDetailModal = ({ task, statuses, members, open, onOpenChange }:
                 )}
               </Button>
             </div>
-          </div>
-
-          <div className="flex items-center justify-between border-t pt-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <MemberAvatar member={memberById(task.assignee_id)} className="h-6 w-6" />
-              {memberById(task.assignee_id)?.name ?? "Sem responsável"}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() =>
-                deleteTask.mutate(task.id, { onSuccess: () => onOpenChange(false) })
-              }
-            >
-              <Trash2 className="mr-1 h-4 w-4" /> Excluir
-            </Button>
           </div>
         </div>
       </DialogContent>
