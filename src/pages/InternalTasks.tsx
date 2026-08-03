@@ -5,6 +5,8 @@ import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { TasksTree, TasksTreeItem } from "@/components/tasks/TasksShell";
 import { TaskListView } from "@/components/tasks/TaskListView";
+import { TaskBoardSkeleton, TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
+import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { useInternalTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import {
@@ -14,7 +16,7 @@ import {
   TaskStatus,
   TASK_STATUS_META,
 } from "@/types/tasks";
-import { Building2, LayoutGrid, List, Loader2 } from "lucide-react";
+import { Building2, LayoutGrid, List } from "lucide-react";
 
 const columns: KanbanColumnDef<TaskStatus>[] = INTERNAL_TASK_STATUSES.map((s) => ({
   id: s,
@@ -30,7 +32,7 @@ const InternalTasks = () => {
   const { data: members = [] } = useTeamMembers();
   const updateTask = useUpdateTask();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<"lista" | "quadro">("lista");
+  const [view, setView] = usePersistentState<"lista" | "quadro">("tasks:internas:view", "lista");
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
   return (
@@ -77,9 +79,11 @@ const InternalTasks = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          view === "lista" ? (
+            <TaskListSkeleton groups={4} />
+          ) : (
+            <TaskBoardSkeleton columns={4} />
+          )
         ) : view === "lista" ? (
           <TaskListView
             statuses={INTERNAL_TASK_STATUSES}
@@ -87,6 +91,7 @@ const InternalTasks = () => {
             members={members}
             onOpenTask={(t) => setSelectedId(t.id)}
             newTaskScope={{ is_internal: true, internal_area: area, list_id: null }}
+            storageKey="tasks:list:collapsed:internas"
           />
         ) : (
           <KanbanBoard
