@@ -1210,6 +1210,7 @@ export type Database = {
       }
       task_members: {
         Row: {
+          auth_user_id: string | null
           avatar_url: string | null
           color: string | null
           created_at: string
@@ -1218,6 +1219,7 @@ export type Database = {
           name: string
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           color?: string | null
           created_at?: string
@@ -1226,6 +1228,7 @@ export type Database = {
           name: string
         }
         Update: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           color?: string | null
           created_at?: string
@@ -1241,8 +1244,10 @@ export type Database = {
           filters: Json
           group_by: string
           id: string
+          is_private: boolean
           list_id: string
           name: string
+          owner_id: string | null
           position: number
           sort_by: string | null
           view_type: string
@@ -1252,8 +1257,10 @@ export type Database = {
           filters?: Json
           group_by?: string
           id?: string
+          is_private?: boolean
           list_id: string
           name: string
+          owner_id?: string | null
           position?: number
           sort_by?: string | null
           view_type?: string
@@ -1263,8 +1270,10 @@ export type Database = {
           filters?: Json
           group_by?: string
           id?: string
+          is_private?: boolean
           list_id?: string
           name?: string
+          owner_id?: string | null
           position?: number
           sort_by?: string | null
           view_type?: string
@@ -1275,6 +1284,13 @@ export type Database = {
             columns: ["list_id"]
             isOneToOne: false
             referencedRelation: "task_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_views_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
             referencedColumns: ["id"]
           },
         ]
