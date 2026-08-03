@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import {
   GroupBy,
-  SortBy,
+  SortValue,
   Task,
   TaskMember,
   TaskStatus,
