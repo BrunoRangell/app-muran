@@ -1286,7 +1286,7 @@ export type Database = {
           group_by: string
           id: string
           is_private: boolean
-          list_id: string
+          list_id: string | null
           name: string
           owner_id: string | null
           position: number
@@ -1299,7 +1299,7 @@ export type Database = {
           group_by?: string
           id?: string
           is_private?: boolean
-          list_id: string
+          list_id?: string | null
           name: string
           owner_id?: string | null
           position?: number
@@ -1312,7 +1312,7 @@ export type Database = {
           group_by?: string
           id?: string
           is_private?: boolean
-          list_id?: string
+          list_id?: string | null
           name?: string
           owner_id?: string | null
           position?: number
