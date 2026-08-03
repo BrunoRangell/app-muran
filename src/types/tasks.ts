@@ -105,7 +105,7 @@ export const parseSort = (value?: SortValue | null): { field: SortBy | null; dir
 
 export interface TaskView {
   id: string;
-  list_id: string;
+  list_id: string | null;
   name: string;
   view_type: ViewType;
   group_by: GroupBy;

@@ -10,22 +10,27 @@ import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { TasksToolbar, ToolbarState } from "@/components/tasks/TasksToolbar";
 import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
+import { ActiveView, DEFAULT_VIEWS, ViewTabs } from "@/components/tasks/ViewTabs";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
+import { useUpdateView } from "@/hooks/useTaskStructure";
 import { useMyTasks } from "@/hooks/useTasks";
 import { CLIENT_TASK_STATUSES } from "@/types/tasks";
 import { CheckSquare } from "lucide-react";
+
+/** Em "Minhas tarefas" só existe a visão de lista (o Quadro é exclusivo das listas). */
+const MINE_BASE_VIEWS: ActiveView[] = [DEFAULT_VIEWS[0]];
 
 const MyTasks = () => {
   const { data: members = [], isLoading: loadingMembers } = useTaskMembers();
   const { data: me, isLoading: loadingMe } = useCurrentTaskMember();
   const [memberId, setMemberId] = usePersistentState<string | null>("tasks:minhas:member", null);
-  const [toolbar, setToolbar] = usePersistentState<ToolbarState>("tasks:minhas:toolbar", {
-    group_by: "status",
-    sort_by: null,
-    filters: {},
-  });
+  const [view, setView] = usePersistentState<ActiveView>(
+    "tasks:minhas:view",
+    MINE_BASE_VIEWS[0]
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const updateView = useUpdateView();
 
   useEffect(() => {
     if (!loadingMe && memberId === null && me) {
@@ -36,6 +41,19 @@ const MyTasks = () => {
   const currentMember = members.find((m) => m.id === memberId) ?? null;
   const { data: tasks = [], isLoading } = useMyTasks(currentMember?.id);
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
+
+  /** Auto-save: views salvas persistem no banco; a aba padrão fica no localStorage. */
+  const handleToolbarChange = (next: ToolbarState) => {
+    setView({ ...view, ...next });
+    if (view.saved) {
+      updateView.mutate({
+        id: view.id,
+        group_by: next.group_by,
+        sort_by: next.sort_by,
+        filters: next.filters,
+      });
+    }
+  };
 
   return (
     <section className="min-w-0 flex-1 overflow-x-auto p-4">
@@ -55,14 +73,29 @@ const MyTasks = () => {
             ))}
           </SelectContent>
         </Select>
-        <TasksToolbar
-          members={members}
-          statuses={CLIENT_TASK_STATUSES}
-          value={toolbar}
-          onChange={setToolbar}
-          allowOriginColumn
-        />
       </div>
+
+      <ViewTabs
+        listId={null}
+        members={members}
+        activeId={view.id}
+        onChange={setView}
+        currentMemberId={me?.id ?? null}
+        baseViews={MINE_BASE_VIEWS}
+        toolbar={
+          <TasksToolbar
+            members={members}
+            statuses={CLIENT_TASK_STATUSES}
+            value={{
+              group_by: view.group_by,
+              sort_by: view.sort_by,
+              filters: view.filters ?? {},
+            }}
+            onChange={handleToolbarChange}
+            allowOriginColumn
+          />
+        }
+      />
 
       {!currentMember && !loadingMembers ? (
         <p className="py-16 text-center text-sm text-muted-foreground">
@@ -79,10 +112,10 @@ const MyTasks = () => {
           newTaskScope={{ is_internal: false }}
           allowCreate={false}
           allowOriginColumn
-          storageKey="tasks:list:collapsed:mine"
-          groupBy={toolbar.group_by}
-          sortBy={toolbar.sort_by}
-          filters={toolbar.filters}
+          storageKey={`tasks:list:collapsed:mine:${view.id}`}
+          groupBy={view.group_by}
+          sortBy={view.sort_by}
+          filters={view.filters}
         />
       )}
 

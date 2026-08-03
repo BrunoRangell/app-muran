@@ -252,17 +252,18 @@ export const useDeleteList = () => {
 
 /* ------------------------------ visualizações ------------------------------ */
 
-export const useTaskViews = (listId?: string) =>
+/**
+ * Visualizações salvas de uma lista. `listId = null` representa o contexto
+ * global "Minhas tarefas" (task_views.list_id is null).
+ */
+export const useTaskViews = (listId?: string | null) =>
   useQuery({
-    queryKey: ["task-views", listId],
-    enabled: !!listId,
+    queryKey: ["task-views", listId ?? "global"],
+    enabled: listId !== undefined,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("task_views")
-        .select(VIEW_SELECT)
-        .eq("list_id", listId!)
-        .order("position")
-        .order("created_at");
+      let query = supabase.from("task_views").select(VIEW_SELECT);
+      query = listId === null ? query.is("list_id", null) : query.eq("list_id", listId!);
+      const { data, error } = await query.order("position").order("created_at");
       if (error) throw error;
       return (data || []).map((v) => ({
         ...v,
@@ -272,7 +273,7 @@ export const useTaskViews = (listId?: string) =>
   });
 
 export interface ViewInput {
-  list_id: string;
+  list_id: string | null;
   name: string;
   view_type: ViewType;
   group_by: GroupBy;
@@ -297,7 +298,7 @@ export const useCreateView = () => {
       return data as unknown as TaskView;
     },
     onSuccess: (view) => {
-      qc.invalidateQueries({ queryKey: ["task-views", view.list_id] });
+      qc.invalidateQueries({ queryKey: ["task-views", view.list_id ?? "global"] });
       toast({ title: "Visualização criada" });
     },
     onError: (e: Error) =>

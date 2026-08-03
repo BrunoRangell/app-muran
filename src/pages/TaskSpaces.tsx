@@ -33,7 +33,11 @@ const TaskSpaces = () => {
     null
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = usePersistentState<ActiveView>("tasks:spaces:view", DEFAULT_VIEWS[0]);
+  /** Última visualização ativa por lista (escopado por list_id). */
+  const [viewMap, setViewMap] = usePersistentState<Record<string, ActiveView>>(
+    "tasks:spaces:views",
+    {}
+  );
   const [allToolbar, setAllToolbar] = usePersistentState<ToolbarState>("tasks:spaces:allToolbar", {
     group_by: "status",
     sort_by: null,
@@ -50,6 +54,12 @@ const TaskSpaces = () => {
   const updateView = useUpdateView();
   const pool = shortcut === "all" ? allTasks : tasks;
   const selected: Task | null = pool.find((t) => t.id === selectedId) ?? null;
+
+  const view: ActiveView = (listId && viewMap[listId]) || DEFAULT_VIEWS[0];
+  const setView = (next: ActiveView) => {
+    if (!listId) return;
+    setViewMap((m) => ({ ...m, [listId]: next }));
+  };
 
   /** Barra de ferramentas: views salvas persistem no banco; abas padrão ficam na sessão. */
   const handleToolbarChange = (next: ToolbarState) => {

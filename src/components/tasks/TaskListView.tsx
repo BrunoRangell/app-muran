@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
 import {
@@ -15,8 +16,9 @@ import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { buildTaskGroups } from "@/components/tasks/taskGrouping";
 import {
+  TASK_COLUMN_DEFAULT_WIDTH,
   TASK_COLUMN_LABEL,
-  TASK_COLUMN_WIDTH,
+  TASK_COLUMN_MIN_WIDTH,
   TaskColumnId,
   useShowCompleted,
   useTaskColumnPrefs,
@@ -93,14 +95,52 @@ export const TaskListView = ({
   allowOriginColumn = false,
 }: Props) => {
   const [collapsed, setCollapsed] = usePersistentState<Record<string, boolean>>(storageKey, {});
-  const [columnPrefs] = useTaskColumnPrefs();
+  const [columnPrefs, setColumnPrefs] = useTaskColumnPrefs();
   const [showCompleted] = useShowCompleted();
+  /** Largura em andamento durante o arraste (não persistida até soltar). */
+  const [dragging, setDragging] = useState<{ id: TaskColumnId; width: number } | null>(null);
   const updateTask = useUpdateTask();
   const visibleStatuses = showCompleted ? statuses : statuses.filter((s) => s !== "concluido");
   const pool = showCompleted ? tasks : tasks.filter((t) => t.status !== "concluido");
   const cols = columnPrefs.filter(
     (c) => c.show && (c.id === "origin" ? allowOriginColumn : true)
   );
+
+  const widthOf = (id: TaskColumnId) =>
+    dragging?.id === id
+      ? dragging.width
+      : columnPrefs.find((c) => c.id === id)?.width ?? TASK_COLUMN_DEFAULT_WIDTH[id];
+
+  /** Inicia o arraste do handle de resize do cabeçalho. */
+  const startResize = useCallback(
+    (id: TaskColumnId, event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const startX = event.clientX;
+      const startWidth =
+        columnPrefs.find((c) => c.id === id)?.width ?? TASK_COLUMN_DEFAULT_WIDTH[id];
+      let current = startWidth;
+
+      const onMove = (e: MouseEvent) => {
+        current = Math.max(TASK_COLUMN_MIN_WIDTH, startWidth + (e.clientX - startX));
+        setDragging({ id, width: current });
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        setDragging(null);
+        setColumnPrefs(
+          columnPrefs.map((c) => (c.id === id ? { ...c, width: current } : c))
+        );
+      };
+      document.body.style.cursor = "col-resize";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [columnPrefs, setColumnPrefs]
+  );
+
   const groups = buildTaskGroups({
     tasks: pool,
     statuses: visibleStatuses,
@@ -200,8 +240,18 @@ export const TaskListView = ({
                   <div className="flex items-center border-b border-border/70 bg-card/40 px-3 py-[6px] text-[11px] text-muted-foreground">
                     <span className="min-w-0 flex-1 pl-[26px]">Nome</span>
                     {cols.map((c) => (
-                      <span key={c.id} className={cn("shrink-0", TASK_COLUMN_WIDTH[c.id])}>
+                      <span
+                        key={c.id}
+                        className="relative shrink-0 pr-2"
+                        style={{ width: widthOf(c.id) }}
+                      >
                         {TASK_COLUMN_LABEL[c.id]}
+                        <span
+                          role="separator"
+                          aria-label={`Redimensionar ${TASK_COLUMN_LABEL[c.id]}`}
+                          onMouseDown={(e) => startResize(c.id, e)}
+                          className="absolute -right-[2px] top-[-6px] h-[calc(100%+12px)] w-[4px] cursor-col-resize select-none bg-transparent transition-colors hover:bg-primary/60"
+                        />
                       </span>
                     ))}
                   </div>
@@ -272,7 +322,11 @@ export const TaskListView = ({
                         )}
                       </div>
                       {cols.map((c) => (
-                        <div key={c.id} className={cn("min-w-0 shrink-0", TASK_COLUMN_WIDTH[c.id])}>
+                        <div
+                          key={c.id}
+                          className="min-w-0 shrink-0 pr-2"
+                          style={{ width: widthOf(c.id) }}
+                        >
                           {renderCell(c.id, task)}
                         </div>
                       ))}

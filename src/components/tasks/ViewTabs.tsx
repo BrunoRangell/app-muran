@@ -232,14 +232,17 @@ export const ViewTabs = ({
   onChange,
   currentMemberId,
   toolbar,
+  baseViews = DEFAULT_VIEWS,
 }: {
-  listId: string;
+  listId: string | null;
   members: TaskMember[];
   activeId: string;
   onChange: (view: ActiveView) => void;
   /** task_members.id do usuário logado (null quando não há vínculo) */
   currentMemberId?: string | null;
   toolbar?: React.ReactNode;
+  /** Abas padrão exibidas antes das visualizações salvas. */
+  baseViews?: ActiveView[];
 }) => {
   const { data: saved = [] } = useTaskViews(listId);
   const createView = useCreateView();
@@ -248,7 +251,7 @@ export const ViewTabs = ({
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskView | null>(null);
 
-  const tabs = [...DEFAULT_VIEWS, ...saved.map(toActive)];
+  const tabs = [...baseViews, ...saved.map(toActive)];
 
   return (
     <div className="mb-3 flex items-center gap-1 border-b border-border/70 pb-0 text-[12px]">
@@ -292,7 +295,7 @@ export const ViewTabs = ({
                     className="text-destructive focus:text-destructive"
                     onClick={() => {
                       deleteView.mutate(savedView.id);
-                      if (active) onChange(DEFAULT_VIEWS[0]);
+                      if (active) onChange(baseViews[0]);
                     }}
                   >
                     <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
