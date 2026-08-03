@@ -232,6 +232,7 @@ export const ViewTabs = ({
   onChange,
   currentMemberId,
   toolbar,
+  baseViews = DEFAULT_VIEWS,
 }: {
   listId: string | null;
   members: TaskMember[];
@@ -240,6 +241,8 @@ export const ViewTabs = ({
   /** task_members.id do usuário logado (null quando não há vínculo) */
   currentMemberId?: string | null;
   toolbar?: React.ReactNode;
+  /** Abas padrão exibidas antes das visualizações salvas. */
+  baseViews?: ActiveView[];
 }) => {
   const { data: saved = [] } = useTaskViews(listId);
   const createView = useCreateView();
@@ -248,7 +251,7 @@ export const ViewTabs = ({
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskView | null>(null);
 
-  const tabs = [...DEFAULT_VIEWS, ...saved.map(toActive)];
+  const tabs = [...baseViews, ...saved.map(toActive)];
 
   return (
     <div className="mb-3 flex items-center gap-1 border-b border-border/70 pb-0 text-[12px]">
