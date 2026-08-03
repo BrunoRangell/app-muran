@@ -240,8 +240,18 @@ export const TaskListView = ({
                   <div className="flex items-center border-b border-border/70 bg-card/40 px-3 py-[6px] text-[11px] text-muted-foreground">
                     <span className="min-w-0 flex-1 pl-[26px]">Nome</span>
                     {cols.map((c) => (
-                      <span key={c.id} className={cn("shrink-0", TASK_COLUMN_WIDTH[c.id])}>
+                      <span
+                        key={c.id}
+                        className="relative shrink-0 pr-2"
+                        style={{ width: widthOf(c.id) }}
+                      >
                         {TASK_COLUMN_LABEL[c.id]}
+                        <span
+                          role="separator"
+                          aria-label={`Redimensionar ${TASK_COLUMN_LABEL[c.id]}`}
+                          onMouseDown={(e) => startResize(c.id, e)}
+                          className="absolute -right-[2px] top-[-6px] h-[calc(100%+12px)] w-[4px] cursor-col-resize select-none bg-transparent transition-colors hover:bg-primary/60"
+                        />
                       </span>
                     ))}
                   </div>
