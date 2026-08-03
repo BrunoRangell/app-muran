@@ -3,24 +3,21 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Building2,
-  CheckSquare,
   ChevronRight,
   Folder,
   FolderOpen,
+  Home,
   LayoutGrid,
   ListChecks,
   Sparkles,
-  Target,
   Users,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TaskListSkeleton } from "./TasksSkeleton";
 
 const railItems = [
-  { icon: LayoutGrid, label: "Pastas", path: "/tarefas/clientes" },
-  { icon: Building2, label: "Internas", path: "/tarefas/internas" },
-  { icon: CheckSquare, label: "Minhas", path: "/tarefas/minhas" },
-  { icon: Target, label: "Leads", path: "/tarefas/leads" },
+  { icon: Home, label: "Início", path: "/tarefas", end: true },
+  { icon: LayoutGrid, label: "Espaços", path: "/tarefas/espacos" },
   { icon: Users, label: "Membros", path: "/tarefas/membros" },
 ];
 
@@ -141,7 +138,9 @@ export const TasksShell = () => {
       {/* Trilha fina de ícones */}
       <nav className="flex w-[68px] shrink-0 flex-col items-center gap-1 border-r border-border bg-card/60 py-4">
         {railItems.map((item) => {
-          const active = pathname.startsWith(item.path);
+          const active = item.end
+            ? pathname === "/tarefas" || pathname === "/tarefas/"
+            : pathname.startsWith(item.path);
           return (
             <Tooltip key={item.path}>
               <TooltipTrigger asChild>

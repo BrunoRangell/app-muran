@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   GroupBy,
+  ListKind,
+  TaskSpace,
   SortBy,
   TaskFolder,
   TaskList,
@@ -11,28 +13,106 @@ import {
 } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
 
-const FOLDER_SELECT = "id, name, color, icon, position, created_at";
-const LIST_SELECT = "id, folder_id, name, position, created_at";
+const SPACE_SELECT = "id, name, color, icon, position, created_at";
+const FOLDER_SELECT = "id, space_id, name, color, icon, position, created_at";
+const LIST_SELECT = "id, folder_id, name, kind, position, created_at";
 const VIEW_SELECT =
   "id, list_id, name, view_type, group_by, sort_by, filters, position, is_private, owner_id, created_at";
 
-/* ---------------------------------- pastas --------------------------------- */
+/* ---------------------------------- espaços -------------------------------- */
 
-export const useTaskFolders = () =>
+export const useTaskSpaces = () =>
   useQuery({
-    queryKey: ["task-folders"],
+    queryKey: ["task-spaces"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("task_folders")
-        .select(FOLDER_SELECT)
+        .from("task_spaces")
+        .select(SPACE_SELECT)
         .order("position")
         .order("name");
+      if (error) throw error;
+      return (data || []) as TaskSpace[];
+    },
+  });
+
+export interface SpaceInput {
+  name: string;
+  color?: string;
+  icon?: string | null;
+  position?: number;
+}
+
+export const useCreateSpace = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: SpaceInput) => {
+      const { data, error } = await supabase
+        .from("task_spaces")
+        .insert(input as never)
+        .select(SPACE_SELECT)
+        .single();
+      if (error) throw error;
+      return data as TaskSpace;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-spaces"] });
+      toast({ title: "Espaço criado" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao criar espaço", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useUpdateSpace = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<SpaceInput> & { id: string }) => {
+      const { error } = await supabase.from("task_spaces").update(updates as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task-spaces"] }),
+    onError: (e: Error) =>
+      toast({ title: "Erro ao atualizar espaço", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useDeleteSpace = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("task_spaces").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-spaces"] });
+      qc.invalidateQueries({ queryKey: ["task-folders"] });
+      toast({ title: "Espaço excluído" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao excluir espaço", description: e.message, variant: "destructive" }),
+  });
+};
+
+/* ---------------------------------- pastas --------------------------------- */
+
+export const useTaskFolders = (spaceId?: string) =>
+  useQuery({
+    queryKey: ["task-folders", spaceId ?? "all"],
+    enabled: spaceId === undefined ? true : !!spaceId,
+    queryFn: async () => {
+      let query = supabase.from("task_folders").select(FOLDER_SELECT);
+      if (spaceId) query = query.eq("space_id", spaceId);
+      const { data, error } = await query.order("position").order("name");
       if (error) throw error;
       return (data || []) as TaskFolder[];
     },
   });
 
 export interface FolderInput {
+  space_id: string;
   name: string;
   color?: string;
   icon?: string | null;
@@ -115,7 +195,12 @@ export const useCreateList = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (input: { folder_id: string; name: string; position?: number }) => {
+    mutationFn: async (input: {
+      folder_id: string;
+      name: string;
+      kind?: ListKind;
+      position?: number;
+    }) => {
       const { data, error } = await supabase
         .from("task_lists")
         .insert(input as never)

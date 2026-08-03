@@ -1154,6 +1154,7 @@ export type Database = {
           id: string
           name: string
           position: number
+          space_id: string
           updated_at: string
         }
         Insert: {
@@ -1163,6 +1164,7 @@ export type Database = {
           id?: string
           name: string
           position?: number
+          space_id: string
           updated_at?: string
         }
         Update: {
@@ -1172,15 +1174,25 @@ export type Database = {
           id?: string
           name?: string
           position?: number
+          space_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "task_folders_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "task_spaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_lists: {
         Row: {
           created_at: string
           folder_id: string
           id: string
+          kind: string
           name: string
           position: number
         }
@@ -1188,6 +1200,7 @@ export type Database = {
           created_at?: string
           folder_id: string
           id?: string
+          kind?: string
           name: string
           position?: number
         }
@@ -1195,6 +1208,7 @@ export type Database = {
           created_at?: string
           folder_id?: string
           id?: string
+          kind?: string
           name?: string
           position?: number
         }
@@ -1235,6 +1249,33 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      task_spaces: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          position?: number
         }
         Relationships: []
       }
