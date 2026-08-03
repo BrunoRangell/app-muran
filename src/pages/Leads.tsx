@@ -264,7 +264,7 @@ const Leads = () => {
   const selected = leads.find((l) => l.id === selectedId) ?? null;
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 p-4 md:p-6">
+    <div className="min-w-0 flex-1 space-y-4 overflow-x-auto p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="flex items-center gap-2 text-xl font-bold text-foreground md:text-2xl">
           <Target className="h-6 w-6 text-primary" />
