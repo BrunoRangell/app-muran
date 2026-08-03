@@ -191,9 +191,11 @@ export interface ViewInput {
   name: string;
   view_type: ViewType;
   group_by: GroupBy;
-  sort_by?: SortBy | null;
+  sort_by?: string | null;
   filters?: TaskViewFilters;
   position?: number;
+  is_private?: boolean;
+  owner_id?: string | null;
 }
 
 export const useCreateView = () => {
