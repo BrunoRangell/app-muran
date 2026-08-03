@@ -16,10 +16,7 @@ import {
   Target,
   TrendingUp,
   UserX,
-  Megaphone,
-  CheckSquare,
-  ListChecks,
-  Building2
+  Megaphone
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -42,12 +39,6 @@ const financialSubMenu: MenuItem[] = [
   { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" }
 ];
 
-const tasksSubMenu: MenuItem[] = [
-  { icon: CheckSquare, label: "Minhas Tarefas", path: "/minhas-tarefas" },
-  { icon: ListChecks, label: "Tarefas de Clientes", path: "/tarefas-clientes" },
-  { icon: Building2, label: "Tarefas Internas", path: "/tarefas-internas" },
-];
-
 const adminMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { 
@@ -56,13 +47,7 @@ const adminMenuItems: MenuItem[] = [
     path: "/clientes",
     submenu: financialSubMenu
   },
-  {
-    icon: ListTodo,
-    label: "Tarefas",
-    path: "/minhas-tarefas",
-    submenu: tasksSubMenu
-  },
-  { icon: Target, label: "Leads", path: "/leads" },
+  { icon: ListTodo, label: "Tarefas", path: "/tarefas" },
   { icon: Settings2, label: "Onboarding", path: "/onboarding" },
   { icon: UserX, label: "Offboarding", path: "/offboarding" },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
@@ -74,13 +59,7 @@ const adminMenuItems: MenuItem[] = [
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  {
-    icon: ListTodo,
-    label: "Tarefas",
-    path: "/minhas-tarefas",
-    submenu: tasksSubMenu
-  },
-  { icon: Target, label: "Leads", path: "/leads" },
+  { icon: ListTodo, label: "Tarefas", path: "/tarefas" },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
@@ -123,7 +102,7 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     if (submenu) {
       return submenu.some(item => location.pathname === item.path);
     }
-    return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   return (

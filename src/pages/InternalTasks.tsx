@@ -1,17 +1,15 @@
-import { useMemo, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
+import { useState } from "react";
 import { KanbanBoard, KanbanColumnDef } from "@/components/tasks/KanbanBoard";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { TasksTree, TasksTreeItem } from "@/components/tasks/TasksShell";
 import { useInternalTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import {
   InternalArea,
   INTERNAL_AREAS,
   INTERNAL_TASK_STATUSES,
-  Task,
   TaskStatus,
   TASK_STATUS_META,
 } from "@/types/tasks";
@@ -25,81 +23,74 @@ const columns: KanbanColumnDef<TaskStatus>[] = INTERNAL_TASK_STATUSES.map((s) =>
   header: TASK_STATUS_META[s].header,
 }));
 
-const AreaBoard = ({ area }: { area: InternalArea }) => {
+const InternalTasks = () => {
+  const [area, setArea] = useState<InternalArea>(INTERNAL_AREAS[0]);
   const { data: tasks = [], isLoading } = useInternalTasks(area);
   const { data: members = [] } = useTeamMembers();
   const updateTask = useUpdateTask();
-  const [selected, setSelected] = useState<Task | null>(null);
-  const current = useMemo(
-    () => tasks.find((t) => t.id === selected?.id) ?? null,
-    [tasks, selected?.id]
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-muran-primary" />
-      </div>
-    );
-  }
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
   return (
     <>
-      <KanbanBoard
-        columns={columns}
-        items={tasks}
-        getStatus={(t) => t.status}
-        onStatusChange={(t, status) => updateTask.mutate({ id: t.id, status })}
-        renderCard={(t) => (
-          <TaskCard
-            task={t}
-            member={members.find((m) => m.id === t.assignee_id)}
-            onClick={() => setSelected(t)}
+      <TasksTree title="Muran · Interno">
+        {INTERNAL_AREAS.map((a) => (
+          <TasksTreeItem
+            key={a}
+            label={a}
+            icon={Building2}
+            active={area === a}
+            onClick={() => setArea(a)}
+          />
+        ))}
+      </TasksTree>
+
+      <section className="min-w-0 flex-1 overflow-x-auto p-4">
+        <div className="mb-4 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <span>Tarefas Internas</span>
+          <span className="opacity-40">/</span>
+          <span className="font-semibold text-foreground">{area}</span>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <KanbanBoard
+            columns={columns}
+            items={tasks}
+            getStatus={(t) => t.status}
+            onStatusChange={(t, status) => updateTask.mutate({ id: t.id, status })}
+            renderCard={(t) => (
+              <TaskCard
+                task={t}
+                member={members.find((m) => m.id === t.assignee_id)}
+                onClick={() => setSelectedId(t.id)}
+              />
+            )}
+            footer={(status) => (
+              <NewTaskDialog
+                members={members}
+                status={status}
+                scope={{ is_internal: true, internal_area: area, list_id: null }}
+                label="Adicionar Tarefa"
+              />
+            )}
           />
         )}
-        footer={(status) => (
-          <NewTaskDialog
-            members={members}
-            status={status}
-            scope={{ is_internal: true, internal_area: area, list_id: null }}
-          />
-        )}
-      />
+      </section>
+
       <TaskDetailModal
-        task={current}
+        task={selected}
         statuses={INTERNAL_TASK_STATUSES}
         members={members}
-        open={!!current}
-        onOpenChange={(open) => !open && setSelected(null)}
+        breadcrumb={["Tarefas Internas", area]}
+        open={!!selected}
+        onOpenChange={(open) => !open && setSelectedId(null)}
       />
     </>
   );
 };
-
-const InternalTasks = () => (
-  <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-    <h1 className="flex items-center gap-2 text-2xl font-bold text-muran-dark md:text-3xl">
-      <Building2 className="h-6 w-6 text-muran-primary" />
-      Tarefas Internas
-    </h1>
-
-    <Card className="p-3 md:p-5">
-      <Tabs defaultValue={INTERNAL_AREAS[0]} className="space-y-4">
-        <TabsList>
-          {INTERNAL_AREAS.map((a) => (
-            <TabsTrigger key={a} value={a}>
-              {a}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {INTERNAL_AREAS.map((a) => (
-          <TabsContent key={a} value={a}>
-            <AreaBoard area={a} />
-          </TabsContent>
-        ))}
-      </Tabs>
-    </Card>
-  </div>
-);
 
 export default InternalTasks;

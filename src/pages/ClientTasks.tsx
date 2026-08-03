@@ -1,71 +1,176 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ClientTasksTab } from "@/components/tasks/ClientTasksTab";
-import { ListChecks } from "lucide-react";
+import { KanbanBoard, KanbanColumnDef } from "@/components/tasks/KanbanBoard";
+import { TaskCard } from "@/components/tasks/TaskCard";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { TasksTree, TasksTreeItem } from "@/components/tasks/TasksShell";
+import { useClientTaskLists, useListTasks, useUpdateTask } from "@/hooks/useTasks";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { CLIENT_TASK_STATUSES, Task, TaskStatus, TASK_STATUS_META } from "@/types/tasks";
+import { ChevronDown, ChevronRight, Folder, ListChecks, Loader2 } from "lucide-react";
+
+const columns: KanbanColumnDef<TaskStatus>[] = CLIENT_TASK_STATUSES.map((s) => ({
+  id: s,
+  label: TASK_STATUS_META[s].label,
+  dot: TASK_STATUS_META[s].dot,
+  border: TASK_STATUS_META[s].border,
+  header: TASK_STATUS_META[s].header,
+}));
+
+const ClientNode = ({
+  clientId,
+  name,
+  expanded,
+  onToggle,
+  selectedList,
+  onSelectList,
+}: {
+  clientId: string;
+  name: string;
+  expanded: boolean;
+  onToggle: () => void;
+  selectedList: string | null;
+  onSelectList: (listId: string, clientName: string, listName: string) => void;
+}) => {
+  const { data: lists = [] } = useClientTaskLists(expanded ? clientId : undefined);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+      >
+        {expanded ? (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        )}
+        <Folder className="h-3.5 w-3.5 shrink-0 opacity-70" />
+        <span className="truncate">{name}</span>
+      </button>
+      {expanded && (
+        <div className="ml-4 border-l border-border pl-1">
+          {lists.map((l) => (
+            <TasksTreeItem
+              key={l.id}
+              label={l.name}
+              icon={ListChecks}
+              active={selectedList === l.id}
+              onClick={() => onSelectList(l.id, name, l.name)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ClientTasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initial = searchParams.get("clientId") ?? "";
-  const [clientId, setClientId] = useState(initial);
+  const [expanded, setExpanded] = useState<string | null>(searchParams.get("clientId"));
+  const [listId, setListId] = useState<string | null>(null);
+  const [crumb, setCrumb] = useState<{ client: string; list: string } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-for-tasks"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, status")
+        .select("id, company_name")
         .order("company_name");
       if (error) throw error;
       return data;
     },
   });
 
-  const selectClient = (id: string) => {
-    setClientId(id);
-    setSearchParams({ clientId: id });
-  };
+  const { data: tasks = [], isLoading } = useListTasks(listId ?? undefined);
+  const { data: members = [] } = useTeamMembers();
+  const updateTask = useUpdateTask();
+  const selected: Task | null = tasks.find((t) => t.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (expanded) setSearchParams({ clientId: expanded }, { replace: true });
+  }, [expanded, setSearchParams]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-muran-dark md:text-3xl">
-          <ListChecks className="h-6 w-6 text-muran-primary" />
-          Tarefas de Clientes
-        </h1>
-        <Select value={clientId} onValueChange={selectClient}>
-          <SelectTrigger className="w-full md:w-72">
-            <SelectValue placeholder="Selecione um cliente" />
-          </SelectTrigger>
-          <SelectContent>
-            {clients.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.company_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <>
+      <TasksTree title="Gestão de Clientes">
+        {clients.map((c) => (
+          <ClientNode
+            key={c.id}
+            clientId={c.id}
+            name={c.company_name}
+            expanded={expanded === c.id}
+            onToggle={() => setExpanded((e) => (e === c.id ? null : c.id))}
+            selectedList={listId}
+            onSelectList={(id, client, list) => {
+              setListId(id);
+              setCrumb({ client, list });
+            }}
+          />
+        ))}
+      </TasksTree>
 
-      <Card className="p-3 md:p-5">
-        {clientId ? (
-          <ClientTasksTab clientId={clientId} />
-        ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Escolha um cliente para ver o quadro de tarefas.
+      <section className="min-w-0 flex-1 overflow-x-auto p-4">
+        <div className="mb-4 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <span>Gestão de Clientes</span>
+          {crumb && (
+            <>
+              <span className="opacity-40">/</span>
+              <span>{crumb.client}</span>
+              <span className="opacity-40">/</span>
+              <span className="font-semibold text-foreground">{crumb.list}</span>
+            </>
+          )}
+        </div>
+
+        {!listId ? (
+          <p className="py-16 text-center text-sm text-muted-foreground">
+            Escolha um cliente e uma lista na barra lateral.
           </p>
+        ) : isLoading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <KanbanBoard
+            columns={columns}
+            items={tasks}
+            getStatus={(t) => t.status}
+            onStatusChange={(t, status) => updateTask.mutate({ id: t.id, status })}
+            renderCard={(t) => (
+              <TaskCard
+                task={t}
+                member={members.find((m) => m.id === t.assignee_id)}
+                onClick={() => setSelectedId(t.id)}
+              />
+            )}
+            footer={(status) => (
+              <NewTaskDialog
+                members={members}
+                status={status}
+                scope={{ list_id: listId, is_internal: false }}
+                label="Adicionar Tarefa"
+              />
+            )}
+          />
         )}
-      </Card>
-    </div>
+      </section>
+
+      <TaskDetailModal
+        task={selected}
+        statuses={CLIENT_TASK_STATUSES}
+        members={members}
+        breadcrumb={crumb ? ["Gestão de Clientes", crumb.client, crumb.list] : undefined}
+        open={!!selected}
+        onOpenChange={(open) => !open && setSelectedId(null)}
+      />
+    </>
   );
 };
 

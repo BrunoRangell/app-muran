@@ -69,11 +69,11 @@ export const NewTaskDialog = ({ members, status, scope, label = "Nova tarefa" }:
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+        <Button variant="ghost" size="sm" className="w-full justify-start text-[12px] text-muted-foreground hover:bg-accent/60">
           <Plus className="mr-1 h-4 w-4" /> {label}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="tasks-dark max-w-lg border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>Nova tarefa</DialogTitle>
         </DialogHeader>

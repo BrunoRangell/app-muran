@@ -69,6 +69,7 @@ const ClientTasks = lazyWithTimeout(() => import("@/pages/ClientTasks"));
 const InternalTasks = lazyWithTimeout(() => import("@/pages/InternalTasks"));
 const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
 const Leads = lazyWithTimeout(() => import("@/pages/Leads"));
+const TasksShell = lazyWithTimeout(() => import("@/components/tasks/TasksShell"));
 
 function App() {
   return (
@@ -156,11 +157,20 @@ function App() {
           <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
           <Route path="/anuncios-ativos" element={<AnunciosAtivos />} />
 
-          {/* Gestão de tarefas */}
-          <Route path="/tarefas-clientes" element={<ClientTasks />} />
-          <Route path="/tarefas-internas" element={<InternalTasks />} />
-          <Route path="/minhas-tarefas" element={<MyTasks />} />
-          <Route path="/leads" element={<Leads />} />
+          {/* Módulo isolado de tarefas (navegação interna própria) */}
+          <Route path="/tarefas" element={<TasksShell />}>
+            <Route index element={<Navigate to="/tarefas/clientes" replace />} />
+            <Route path="clientes" element={<ClientTasks />} />
+            <Route path="internas" element={<InternalTasks />} />
+            <Route path="minhas" element={<MyTasks />} />
+            <Route path="leads" element={<Leads />} />
+          </Route>
+
+          {/* Redirects das rotas antigas */}
+          <Route path="/tarefas-clientes" element={<Navigate to="/tarefas/clientes" replace />} />
+          <Route path="/tarefas-internas" element={<Navigate to="/tarefas/internas" replace />} />
+          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas/minhas" replace />} />
+          <Route path="/leads" element={<Navigate to="/tarefas/leads" replace />} />
 
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
 

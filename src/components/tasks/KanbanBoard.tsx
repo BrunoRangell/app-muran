@@ -25,7 +25,7 @@ export function KanbanBoard<T extends { id: string }, S extends string>({
   getStatus,
   onStatusChange,
   renderCard,
-  emptyLabel = "Nenhuma tarefa",
+  emptyLabel,
   footer,
 }: KanbanBoardProps<T, S>) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export function KanbanBoard<T extends { id: string }, S extends string>({
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex gap-3 overflow-x-auto pb-4">
       {columns.map((column) => {
         const columnItems = items.filter((i) => getStatus(i) === column.id);
         return (
@@ -53,25 +53,28 @@ export function KanbanBoard<T extends { id: string }, S extends string>({
             onDragLeave={() => setOverColumn((c) => (c === column.id ? null : c))}
             onDrop={() => handleDrop(column.id)}
             className={cn(
-              "flex w-72 min-w-[18rem] flex-col rounded-xl border border-t-4 bg-muted/40 p-3 transition-colors",
-              column.border,
-              overColumn === column.id && "bg-muted ring-2 ring-primary/30"
+              "flex w-[280px] min-w-[280px] flex-col rounded-lg p-1 transition-colors",
+              overColumn === column.id && "bg-accent/40 ring-1 ring-primary/40"
             )}
           >
-            <div className="mb-3 flex items-center gap-2">
-              <span className={cn("h-2.5 w-2.5 rounded-full", column.dot)} />
-              <h3 className={cn("text-sm font-semibold", column.header)}>{column.label}</h3>
-              <span className="ml-auto rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            {/* Cabeçalho: pill com pontinho + nome + contador */}
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-bold tracking-wide",
+                  column.header,
+                  "bg-card"
+                )}
+              >
+                <span className={cn("h-2 w-2 rounded-full", column.dot)} />
+                {column.label}
+              </span>
+              <span className="text-[11px] font-semibold text-muted-foreground">
                 {columnItems.length}
               </span>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2">
-              {columnItems.length === 0 && (
-                <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
-                  {emptyLabel}
-                </p>
-              )}
+            <div className="flex flex-1 flex-col gap-1.5">
               {columnItems.map((item) => (
                 <div
                   key={item.id}
@@ -81,14 +84,17 @@ export function KanbanBoard<T extends { id: string }, S extends string>({
                     setDraggingId(null);
                     setOverColumn(null);
                   }}
-                  className={cn("cursor-grab active:cursor-grabbing", draggingId === item.id && "opacity-50")}
+                  className={cn("cursor-grab active:cursor-grabbing", draggingId === item.id && "opacity-40")}
                 >
                   {renderCard(item)}
                 </div>
               ))}
+              {columnItems.length === 0 && emptyLabel && (
+                <p className="px-1 py-2 text-[11px] text-muted-foreground/70">{emptyLabel}</p>
+              )}
             </div>
 
-            {footer && <div className="mt-2">{footer(column.id)}</div>}
+            {footer && <div className="mt-1">{footer(column.id)}</div>}
           </div>
         );
       })}
