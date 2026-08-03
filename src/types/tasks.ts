@@ -42,8 +42,8 @@ export interface TaskMember {
   created_at?: string;
 }
 
-/** Pasta independente (não é mais um cliente do app-muran). */
-export interface TaskFolder {
+/** Espaço (nível 1 da árvore, como no ClickUp). */
+export interface TaskSpace {
   id: string;
   name: string;
   color: string;
@@ -52,10 +52,24 @@ export interface TaskFolder {
   created_at?: string;
 }
 
+/** Pasta independente (nível 2, pertence a um espaço). */
+export interface TaskFolder {
+  id: string;
+  space_id: string;
+  name: string;
+  color: string;
+  icon: string | null;
+  position: number;
+  created_at?: string;
+}
+
+export type ListKind = "tasks" | "leads";
+
 export interface TaskList {
   id: string;
   folder_id: string;
   name: string;
+  kind: ListKind;
   position: number;
   created_at?: string;
 }

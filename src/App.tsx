@@ -66,10 +66,8 @@ const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
-const ClientTasks = lazyWithTimeout(() => import("@/pages/ClientTasks"));
-const InternalTasks = lazyWithTimeout(() => import("@/pages/InternalTasks"));
+const TaskSpaces = lazyWithTimeout(() => import("@/pages/TaskSpaces"));
 const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
-const Leads = lazyWithTimeout(() => import("@/pages/Leads"));
 const TaskMembers = lazyWithTimeout(() => import("@/pages/TaskMembers"));
 const TasksShell = lazyWithTimeout(() => import("@/components/tasks/TasksShell"));
 
@@ -97,11 +95,12 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route index element={<Navigate to="/tarefas/clientes" replace />} />
-          <Route path="clientes" element={<ClientTasks />} />
-          <Route path="internas" element={<InternalTasks />} />
-          <Route path="minhas" element={<MyTasks />} />
-          <Route path="leads" element={<Leads />} />
+          <Route index element={<MyTasks />} />
+          <Route path="espacos" element={<TaskSpaces />} />
+          <Route path="minhas" element={<Navigate to="/tarefas" replace />} />
+          <Route path="clientes" element={<Navigate to="/tarefas/espacos" replace />} />
+          <Route path="internas" element={<Navigate to="/tarefas/espacos" replace />} />
+          <Route path="leads" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="membros" element={<TaskMembers />} />
         </Route>
 
@@ -183,10 +182,10 @@ function App() {
 
 
           {/* Redirects das rotas antigas */}
-          <Route path="/tarefas-clientes" element={<Navigate to="/tarefas/clientes" replace />} />
-          <Route path="/tarefas-internas" element={<Navigate to="/tarefas/internas" replace />} />
-          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas/minhas" replace />} />
-          <Route path="/leads" element={<Navigate to="/tarefas/leads" replace />} />
+          <Route path="/tarefas-clientes" element={<Navigate to="/tarefas/espacos" replace />} />
+          <Route path="/tarefas-internas" element={<Navigate to="/tarefas/espacos" replace />} />
+          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas" replace />} />
+          <Route path="/leads" element={<Navigate to="/tarefas/espacos" replace />} />
 
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
 
