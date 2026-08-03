@@ -33,7 +33,8 @@ import { useCreateLead, useDeleteLead, useLeads, useUpdateLead } from "@/hooks/u
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Lead, LEAD_STATUSES, LEAD_STATUS_META, LeadStatus } from "@/types/tasks";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Target, Trash2 } from "lucide-react";
+import { Plus, Target, Trash2 } from "lucide-react";
+import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 
 const NONE = "__none__";
 
@@ -275,9 +276,7 @@ const Leads = () => {
 
       <Card className="p-3 md:p-5">
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <TaskListSkeleton />
         ) : (
           <Tabs defaultValue="kanban" className="space-y-4">
             <TabsList>

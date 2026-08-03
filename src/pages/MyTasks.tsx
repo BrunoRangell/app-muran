@@ -18,7 +18,8 @@ import {
   TASK_STATUS_META,
 } from "@/types/tasks";
 import { cn } from "@/lib/utils";
-import { CalendarDays, CheckSquare, Loader2 } from "lucide-react";
+import { CalendarDays, CheckSquare } from "lucide-react";
+import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseLocalDate } from "@/utils/dateHelpers";
@@ -77,11 +78,7 @@ const MyTasks = () => {
       </div>
 
       <Card className="divide-y p-0">
-        {(isLoading || loadingUser) && (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        )}
+        {(isLoading || loadingUser) && <TaskListSkeleton />}
         {!isLoading && !loadingUser && filtered.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
             Nenhuma tarefa atribuída a você.
