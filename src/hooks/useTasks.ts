@@ -22,6 +22,22 @@ export const useListTasks = (listId?: string) =>
     },
   });
 
+/** Todas as tarefas de todas as listas (visão consolidada "Todas as tarefas"). */
+export const useAllTasks = (enabled = true) =>
+  useQuery({
+    queryKey: ["tasks", "all"],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at");
+      if (error) throw error;
+      return (data || []) as Task[];
+    },
+  });
+
 export const useInternalTasks = (area?: InternalArea) =>
   useQuery({
     queryKey: ["tasks", "internal", area],

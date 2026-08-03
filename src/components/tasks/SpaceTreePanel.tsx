@@ -16,7 +16,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, KanbanSquare, ListChecks, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  KanbanSquare,
+  ListChecks,
+  MoreHorizontal,
+  Plus,
+  Star,
+  Trash2,
+  UserCheck,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FOLDER_COLORS, FolderIconName, TaskFolder, TaskList, TaskSpace } from "@/types/tasks";
 import {
@@ -462,12 +471,18 @@ const SpaceNode = ({
 
 /* --------------------------------- painel --------------------------------- */
 
+export type SpaceShortcut = "all" | "mine";
+
 export const SpaceTreePanel = ({
   selectedListId,
   onSelectList,
+  shortcut = null,
+  onSelectShortcut,
 }: {
   selectedListId: string | null;
   onSelectList: (selection: ListSelection) => void;
+  shortcut?: SpaceShortcut | null;
+  onSelectShortcut?: (value: SpaceShortcut) => void;
 }) => {
   const { data: spaces = [] } = useTaskSpaces();
   const [expandedSpace, setExpandedSpace] = usePersistentState<string | null>(
@@ -479,10 +494,42 @@ export const SpaceTreePanel = ({
     null
   );
   const [creating, setCreating] = useState(false);
+  const [collapsed, setCollapsed] = usePersistentState<boolean>(
+    "tasks:spaces:panelCollapsed",
+    false
+  );
   const createSpace = useCreateSpace();
 
+  const shortcuts: { key: SpaceShortcut; label: string; icon: typeof Star }[] = [
+    { key: "all", label: "Todas as tarefas", icon: Star },
+    { key: "mine", label: "Minhas tarefas", icon: UserCheck },
+  ];
+
   return (
-    <TasksTree title="Espaços">
+    <TasksTree title="Espaços" collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)}>
+      <div className="mb-1.5 border-b border-border/70 pb-1.5">
+        {shortcuts.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => onSelectShortcut?.(item.key)}
+            className={cn(
+              "flex w-full items-center gap-1.5 rounded-[4px] px-2 py-[6px] text-left text-[12.5px] transition-colors",
+              shortcut === item.key
+                ? "bg-primary/15 font-medium text-foreground shadow-[inset_2px_0_0_0_hsl(var(--primary))]"
+                : "text-foreground/85 hover:bg-accent/60 hover:text-foreground"
+            )}
+          >
+            <item.icon
+              className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                shortcut === item.key ? "text-primary" : "text-muted-foreground"
+              )}
+            />
+            <span className="truncate">{item.label}</span>
+          </button>
+        ))}
+      </div>
       {spaces.map((s) => (
         <SpaceNode
           key={s.id}

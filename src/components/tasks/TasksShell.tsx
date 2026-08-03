@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 import {
   Building2,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Folder,
   FolderOpen,
-  Home,
   LayoutGrid,
   ListChecks,
   Sparkles,
@@ -16,7 +17,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TaskListSkeleton } from "./TasksSkeleton";
 
 const railItems = [
-  { icon: Home, label: "Início", path: "/tarefas", end: true },
   { icon: LayoutGrid, label: "Espaços", path: "/tarefas/espacos" },
   { icon: Users, label: "Membros", path: "/tarefas/membros" },
 ];
@@ -30,13 +30,47 @@ const railStatic = [
 export const TasksTree = ({
   title,
   children,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   title: string;
   children: ReactNode;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) => (
-  <aside className="hidden w-[248px] shrink-0 flex-col border-r border-border bg-card/40 lg:flex">
-    <div className="px-3 py-2.5 text-[12px] font-semibold text-foreground/90">{title}</div>
-    <div className="flex-1 overflow-y-auto px-1.5 pb-4">{children}</div>
+  <aside
+    className={cn(
+      "hidden shrink-0 flex-col border-r border-border bg-card/40 transition-[width] duration-200 lg:flex",
+      collapsed ? "w-[44px]" : "w-[248px]"
+    )}
+  >
+    <div className="flex items-center gap-1 px-2 py-2.5">
+      {!collapsed && (
+        <span className="flex-1 truncate px-1 text-[12px] font-semibold text-foreground/90">
+          {title}
+        </span>
+      )}
+      {onToggleCollapse && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label={collapsed ? "Expandir painel" : "Recolher painel"}
+              className="mx-auto flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+            >
+              {collapsed ? (
+                <ChevronsRight className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronsLeft className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{collapsed ? "Expandir" : "Recolher"}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+    {!collapsed && <div className="flex-1 overflow-y-auto px-1.5 pb-4">{children}</div>}
   </aside>
 );
 
@@ -138,9 +172,7 @@ export const TasksShell = () => {
       {/* Trilha fina de ícones */}
       <nav className="flex w-[68px] shrink-0 flex-col items-center gap-1 border-r border-border bg-card/60 py-4">
         {railItems.map((item) => {
-          const active = item.end
-            ? pathname === "/tarefas" || pathname === "/tarefas/"
-            : pathname.startsWith(item.path);
+          const active = pathname.startsWith(item.path);
           return (
             <Tooltip key={item.path}>
               <TooltipTrigger asChild>

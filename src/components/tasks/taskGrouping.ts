@@ -133,6 +133,42 @@ export const buildTaskGroups = ({
     return groups;
   }
 
+  if (groupBy === "due") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const todayStr = iso(today);
+    const weekEnd = new Date(today);
+    weekEnd.setDate(weekEnd.getDate() + (7 - ((today.getDay() + 6) % 7)) - 1);
+    const weekEndStr = iso(weekEnd);
+
+    const bucketOf = (due: string | null) => {
+      if (!due) return "none";
+      if (due < todayStr) return "overdue";
+      if (due === todayStr) return "today";
+      if (due <= weekEndStr) return "week";
+      return "later";
+    };
+
+    const buckets: { key: string; label: string; dot: string }[] = [
+      { key: "overdue", label: "Atrasado", dot: "bg-red-500" },
+      { key: "today", label: "Hoje", dot: "bg-amber-500" },
+      { key: "week", label: "Esta semana", dot: "bg-sky-500" },
+      { key: "later", label: "Mais tarde", dot: "bg-emerald-500" },
+      { key: "none", label: "Sem prazo", dot: "bg-muted-foreground" },
+    ];
+
+    return buckets.map((b) => ({
+      key: b.key,
+      label: b.label,
+      pill: NEUTRAL_PILL,
+      pillDot: b.dot,
+      tasks: visible.filter((t) => bucketOf(t.due_date) === b.key),
+      patch: null,
+    }));
+  }
+
   if (groupBy === "priority") {
     const groups: TaskGroup[] = (Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => ({
       key: p,

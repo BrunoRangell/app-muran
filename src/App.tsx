@@ -67,7 +67,6 @@ const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficRep
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
 const TaskSpaces = lazyWithTimeout(() => import("@/pages/TaskSpaces"));
-const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
 const TaskMembers = lazyWithTimeout(() => import("@/pages/TaskMembers"));
 const TasksShell = lazyWithTimeout(() => import("@/components/tasks/TasksShell"));
 
@@ -95,9 +94,9 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route index element={<MyTasks />} />
+          <Route index element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="espacos" element={<TaskSpaces />} />
-          <Route path="minhas" element={<Navigate to="/tarefas" replace />} />
+          <Route path="minhas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="clientes" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="internas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="leads" element={<Navigate to="/tarefas/espacos" replace />} />
@@ -184,7 +183,7 @@ function App() {
           {/* Redirects das rotas antigas */}
           <Route path="/tarefas-clientes" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="/tarefas-internas" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas" replace />} />
+          <Route path="/minhas-tarefas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="/leads" element={<Navigate to="/tarefas/espacos" replace />} />
 
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
