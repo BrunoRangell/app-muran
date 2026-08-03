@@ -17,8 +17,6 @@ import {
   TrendingUp,
   UserX,
   Megaphone,
-  CheckSquare,
-  ListChecks,
   Building2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,7 +103,7 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     if (submenu) {
       return submenu.some(item => location.pathname === item.path);
     }
-    return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   return (
