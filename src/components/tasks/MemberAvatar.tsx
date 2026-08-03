@@ -1,9 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { TeamMember } from "@/types/team";
+import { TaskMember } from "@/types/tasks";
 
 interface Props {
-  member?: TeamMember | null;
+  member?: TaskMember | null;
   className?: string;
 }
 
@@ -18,8 +18,11 @@ export const MemberAvatar = ({ member, className }: Props) => {
 
   return (
     <Avatar className={cn("h-7 w-7 border", className)}>
-      {member?.photo_url && <AvatarImage src={member.photo_url} alt={member.name} />}
-      <AvatarFallback className="bg-muran-primary/10 text-[10px] font-semibold text-muran-primary">
+      {member?.avatar_url && <AvatarImage src={member.avatar_url} alt={member.name} />}
+      <AvatarFallback
+        className="text-[10px] font-semibold text-white"
+        style={{ backgroundColor: member?.color || "hsl(var(--primary))" }}
+      >
         {initials}
       </AvatarFallback>
     </Avatar>

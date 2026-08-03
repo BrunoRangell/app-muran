@@ -1,15 +1,19 @@
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
-import { TeamMember } from "@/types/team";
 import {
+  GroupBy,
+  SortBy,
   Task,
+  TaskMember,
   TaskStatus,
+  TaskViewFilters,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
 } from "@/types/tasks";
 import { useUpdateTask } from "@/hooks/useTasks";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
+import { buildTaskGroups } from "@/components/tasks/taskGrouping";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,11 +52,14 @@ const formatDue = (value: string | null) => {
 interface Props {
   statuses: TaskStatus[];
   tasks: Task[];
-  members: TeamMember[];
+  members: TaskMember[];
   onOpenTask: (task: Task) => void;
   newTaskScope: { list_id?: string | null; is_internal?: boolean; internal_area?: string | null };
   /** Chave para persistir os grupos recolhidos (localStorage). */
   storageKey?: string;
+  groupBy?: GroupBy;
+  sortBy?: SortBy | null;
+  filters?: TaskViewFilters | null;
 }
 
 export const TaskListView = ({
@@ -62,23 +69,26 @@ export const TaskListView = ({
   onOpenTask,
   newTaskScope,
   storageKey = "tasks:list:collapsed",
+  groupBy = "status",
+  sortBy,
+  filters,
 }: Props) => {
   const [collapsed, setCollapsed] = usePersistentState<Record<string, boolean>>(storageKey, {});
   const updateTask = useUpdateTask();
+  const groups = buildTaskGroups({ tasks, statuses, members, groupBy, sortBy, filters });
 
   return (
     <div className="space-y-5 text-[13px]">
-      {statuses.map((status) => {
-        const meta = TASK_STATUS_META[status];
-        const rows = tasks.filter((t) => t.status === status);
-        const isCollapsed = collapsed[status];
+      {groups.map((group) => {
+        const rows = group.tasks;
+        const isCollapsed = collapsed[group.key];
 
         return (
-          <div key={status}>
+          <div key={group.key}>
             {/* Cabeçalho do grupo — clique recolhe/expande */}
             <button
               type="button"
-              onClick={() => setCollapsed((c) => ({ ...c, [status]: !c[status] }))}
+              onClick={() => setCollapsed((c) => ({ ...c, [group.key]: !c[group.key] }))}
               className="flex w-full items-center gap-2 rounded-[4px] px-1 py-1 text-left transition-colors hover:bg-accent/40"
               aria-expanded={!isCollapsed}
             >
@@ -92,11 +102,11 @@ export const TaskListView = ({
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-[3px] px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide",
-                  meta.pill
+                  group.pill
                 )}
               >
-                <span className={cn("h-[7px] w-[7px] rounded-full", meta.pillDot)} />
-                {meta.label}
+                <span className={cn("h-[7px] w-[7px] rounded-full", group.pillDot)} />
+                {group.label}
               </span>
               <span className="text-[12px] text-muted-foreground">{rows.length}</span>
             </button>
@@ -213,8 +223,12 @@ export const TaskListView = ({
                   <div className="px-1 py-0.5">
                     <NewTaskDialog
                       members={members}
-                      status={status}
+                      status={groupBy === "status" ? (group.key as TaskStatus) : statuses[0]}
                       scope={newTaskScope as never}
+                      defaults={{
+                        assignee_id: group.patch?.assignee_id ?? null,
+                        priority: group.patch?.priority ?? null,
+                      }}
                       label="Adicionar Tarefa"
                     />
                   </div>

@@ -70,6 +70,7 @@ const ClientTasks = lazyWithTimeout(() => import("@/pages/ClientTasks"));
 const InternalTasks = lazyWithTimeout(() => import("@/pages/InternalTasks"));
 const MyTasks = lazyWithTimeout(() => import("@/pages/MyTasks"));
 const Leads = lazyWithTimeout(() => import("@/pages/Leads"));
+const TaskMembers = lazyWithTimeout(() => import("@/pages/TaskMembers"));
 const TasksShell = lazyWithTimeout(() => import("@/components/tasks/TasksShell"));
 
 function App() {
@@ -101,6 +102,7 @@ function App() {
           <Route path="internas" element={<InternalTasks />} />
           <Route path="minhas" element={<MyTasks />} />
           <Route path="leads" element={<Leads />} />
+          <Route path="membros" element={<TaskMembers />} />
         </Route>
 
 

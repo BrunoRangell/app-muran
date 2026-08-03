@@ -1,6 +1,5 @@
 import { CalendarDays, Flag, Link2, Repeat2 } from "lucide-react";
-import { Task, TASK_PRIORITY_META } from "@/types/tasks";
-import { TeamMember } from "@/types/team";
+import { Task, TaskMember, TASK_PRIORITY_META } from "@/types/tasks";
 import { MemberAvatar } from "./MemberAvatar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -9,7 +8,7 @@ import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface Props {
   task: Task;
-  member?: TeamMember | null;
+  member?: TaskMember | null;
   subtitle?: string;
   onClick?: () => void;
 }

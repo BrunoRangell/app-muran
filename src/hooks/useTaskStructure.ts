@@ -1,0 +1,257 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  GroupBy,
+  SortBy,
+  TaskFolder,
+  TaskList,
+  TaskView,
+  TaskViewFilters,
+  ViewType,
+} from "@/types/tasks";
+import { useToast } from "@/hooks/use-toast";
+
+const FOLDER_SELECT = "id, name, color, icon, position, created_at";
+const LIST_SELECT = "id, folder_id, name, position, created_at";
+const VIEW_SELECT = "id, list_id, name, view_type, group_by, sort_by, filters, position, created_at";
+
+/* ---------------------------------- pastas --------------------------------- */
+
+export const useTaskFolders = () =>
+  useQuery({
+    queryKey: ["task-folders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_folders")
+        .select(FOLDER_SELECT)
+        .order("position")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as TaskFolder[];
+    },
+  });
+
+export interface FolderInput {
+  name: string;
+  color?: string;
+  icon?: string | null;
+  position?: number;
+}
+
+export const useCreateFolder = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: FolderInput) => {
+      const { data, error } = await supabase
+        .from("task_folders")
+        .insert(input as never)
+        .select(FOLDER_SELECT)
+        .single();
+      if (error) throw error;
+      return data as TaskFolder;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-folders"] });
+      toast({ title: "Pasta criada" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao criar pasta", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useUpdateFolder = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<FolderInput> & { id: string }) => {
+      const { error } = await supabase.from("task_folders").update(updates as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task-folders"] }),
+    onError: (e: Error) =>
+      toast({ title: "Erro ao atualizar pasta", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useDeleteFolder = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("task_folders").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-folders"] });
+      qc.invalidateQueries({ queryKey: ["task-lists"] });
+      toast({ title: "Pasta excluída" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao excluir pasta", description: e.message, variant: "destructive" }),
+  });
+};
+
+/* ---------------------------------- listas --------------------------------- */
+
+export const useTaskLists = (folderId?: string) =>
+  useQuery({
+    queryKey: ["task-lists", folderId],
+    enabled: !!folderId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_lists")
+        .select(LIST_SELECT)
+        .eq("folder_id", folderId!)
+        .order("position")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as TaskList[];
+    },
+  });
+
+export const useCreateList = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: { folder_id: string; name: string; position?: number }) => {
+      const { data, error } = await supabase
+        .from("task_lists")
+        .insert(input as never)
+        .select(LIST_SELECT)
+        .single();
+      if (error) throw error;
+      return data as TaskList;
+    },
+    onSuccess: (list) => {
+      qc.invalidateQueries({ queryKey: ["task-lists", list.folder_id] });
+      toast({ title: "Lista criada" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao criar lista", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useUpdateList = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; position?: number }) => {
+      const { error } = await supabase.from("task_lists").update(updates as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task-lists"] }),
+    onError: (e: Error) =>
+      toast({ title: "Erro ao atualizar lista", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useDeleteList = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("task_lists").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-lists"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      toast({ title: "Lista excluída" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao excluir lista", description: e.message, variant: "destructive" }),
+  });
+};
+
+/* ------------------------------ visualizações ------------------------------ */
+
+export const useTaskViews = (listId?: string) =>
+  useQuery({
+    queryKey: ["task-views", listId],
+    enabled: !!listId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_views")
+        .select(VIEW_SELECT)
+        .eq("list_id", listId!)
+        .order("position")
+        .order("created_at");
+      if (error) throw error;
+      return (data || []).map((v) => ({
+        ...v,
+        filters: (v.filters ?? {}) as TaskViewFilters,
+      })) as TaskView[];
+    },
+  });
+
+export interface ViewInput {
+  list_id: string;
+  name: string;
+  view_type: ViewType;
+  group_by: GroupBy;
+  sort_by?: SortBy | null;
+  filters?: TaskViewFilters;
+  position?: number;
+}
+
+export const useCreateView = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: ViewInput) => {
+      const { data, error } = await supabase
+        .from("task_views")
+        .insert({ filters: {}, ...input } as never)
+        .select(VIEW_SELECT)
+        .single();
+      if (error) throw error;
+      return data as unknown as TaskView;
+    },
+    onSuccess: (view) => {
+      qc.invalidateQueries({ queryKey: ["task-views", view.list_id] });
+      toast({ title: "Visualização criada" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao criar visualização", description: e.message, variant: "destructive" }),
+  });
+};
+
+export const useUpdateView = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<ViewInput> & { id: string }) => {
+      const { error } = await supabase.from("task_views").update(updates as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task-views"] }),
+    onError: (e: Error) =>
+      toast({
+        title: "Erro ao atualizar visualização",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+};
+
+export const useDeleteView = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("task_views").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-views"] });
+      toast({ title: "Visualização excluída" });
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "Erro ao excluir visualização",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+};

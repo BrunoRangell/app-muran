@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/select";
 import {
   Task,
+  TaskMember,
   TaskPriority,
   TaskStatus,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
 } from "@/types/tasks";
-import { TeamMember } from "@/types/team";
 import { useAddTaskComment, useDeleteTask, useTaskComments, useUpdateTask } from "@/hooks/useTasks";
 import { MemberAvatar } from "./MemberAvatar";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ import { ptBR } from "date-fns/locale";
 interface Props {
   task: Task | null;
   statuses: TaskStatus[];
-  members: TeamMember[];
+  members: TaskMember[];
   breadcrumb?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;

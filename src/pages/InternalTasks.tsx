@@ -8,7 +8,7 @@ import { TaskListView } from "@/components/tasks/TaskListView";
 import { TaskBoardSkeleton, TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { useInternalTasks, useUpdateTask } from "@/hooks/useTasks";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useTaskMembers } from "@/hooks/useTaskMembers";
 import {
   InternalArea,
   INTERNAL_AREAS,
@@ -29,7 +29,7 @@ const columns: KanbanColumnDef<TaskStatus>[] = INTERNAL_TASK_STATUSES.map((s) =>
 const InternalTasks = () => {
   const [area, setArea] = useState<InternalArea>(INTERNAL_AREAS[0]);
   const { data: tasks = [], isLoading } = useInternalTasks(area);
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTaskMembers();
   const updateTask = useUpdateTask();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = usePersistentState<"lista" | "quadro">("tasks:internas:view", "lista");

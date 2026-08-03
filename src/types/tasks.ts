@@ -32,13 +32,105 @@ export interface Task {
   updated_at: string;
 }
 
-export interface ClientTaskList {
+/** Membro do módulo de tarefas (isolado de team_members). */
+export interface TaskMember {
   id: string;
-  client_id: string;
+  name: string;
+  email: string | null;
+  color: string | null;
+  avatar_url: string | null;
+  created_at?: string;
+}
+
+/** Pasta independente (não é mais um cliente do app-muran). */
+export interface TaskFolder {
+  id: string;
+  name: string;
+  color: string;
+  icon: string | null;
+  position: number;
+  created_at?: string;
+}
+
+export interface TaskList {
+  id: string;
+  folder_id: string;
   name: string;
   position: number;
-  created_at: string;
+  created_at?: string;
 }
+
+export type ViewType = "list" | "board";
+export type GroupBy = "status" | "assignee" | "priority";
+export type SortBy = "due" | "priority" | "created";
+
+export interface TaskViewFilters {
+  assignee_id?: string | null;
+  priority?: TaskPriority | null;
+}
+
+export interface TaskView {
+  id: string;
+  list_id: string;
+  name: string;
+  view_type: ViewType;
+  group_by: GroupBy;
+  sort_by: SortBy | null;
+  filters: TaskViewFilters;
+  position: number;
+  created_at?: string;
+}
+
+/** Paleta de cores para pastas (estilo ClickUp). */
+export const FOLDER_COLORS = [
+  "#ff6e00",
+  "#f59e0b",
+  "#eab308",
+  "#22c55e",
+  "#10b981",
+  "#06b6d4",
+  "#3b82f6",
+  "#6366f1",
+  "#8b5cf6",
+  "#d946ef",
+  "#ec4899",
+  "#ef4444",
+  "#64748b",
+  "#321e32",
+] as const;
+
+/** Ícones disponíveis para pastas. */
+export const FOLDER_ICON_NAMES = [
+  "folder",
+  "briefcase",
+  "rocket",
+  "target",
+  "megaphone",
+  "palette",
+  "code",
+  "chart",
+  "users",
+  "star",
+  "heart",
+  "flame",
+  "globe",
+  "shopping",
+] as const;
+
+export type FolderIconName = (typeof FOLDER_ICON_NAMES)[number];
+
+export const GROUP_BY_LABEL: Record<GroupBy, string> = {
+  status: "Status",
+  assignee: "Responsável",
+  priority: "Prioridade",
+};
+
+export const SORT_BY_LABEL: Record<SortBy, string> = {
+  due: "Prazo",
+  priority: "Prioridade",
+  created: "Criação",
+};
+
 
 export interface TaskComment {
   id: string;

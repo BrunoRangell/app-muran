@@ -18,27 +18,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { TeamMember } from "@/types/team";
-import { TaskPriority, TaskStatus, TASK_PRIORITY_META } from "@/types/tasks";
+import { TaskMember, TaskPriority, TaskStatus, TASK_PRIORITY_META } from "@/types/tasks";
 import { TaskInput, useCreateTask } from "@/hooks/useTasks";
 
 interface Props {
-  members: TeamMember[];
+  members: TaskMember[];
   status: TaskStatus;
-  /** Escopo da tarefa: lista de cliente ou área interna */
+  /** Escopo da tarefa: lista ou área interna */
   scope: Pick<TaskInput, "list_id" | "is_internal" | "internal_area">;
+  /** Valores pré-preenchidos (ex.: grupo por responsável/prioridade) */
+  defaults?: Pick<TaskInput, "assignee_id" | "priority">;
   label?: string;
 }
 
 const NONE = "__none__";
 
-export const NewTaskDialog = ({ members, status, scope, label = "Nova tarefa" }: Props) => {
+export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova tarefa" }: Props) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [assignee, setAssignee] = useState(NONE);
+  const [assignee, setAssignee] = useState(defaults?.assignee_id ?? NONE);
   const [dueDate, setDueDate] = useState("");
-  const [priority, setPriority] = useState(NONE);
+  const [priority, setPriority] = useState<string>(defaults?.priority ?? NONE);
   const createTask = useCreateTask();
 
   const submit = () => {
@@ -57,9 +58,9 @@ export const NewTaskDialog = ({ members, status, scope, label = "Nova tarefa" }:
         onSuccess: () => {
           setTitle("");
           setDescription("");
-          setAssignee(NONE);
+          setAssignee(defaults?.assignee_id ?? NONE);
           setDueDate("");
-          setPriority(NONE);
+          setPriority(defaults?.priority ?? NONE);
           setOpen(false);
         },
       }
@@ -93,7 +94,7 @@ export const NewTaskDialog = ({ members, status, scope, label = "Nova tarefa" }:
                 <SelectTrigger>
                   <SelectValue placeholder="Sem responsável" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="tasks-dark">
                   <SelectItem value={NONE}>Sem responsável</SelectItem>
                   {members.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
@@ -113,7 +114,7 @@ export const NewTaskDialog = ({ members, status, scope, label = "Nova tarefa" }:
                 <SelectTrigger>
                   <SelectValue placeholder="Sem prioridade" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="tasks-dark">
                   <SelectItem value={NONE}>Sem prioridade</SelectItem>
                   {(Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => (
                     <SelectItem key={p} value={p}>
