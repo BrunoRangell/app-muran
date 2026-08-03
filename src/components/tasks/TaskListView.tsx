@@ -15,8 +15,9 @@ import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { buildTaskGroups } from "@/components/tasks/taskGrouping";
 import {
+  TASK_COLUMN_DEFAULT_WIDTH,
   TASK_COLUMN_LABEL,
-  TASK_COLUMN_WIDTH,
+  TASK_COLUMN_MIN_WIDTH,
   TaskColumnId,
   useShowCompleted,
   useTaskColumnPrefs,
