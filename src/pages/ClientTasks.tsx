@@ -6,11 +6,13 @@ import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { FolderTreePanel } from "@/components/tasks/FolderTreePanel";
 import { ActiveView, DEFAULT_VIEWS, ViewTabs } from "@/components/tasks/ViewTabs";
+import { TasksToolbar, ToolbarState } from "@/components/tasks/TasksToolbar";
 import { TaskBoardSkeleton, TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { buildTaskGroups } from "@/components/tasks/taskGrouping";
 import { useListTasks, useUpdateTask } from "@/hooks/useTasks";
-import { useTaskMembers } from "@/hooks/useTaskMembers";
+import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
+import { useUpdateView } from "@/hooks/useTaskStructure";
 import { CLIENT_TASK_STATUSES, Task, TaskStatus } from "@/types/tasks";
 
 const ClientTasks = () => {
@@ -24,8 +26,23 @@ const ClientTasks = () => {
 
   const { data: tasks = [], isLoading } = useListTasks(listId ?? undefined);
   const { data: members = [] } = useTaskMembers();
+  const { data: currentMember } = useCurrentTaskMember();
   const updateTask = useUpdateTask();
+  const updateView = useUpdateView();
   const selected: Task | null = tasks.find((t) => t.id === selectedId) ?? null;
+
+  /** Barra de ferramentas: views salvas persistem no banco; abas padrão ficam na sessão. */
+  const handleToolbarChange = (next: ToolbarState) => {
+    setView({ ...view, ...next });
+    if (view.saved) {
+      updateView.mutate({
+        id: view.id,
+        group_by: next.group_by,
+        sort_by: next.sort_by,
+        filters: next.filters,
+      });
+    }
+  };
 
   const groups = buildTaskGroups({
     tasks,
