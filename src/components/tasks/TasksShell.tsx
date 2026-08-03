@@ -172,9 +172,7 @@ export const TasksShell = () => {
       {/* Trilha fina de ícones */}
       <nav className="flex w-[68px] shrink-0 flex-col items-center gap-1 border-r border-border bg-card/60 py-4">
         {railItems.map((item) => {
-          const active = item.end
-            ? pathname === "/tarefas" || pathname === "/tarefas/"
-            : pathname.startsWith(item.path);
+          const active = pathname.startsWith(item.path);
           return (
             <Tooltip key={item.path}>
               <TooltipTrigger asChild>
