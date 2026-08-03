@@ -58,7 +58,7 @@ interface Props {
   /** Chave para persistir os grupos recolhidos (localStorage). */
   storageKey?: string;
   groupBy?: GroupBy;
-  sortBy?: SortBy | null;
+  sortBy?: SortValue | null;
   filters?: TaskViewFilters | null;
 }
 
