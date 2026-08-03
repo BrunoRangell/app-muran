@@ -322,7 +322,11 @@ export const TaskListView = ({
                         )}
                       </div>
                       {cols.map((c) => (
-                        <div key={c.id} className={cn("min-w-0 shrink-0", TASK_COLUMN_WIDTH[c.id])}>
+                        <div
+                          key={c.id}
+                          className="min-w-0 shrink-0 pr-2"
+                          style={{ width: widthOf(c.id) }}
+                        >
                           {renderCell(c.id, task)}
                         </div>
                       ))}
