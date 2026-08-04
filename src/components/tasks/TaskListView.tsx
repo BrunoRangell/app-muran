@@ -441,12 +441,25 @@ export const TaskListView = ({
                           </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <span className="truncate text-[13px] text-foreground group-hover:underline group-hover:decoration-border">
+                        <button
+                          type="button"
+                          onClick={() => onOpenTask(task)}
+                          className="min-w-0 truncate text-left text-[13px] text-foreground hover:underline hover:decoration-border"
+                        >
                           {task.title}
-                        </span>
+                        </button>
                         {task.description && (
                           <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
                         )}
+                        <button
+                          type="button"
+                          onClick={() => onOpenTask(task)}
+                          aria-label="Abrir tarefa"
+                          className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+                        >
+                          <Maximize2 className="h-3 w-3" />
+                        </button>
+
                       </div>
                       {cols.map((c) => (
                         <div
