@@ -1341,6 +1341,7 @@ export type Database = {
           name: string
           owner_id: string | null
           position: number
+          slot: string | null
           sort_by: string | null
           view_type: string
         }
@@ -1354,6 +1355,7 @@ export type Database = {
           name: string
           owner_id?: string | null
           position?: number
+          slot?: string | null
           sort_by?: string | null
           view_type?: string
         }
@@ -1367,6 +1369,7 @@ export type Database = {
           name?: string
           owner_id?: string | null
           position?: number
+          slot?: string | null
           sort_by?: string | null
           view_type?: string
         }
