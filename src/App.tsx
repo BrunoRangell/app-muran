@@ -52,6 +52,7 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 50
 
 const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
 const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
+const DueDatePreviewTmp = lazyWithTimeout(() => import("@/pages/DueDatePreview"));
 const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
 
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
