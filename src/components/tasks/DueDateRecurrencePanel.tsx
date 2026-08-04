@@ -68,11 +68,13 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
     <div className="tasks-dark bg-popover text-popover-foreground">
       <Calendar
         mode="single"
+        locale={ptBR}
         selected={selected}
         onSelect={(date) => onChange({ due_date: date ? toISODate(date) : null })}
         initialFocus
         className="p-3 pointer-events-auto"
       />
+
 
       <div className="border-t border-border/70 px-3 py-2">
         <Button
