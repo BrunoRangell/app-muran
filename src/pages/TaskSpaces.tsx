@@ -12,7 +12,6 @@ import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { buildTaskGroups } from "@/components/tasks/taskGrouping";
 import { useAllTasks, useListTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
-import { useUpdateView } from "@/hooks/useTaskStructure";
 import { CLIENT_TASK_STATUSES, ListKind, Task, TaskStatus } from "@/types/tasks";
 import LeadsPipeline from "@/components/tasks/LeadsPipeline";
 import MyTasks from "@/pages/MyTasks";
