@@ -6,17 +6,27 @@ import { useToast } from "@/hooks/use-toast";
 const LEAD_SELECT =
   "id, name, company, contact_info, status, assignee_id, notes, position, created_at, updated_at";
 
+const PAGE_SIZE = 1000;
+
 export const useLeads = () =>
   useQuery({
     queryKey: ["leads"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select(LEAD_SELECT)
-        .order("position")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data || []) as Lead[];
+      const rows: Lead[] = [];
+      for (let page = 0; ; page += 1) {
+        const from = page * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from("leads")
+          .select(LEAD_SELECT)
+          .order("position")
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        const chunk = (data || []) as Lead[];
+        rows.push(...chunk);
+        if (chunk.length < PAGE_SIZE) break;
+      }
+      return rows;
     },
   });
 
