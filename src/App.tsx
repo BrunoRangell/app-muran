@@ -1,4 +1,3 @@
-import DueDatePreview from "@/pages/DueDatePreview";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
@@ -83,7 +82,6 @@ function App() {
         <Route path="/oauth/consent" element={<OAuthConsent />} />
 
         <Route path="/login" element={<Login />} />
-        <Route path="/__due-preview" element={<DueDatePreview />} />
 
         {/* Módulo de tarefas — app standalone, fora do layout do app-muran */}
         <Route
