@@ -91,6 +91,8 @@ export const TaskDetailModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="tasks-dark max-h-[90vh] max-w-5xl gap-0 overflow-hidden border-border bg-background p-0 text-foreground">
+        <DialogTitle className="sr-only">{task.title}</DialogTitle>
+        <DialogDescription className="sr-only">Detalhes da tarefa</DialogDescription>
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 border-b border-border px-5 py-3 text-[12px] text-muted-foreground">
           {(breadcrumb ?? ["Tarefas"]).map((part, i, arr) => (
