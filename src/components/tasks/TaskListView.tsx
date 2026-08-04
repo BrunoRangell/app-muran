@@ -32,15 +32,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DueDateRecurrencePanel } from "@/components/tasks/DueDateRecurrencePanel";
+import { describeRecurrence } from "@/components/tasks/recurrence";
 import {
   CalendarIcon,
   ChevronDown,
   ChevronRight,
   Flag,
-  Maximize2,
   MessageSquare,
+  Pencil,
   Repeat2,
 } from "lucide-react";
 
@@ -121,7 +122,16 @@ export const TaskListView = ({
   const [showCompleted] = useShowCompleted();
   /** Largura em andamento durante o arraste (não persistida até soltar). */
   const [dragging, setDragging] = useState<{ id: TaskColumnId; width: number } | null>(null);
+  /** Renomeação inline do título (ativada pelo lápis no hover). */
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const updateTask = useUpdateTask();
+
+  const commitRename = (task: Task) => {
+    const value = renaming?.value.trim();
+    setRenaming(null);
+    if (value && value !== task.title) updateTask.mutate({ id: task.id, title: value });
+  };
+
   const visibleStatuses = showCompleted ? statuses : statuses.filter((s) => s !== "concluido");
   const pool = showCompleted ? tasks : tasks.filter((t) => t.status !== "concluido");
   const cols = columnPrefs.filter(
@@ -218,9 +228,56 @@ export const TaskListView = ({
         </DropdownMenu>
       );
     }
-    /** Data de vencimento — popover com calendário. */
+    /** Status — badge colorido com dropdown inline. */
+    if (id === "status") {
+      const meta = TASK_STATUS_META[task.status];
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Alterar status"
+              className="max-w-full outline-none"
+            >
+              <span
+                className={cn(
+                  "inline-flex max-w-full items-center gap-1.5 truncate rounded-[3px] px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wide",
+                  meta.pill
+                )}
+              >
+                <span className={cn("h-[7px] w-[7px] shrink-0 rounded-full", meta.pillDot)} />
+                {meta.label}
+              </span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="tasks-dark min-w-[180px]">
+            {statuses.map((s) => (
+              <DropdownMenuItem
+                key={s}
+                className="gap-2 text-[12.5px]"
+                onClick={() => s !== task.status && updateTask.mutate({ id: task.id, status: s })}
+              >
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-[3px] px-1.5 py-[2px] text-[11px] font-semibold uppercase tracking-wide",
+                    TASK_STATUS_META[s].pill
+                  )}
+                >
+                  <span
+                    className={cn("h-[7px] w-[7px] rounded-full", TASK_STATUS_META[s].pillDot)}
+                  />
+                  {TASK_STATUS_META[s].label}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    /** Data de vencimento — popover com calendário + recorrência. */
     if (id === "due") {
-      const selected = task.due_date ? parseDue(task.due_date) : undefined;
+      const recurrence = task.recurrence ?? null;
       return (
         <Popover>
           <PopoverTrigger asChild>
@@ -230,34 +287,26 @@ export const TaskListView = ({
               aria-label="Alterar data de vencimento"
               className="flex items-center gap-1.5 rounded px-1 py-[2px] text-[12px] text-muted-foreground transition-colors hover:bg-accent"
             >
-              <Repeat2 className="h-3 w-3 opacity-50" />
+              <CalendarIcon className="h-3 w-3 opacity-50" />
               {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
+              {recurrence && (
+                <Repeat2
+                  className="h-3 w-3 text-primary"
+                  aria-label={describeRecurrence(recurrence)}
+                />
+              )}
             </button>
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="tasks-dark w-auto p-0"
+            className="tasks-dark w-[280px] p-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <Calendar
-              mode="single"
-              selected={selected}
-              onSelect={(date) =>
-                updateTask.mutate({ id: task.id, due_date: date ? toISODate(date) : null })
-              }
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
+            <DueDateRecurrencePanel
+              dueDate={task.due_date}
+              recurrence={recurrence}
+              onChange={(patch) => updateTask.mutate({ id: task.id, ...patch })}
             />
-            <div className="border-t border-border/70 p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-full justify-start text-[12px]"
-                onClick={() => updateTask.mutate({ id: task.id, due_date: null })}
-              >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" /> Limpar data
-              </Button>
-            </div>
           </PopoverContent>
         </Popover>
       );
@@ -441,24 +490,41 @@ export const TaskListView = ({
                           </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <button
-                          type="button"
-                          onClick={() => onOpenTask(task)}
-                          className="min-w-0 truncate text-left text-[13px] text-foreground hover:underline hover:decoration-border"
-                        >
-                          {task.title}
-                        </button>
-                        {task.description && (
-                          <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                        {renaming?.id === task.id ? (
+                          <Input
+                            autoFocus
+                            value={renaming.value}
+                            onChange={(e) => setRenaming({ id: task.id, value: e.target.value })}
+                            onBlur={() => commitRename(task)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              if (e.key === "Escape") setRenaming(null);
+                            }}
+                            className="h-7 min-w-0 flex-1 text-[13px]"
+                          />
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onOpenTask(task)}
+                              className="min-w-0 truncate text-left text-[13px] text-foreground hover:underline hover:decoration-border"
+                            >
+                              {task.title}
+                            </button>
+                            {task.description && (
+                              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setRenaming({ id: task.id, value: task.title })}
+                              aria-label="Renomear tarefa"
+                              className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => onOpenTask(task)}
-                          aria-label="Abrir tarefa"
-                          className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
-                        >
-                          <Maximize2 className="h-3 w-3" />
-                        </button>
+
 
                       </div>
                       {cols.map((c) => (

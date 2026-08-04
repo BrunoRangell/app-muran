@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { InternalArea, Task, TaskComment } from "@/types/tasks";
+import { InternalArea, Task, TaskComment, TaskRecurrence } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { useShowCompleted } from "@/components/tasks/taskPreferences";
+import { nextDueDate } from "@/components/tasks/recurrence";
 
 const TASK_SELECT =
-  "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at";
+  "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at, recurrence";
 
 /** Tamanho de página do PostgREST (limite padrão do Supabase é 1000). */
 const PAGE_SIZE = 1000;
@@ -122,6 +123,7 @@ export interface TaskInput {
   list_id?: string | null;
   is_internal?: boolean;
   internal_area?: InternalArea | null;
+  recurrence?: TaskRecurrence | null;
 }
 
 export const useCreateTask = () => {
@@ -136,7 +138,7 @@ export const useCreateTask = () => {
         .select(TASK_SELECT)
         .single();
       if (error) throw error;
-      return data as Task;
+      return data as unknown as Task;
     },
     onSuccess: () => {
       invalidateTasks(qc);
@@ -147,21 +149,53 @@ export const useCreateTask = () => {
   });
 };
 
+/**
+ * Atualiza uma tarefa. Tarefas recorrentes NÃO são concluídas: ao marcar
+ * `concluido`, a data de vencimento avança para o próximo ciclo e o status
+ * volta para `pendente` (igual ao ClickUp). Quando a recorrência expira
+ * (`end_date` ultrapassado), a conclusão acontece normalmente.
+ */
 export const useUpdateTask = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<TaskInput> & { id: string }) => {
+      let patch: Record<string, unknown> = { ...updates };
+
+      if (updates.status === "concluido" && updates.recurrence === undefined) {
+        const { data: current } = await supabase
+          .from("tasks")
+          .select("due_date, recurrence")
+          .eq("id", id)
+          .single();
+        const rule = (current?.recurrence ?? null) as unknown as TaskRecurrence | null;
+        if (rule) {
+          const next = nextDueDate(
+            (updates.due_date ?? current?.due_date ?? null) as string | null,
+            rule
+          );
+          if (next) patch = { ...patch, status: "pendente", due_date: next };
+        }
+      }
+
       const { data, error } = await supabase
         .from("tasks")
-        .update(updates as never)
+        .update(patch as never)
         .eq("id", id)
         .select(TASK_SELECT)
         .single();
       if (error) throw error;
-      return data as Task;
+      return data as unknown as Task;
     },
-    onSuccess: () => invalidateTasks(qc),
+    onSuccess: (task, vars) => {
+      invalidateTasks(qc);
+      if (vars.status === "concluido" && task.status === "pendente") {
+        toast({
+          title: "Tarefa recorrente reagendada",
+          description: `Próximo vencimento: ${task.due_date}`,
+        });
+      }
+    },
     onError: (e: Error) =>
       toast({ title: "Erro ao atualizar tarefa", description: e.message, variant: "destructive" }),
   });

@@ -15,6 +15,17 @@ export type LeadStatus =
   | "ganho"
   | "perdido";
 
+/** Regra de recorrência armazenada em `tasks.recurrence` (jsonb). */
+export interface TaskRecurrence {
+  type: "daily" | "weekly" | "monthly";
+  /** "a cada N dias/semanas/meses" (padrão 1). */
+  interval: number;
+  /** Só usado quando `type === "weekly"` (0=domingo ... 6=sábado). */
+  weekdays?: number[] | null;
+  /** "repetir até" — "YYYY-MM-DD" ou nulo (sem fim). */
+  end_date?: string | null;
+}
+
 export interface Task {
   id: string;
   list_id: string | null;
@@ -30,6 +41,7 @@ export interface Task {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  recurrence?: TaskRecurrence | null;
   /** Origem (preenchida nas visões consolidadas). */
   task_lists?: { name: string | null; task_folders?: { name: string | null } | null } | null;
 }

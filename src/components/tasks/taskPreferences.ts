@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 /** Colunas configuráveis da lista de tarefas (Nome é fixa e sempre a primeira). */
-export type TaskColumnId = "assignee" | "due" | "priority" | "created" | "origin";
+export type TaskColumnId = "status" | "assignee" | "due" | "priority" | "created" | "origin";
 
 export interface TaskColumnPref {
   id: TaskColumnId;
@@ -12,6 +12,7 @@ export interface TaskColumnPref {
 
 
 export const TASK_COLUMN_LABEL: Record<TaskColumnId, string> = {
+  status: "Status",
   assignee: "Responsável",
   due: "Data de vencimento",
   priority: "Prioridade",
@@ -21,8 +22,9 @@ export const TASK_COLUMN_LABEL: Record<TaskColumnId, string> = {
 
 /** Largura padrão (px) de cada coluna. */
 export const TASK_COLUMN_DEFAULT_WIDTH: Record<TaskColumnId, number> = {
+  status: 130,
   assignee: 110,
-  due: 120,
+  due: 130,
   priority: 100,
   created: 110,
   origin: 180,
@@ -32,6 +34,7 @@ export const TASK_COLUMN_DEFAULT_WIDTH: Record<TaskColumnId, number> = {
 export const TASK_COLUMN_MIN_WIDTH = 60;
 
 export const DEFAULT_TASK_COLUMNS: TaskColumnPref[] = [
+  { id: "status", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.status },
   { id: "assignee", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.assignee },
   { id: "due", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.due },
   { id: "priority", show: true, width: TASK_COLUMN_DEFAULT_WIDTH.priority },
