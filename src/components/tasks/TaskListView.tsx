@@ -27,15 +27,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import {
+  CalendarIcon,
   ChevronDown,
   ChevronRight,
   Flag,
+  Maximize2,
   MessageSquare,
   Repeat2,
 } from "lucide-react";
+import { TASK_PRIORITIES } from "@/types/tasks";
 
 /** Ícone circular de status (igual ao ClickUp: anel colorido + tracinhos). */
 const StatusCircle = ({ status }: { status: TaskStatus }) => (
