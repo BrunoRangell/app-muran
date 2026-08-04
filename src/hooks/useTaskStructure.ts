@@ -282,6 +282,8 @@ export interface ViewInput {
   position?: number;
   is_private?: boolean;
   owner_id?: string | null;
+  /** 'list'/'board' quando a view substitui a aba padrão do contexto. */
+  slot?: ViewSlot | null;
 }
 
 export const useCreateView = () => {
