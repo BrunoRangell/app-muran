@@ -213,7 +213,9 @@ const ViewFormDialog = ({
                 view_type: viewType,
                 group_by: groupBy,
                 sort_by: sortBy === NONE ? null : serializeSort(sortBy as SortBy, sortDir),
+                filters: initial?.filters ?? {},
                 is_private: canBePrivate ? isPrivate : false,
+
               });
               onOpenChange(false);
             }}
