@@ -299,9 +299,11 @@ export const TaskListView = ({
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="tasks-dark w-[280px] p-0"
+            collisionPadding={12}
+            className="tasks-dark pointer-events-auto max-h-[min(70vh,520px)] w-[280px] overflow-y-auto overscroll-contain p-0"
             onClick={(e) => e.stopPropagation()}
           >
+
             <DueDateRecurrencePanel
               dueDate={task.due_date}
               recurrence={recurrence}
