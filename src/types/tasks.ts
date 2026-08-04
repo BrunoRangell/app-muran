@@ -54,6 +54,8 @@ export interface TaskMember {
   color: string | null;
   avatar_url: string | null;
   created_at?: string;
+  /** Vínculo com auth.users (usado para resolver autoria de comentários). */
+  auth_user_id?: string | null;
 }
 
 /** Espaço (nível 1 da árvore, como no ClickUp). */

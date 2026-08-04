@@ -1,5 +1,5 @@
 import { ptBR } from "date-fns/locale";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,25 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
   }, [recurrence]);
 
   const selected = dueDate ? parseISODate(dueDate) : undefined;
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * O scroll do popover precisa ser tratado aqui dentro: quando o conteúdo não
+   * cabe (modo "Personalizado"), o wheel vazava para a página atrás — rolando o
+   * fundo e fechando o popover. React registra `onWheel` como passivo, então o
+   * listener é adicionado manualmente com `{ passive: false }`.
+   */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
   const showWeekdays = mode === "weekly" || (mode === "custom" && unit === "weekly");
 
   const buildRule = (state: {
@@ -96,11 +115,15 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
   };
 
   return (
-    <div className="tasks-dark bg-popover text-popover-foreground">
+    <div
+      ref={scrollRef}
+      className="tasks-dark max-h-[min(70vh,520px)] overflow-y-auto overscroll-contain bg-popover text-popover-foreground"
+    >
       <Calendar
         mode="single"
         locale={ptBR}
         selected={selected}
+        defaultMonth={selected}
         onSelect={(date) => onChange({ due_date: date ? toISODate(date) : null })}
         initialFocus
         className="p-3 pointer-events-auto"
@@ -111,7 +134,7 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
           variant="ghost"
           size="sm"
           className="h-7 w-full justify-start text-[12px]"
-          onClick={() => onChange({ due_date: null })}
+          onClick={() => onChange({ due_date: null, recurrence: null })}
         >
           <CalendarX2 className="mr-2 h-3.5 w-3.5" /> Limpar data
         </Button>

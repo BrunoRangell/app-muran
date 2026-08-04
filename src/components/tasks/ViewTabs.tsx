@@ -525,6 +525,12 @@ export const ViewTabs = ({
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => {
+                          if (
+                            !window.confirm(
+                              `Excluir a visualização "${savedView.name}"? Esta ação não pode ser desfeita.`
+                            )
+                          )
+                            return;
                           deleteView.mutate(savedView.id);
                           if (active) onChange(resolvedBase[0]);
                         }}
@@ -583,10 +589,12 @@ export const ViewTabs = ({
         />
       )}
 
+      {editing && (
       <ViewFormDialog
-        open={!!editing}
+        key={editing.id}
+        open
         onOpenChange={(v) => !v && setEditing(null)}
-        initial={editing ? toActive(editing) : undefined}
+        initial={toActive(editing)}
         title="Editar visualização"
         canBePrivate={!!currentMemberId}
         onSubmit={(v) => {
@@ -603,6 +611,7 @@ export const ViewTabs = ({
           });
         }}
       />
+      )}
     </div>
   );
 };

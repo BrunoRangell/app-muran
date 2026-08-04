@@ -18,13 +18,20 @@ import {
   TASK_PRIORITY_META,
   TASK_STATUS_META,
 } from "@/types/tasks";
-import { useAddTaskComment, useDeleteTask, useTaskComments, useUpdateTask } from "@/hooks/useTasks";
+import {
+  useAddTaskComment,
+  useCurrentAuthUserId,
+  useDeleteTask,
+  useDeleteTaskComment,
+  useTaskComments,
+  useUpdateTask,
+} from "@/hooks/useTasks";
 import { MemberAvatar } from "./MemberAvatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DueDateRecurrencePanel } from "@/components/tasks/DueDateRecurrencePanel";
 import { describeRecurrence, parseISODate } from "@/components/tasks/recurrence";
 import { cn } from "@/lib/utils";
-import { CalendarDays, Circle, Flag, Loader2, Repeat2, Send, Timer, Trash2, User2 } from "lucide-react";
+import { CalendarDays, Circle, Flag, Loader2, Repeat2, Send, Trash2, User2, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -74,6 +81,8 @@ export const TaskDetailModal = ({
   const deleteTask = useDeleteTask();
   const { data: comments = [], isLoading: loadingComments } = useTaskComments(task?.id);
   const addComment = useAddTaskComment(task?.id);
+  const deleteComment = useDeleteTaskComment(task?.id);
+  const { data: currentUserId } = useCurrentAuthUserId();
 
   useEffect(() => {
     setTitle(task?.title ?? "");
@@ -90,7 +99,7 @@ export const TaskDetailModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="tasks-dark max-h-[90vh] max-w-5xl gap-0 overflow-hidden border-border bg-background p-0 text-foreground">
+      <DialogContent className="tasks-dark flex max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-5xl flex-col gap-0 overflow-hidden border-border bg-background p-0 text-foreground sm:w-[calc(100vw-3rem)]">
         <DialogTitle className="sr-only">{task.title}</DialogTitle>
         <DialogDescription className="sr-only">Detalhes da tarefa</DialogDescription>
         {/* Breadcrumb */}
@@ -103,9 +112,9 @@ export const TaskDetailModal = ({
           ))}
         </div>
 
-        <div className="grid max-h-[calc(90vh-3rem)] grid-cols-1 overflow-hidden lg:grid-cols-[1fr_320px]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_320px] lg:overflow-hidden">
           {/* Coluna principal */}
-          <div className="overflow-y-auto px-6 py-5">
+          <div className="min-w-0 px-4 py-5 sm:px-6 lg:overflow-y-auto">
             {editingTitle ? (
               <Input
                 autoFocus
@@ -211,7 +220,7 @@ export const TaskDetailModal = ({
                   <PopoverContent
                     align="start"
                     collisionPadding={12}
-                    className="tasks-dark pointer-events-auto z-[70] max-h-[min(70vh,520px)] w-[280px] overflow-y-auto overscroll-contain p-0"
+                    className="tasks-dark pointer-events-auto z-[70] w-[280px] overflow-hidden p-0"
                     onOpenAutoFocus={(e) => e.preventDefault()}
                   >
 
@@ -255,9 +264,6 @@ export const TaskDetailModal = ({
                 </Select>
               </Field>
 
-              <Field icon={Timer} label="Rastrear tempo">
-                <span className="text-[13px] text-muted-foreground/60">—</span>
-              </Field>
             </div>
 
             <Textarea
@@ -276,7 +282,11 @@ export const TaskDetailModal = ({
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-destructive"
-                onClick={() => deleteTask.mutate(task.id, { onSuccess: () => onOpenChange(false) })}
+                onClick={() => {
+                  if (!window.confirm(`Excluir a tarefa "${task.title}"? Esta ação não pode ser desfeita.`))
+                    return;
+                  deleteTask.mutate(task.id, { onSuccess: () => onOpenChange(false) });
+                }}
               >
                 <Trash2 className="mr-1 h-4 w-4" /> Excluir tarefa
               </Button>
@@ -284,23 +294,46 @@ export const TaskDetailModal = ({
           </div>
 
           {/* Painel de atividade */}
-          <div className="flex min-h-0 flex-col border-t border-border bg-card/40 lg:border-l lg:border-t-0">
+          <div className="flex min-h-0 min-w-0 flex-col border-t border-border bg-card/40 lg:border-l lg:border-t-0">
             <div className="border-b border-border px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
               Atividade
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto p-4">
+            <div className="max-h-[320px] flex-1 space-y-2 overflow-y-auto p-4 lg:max-h-none">
               {loadingComments && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               {!loadingComments && comments.length === 0 && (
                 <p className="text-[12px] text-muted-foreground">Nenhum comentário ainda.</p>
               )}
-              {comments.map((c) => (
-                <div key={c.id} className="rounded-lg bg-accent/50 p-2.5 text-[13px]">
-                  <p className="whitespace-pre-wrap">{c.content}</p>
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(c.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                  </span>
-                </div>
-              ))}
+              {comments.map((c) => {
+                const author = members.find((m) => m.auth_user_id === c.author_id) ?? null;
+                const mine = !!currentUserId && c.author_id === currentUserId;
+                return (
+                  <div key={c.id} className="group rounded-lg bg-accent/50 p-2.5 text-[13px]">
+                    <div className="mb-1 flex items-center gap-2">
+                      <MemberAvatar member={author} className="h-5 w-5" />
+                      <span className="truncate text-[12px] font-semibold">
+                        {author?.name ?? "Autor desconhecido"}
+                      </span>
+                      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                        {format(new Date(c.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      </span>
+                      {mine && (
+                        <button
+                          type="button"
+                          aria-label="Excluir comentário"
+                          className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+                          onClick={() => {
+                            if (!window.confirm("Excluir este comentário?")) return;
+                            deleteComment.mutate(c.id);
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="whitespace-pre-wrap">{c.content}</p>
+                  </div>
+                );
+              })}
             </div>
             <div className="flex gap-2 border-t border-border p-3">
               <Input

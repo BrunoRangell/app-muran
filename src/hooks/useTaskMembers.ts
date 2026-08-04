@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TaskMember } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
 
-const SELECT = "id, name, email, color, avatar_url, created_at";
+const SELECT = "id, name, email, color, avatar_url, created_at, auth_user_id";
 
 /** Membros do módulo /tarefas (tabela task_members, isolada de team_members). */
 export const useTaskMembers = () =>

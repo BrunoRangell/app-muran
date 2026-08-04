@@ -233,6 +233,31 @@ export const useTaskComments = (taskId?: string) =>
     },
   });
 
+/** id do usuário autenticado (para permitir excluir o próprio comentário). */
+export const useCurrentAuthUserId = () =>
+  useQuery({
+    queryKey: ["auth-user-id"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useDeleteTaskComment = (taskId?: string) => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("task_comments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-comments", taskId] });
+      toast({ title: "Comentário excluído" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao excluir comentário", description: e.message, variant: "destructive" }),
+  });
+};
+
 export const useAddTaskComment = (taskId?: string) => {
   const qc = useQueryClient();
   const { toast } = useToast();

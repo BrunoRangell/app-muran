@@ -300,7 +300,7 @@ export const TaskListView = ({
           <PopoverContent
             align="start"
             collisionPadding={12}
-            className="tasks-dark pointer-events-auto max-h-[min(70vh,520px)] w-[280px] overflow-y-auto overscroll-contain p-0"
+            className="tasks-dark pointer-events-auto w-[280px] overflow-hidden p-0"
             onClick={(e) => e.stopPropagation()}
           >
 
