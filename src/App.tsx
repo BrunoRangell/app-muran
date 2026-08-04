@@ -74,8 +74,10 @@ function App() {
   return (
     <TooltipProvider>
       <Routes>
+        <Route path="/__due-preview" element={<DueDatePreviewTmp />} />
         {/* Rota pública do portal do cliente */}
         <Route path="/cliente/:accessToken" element={<TrafficReports />} />
+
 
         {/* Tela de consentimento OAuth (MCP) — rota pública, faz seu próprio check de sessão */}
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
