@@ -42,7 +42,7 @@ import {
   MessageSquare,
   Repeat2,
 } from "lucide-react";
-import { TASK_PRIORITIES } from "@/types/tasks";
+
 
 /** Ícone circular de status (igual ao ClickUp: anel colorido + tracinhos). */
 const StatusCircle = ({ status }: { status: TaskStatus }) => (
