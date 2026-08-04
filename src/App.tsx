@@ -52,7 +52,6 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 50
 
 const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
 const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
-const DueDatePreviewTmp = lazyWithTimeout(() => import("@/pages/DueDatePreview"));
 const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
 
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
@@ -75,7 +74,6 @@ function App() {
   return (
     <TooltipProvider>
       <Routes>
-        <Route path="/__due-preview" element={<DueDatePreviewTmp />} />
         {/* Rota pública do portal do cliente */}
         <Route path="/cliente/:accessToken" element={<TrafficReports />} />
 
