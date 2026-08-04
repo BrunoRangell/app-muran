@@ -82,7 +82,14 @@ const MyTasks = () => {
         onChange={setView}
         currentMemberId={me?.id ?? null}
         baseViews={MINE_BASE_VIEWS}
+        currentState={{
+          view_type: view.view_type,
+          group_by: view.group_by,
+          sort_by: view.sort_by,
+          filters: view.filters ?? {},
+        }}
         toolbar={
+
           <TasksToolbar
             members={members}
             statuses={CLIENT_TASK_STATUSES}
