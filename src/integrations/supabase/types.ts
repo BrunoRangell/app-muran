@@ -882,6 +882,7 @@ export type Database = {
       leads: {
         Row: {
           assignee_id: string | null
+          clickup_task_id: string | null
           company: string | null
           contact_info: string | null
           created_at: string
@@ -895,6 +896,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          clickup_task_id?: string | null
           company?: string | null
           contact_info?: string | null
           created_at?: string
@@ -908,6 +910,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          clickup_task_id?: string | null
           company?: string | null
           contact_info?: string | null
           created_at?: string
@@ -1114,6 +1117,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_clickup_sync_state: {
+        Row: {
+          backfill_active: boolean
+          backfill_page: number
+          backfill_since: string | null
+          id: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_status: string | null
+          last_run_summary: Json | null
+          last_synced_at: string
+        }
+        Insert: {
+          backfill_active?: boolean
+          backfill_page?: number
+          backfill_since?: string | null
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_summary?: Json | null
+          last_synced_at?: string
+        }
+        Update: {
+          backfill_active?: boolean
+          backfill_page?: number
+          backfill_since?: string | null
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_summary?: Json | null
+          last_synced_at?: string
+        }
+        Relationships: []
+      }
       task_comments: {
         Row: {
           author_id: string
@@ -1148,6 +1187,7 @@ export type Database = {
       }
       task_folders: {
         Row: {
+          clickup_folder_id: string | null
           color: string
           created_at: string
           icon: string | null
@@ -1158,6 +1198,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clickup_folder_id?: string | null
           color?: string
           created_at?: string
           icon?: string | null
@@ -1168,6 +1209,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clickup_folder_id?: string | null
           color?: string
           created_at?: string
           icon?: string | null
@@ -1189,6 +1231,7 @@ export type Database = {
       }
       task_lists: {
         Row: {
+          clickup_list_id: string | null
           created_at: string
           folder_id: string
           id: string
@@ -1197,6 +1240,7 @@ export type Database = {
           position: number
         }
         Insert: {
+          clickup_list_id?: string | null
           created_at?: string
           folder_id: string
           id?: string
@@ -1205,6 +1249,7 @@ export type Database = {
           position?: number
         }
         Update: {
+          clickup_list_id?: string | null
           created_at?: string
           folder_id?: string
           id?: string
@@ -1226,6 +1271,7 @@ export type Database = {
         Row: {
           auth_user_id: string | null
           avatar_url: string | null
+          clickup_user_id: number | null
           color: string | null
           created_at: string
           email: string | null
@@ -1235,6 +1281,7 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           avatar_url?: string | null
+          clickup_user_id?: number | null
           color?: string | null
           created_at?: string
           email?: string | null
@@ -1244,6 +1291,7 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           avatar_url?: string | null
+          clickup_user_id?: number | null
           color?: string | null
           created_at?: string
           email?: string | null
@@ -1254,6 +1302,7 @@ export type Database = {
       }
       task_spaces: {
         Row: {
+          clickup_space_id: string | null
           color: string
           created_at: string
           icon: string | null
@@ -1262,6 +1311,7 @@ export type Database = {
           position: number
         }
         Insert: {
+          clickup_space_id?: string | null
           color?: string
           created_at?: string
           icon?: string | null
@@ -1270,6 +1320,7 @@ export type Database = {
           position?: number
         }
         Update: {
+          clickup_space_id?: string | null
           color?: string
           created_at?: string
           icon?: string | null
@@ -1339,6 +1390,7 @@ export type Database = {
       tasks: {
         Row: {
           assignee_id: string | null
+          clickup_task_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -1357,6 +1409,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          clickup_task_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1375,6 +1428,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          clickup_task_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1541,6 +1595,7 @@ export type Database = {
       is_team_member: { Args: never; Returns: boolean }
       manual_cleanup_campaign_health: { Args: never; Returns: Json }
       review_all_google_ads_clients: { Args: never; Returns: Json }
+      unaccent: { Args: { "": string }; Returns: string }
       update_daily_budget_review: {
         Args: {
           p_id: number
