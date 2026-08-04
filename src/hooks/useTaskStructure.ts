@@ -17,7 +17,7 @@ const SPACE_SELECT = "id, name, color, icon, position, created_at";
 const FOLDER_SELECT = "id, space_id, name, color, icon, position, created_at";
 const LIST_SELECT = "id, folder_id, name, kind, position, created_at";
 const VIEW_SELECT =
-  "id, list_id, name, view_type, group_by, sort_by, filters, position, is_private, owner_id, created_at";
+  "id, list_id, name, view_type, group_by, sort_by, filters, position, is_private, owner_id, slot, created_at";
 
 /* ---------------------------------- espaços -------------------------------- */
 
