@@ -83,6 +83,7 @@ function App() {
         <Route path="/oauth/consent" element={<OAuthConsent />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/_ddpreview" element={<DueDatePreview />} />
 
         {/* Módulo de tarefas — app standalone, fora do layout do app-muran */}
         <Route
@@ -190,7 +191,6 @@ function App() {
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
 
 
-          <Route path="/_ddpreview" element={<DueDatePreview />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
