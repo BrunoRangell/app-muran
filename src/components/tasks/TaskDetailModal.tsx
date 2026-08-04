@@ -210,7 +210,7 @@ export const TaskDetailModal = ({
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
-                    className="tasks-dark z-[70] w-[280px] p-0"
+                    className="tasks-dark pointer-events-auto z-[70] w-[280px] p-0"
                     onOpenAutoFocus={(e) => e.preventDefault()}
                   >
                     <DueDateRecurrencePanel
