@@ -143,13 +143,16 @@ const TaskMembers = () => {
         title="Novo membro"
         onSubmit={(v) => createMember.mutate(v)}
       />
-      <MemberDialog
-        open={!!editing}
-        onOpenChange={(v) => !v && setEditing(null)}
-        initial={editing ?? undefined}
-        title="Editar membro"
-        onSubmit={(v) => editing && updateMember.mutate({ id: editing.id, ...v })}
-      />
+      {editing && (
+        <MemberDialog
+          key={editing.id}
+          open
+          onOpenChange={(v) => !v && setEditing(null)}
+          initial={editing}
+          title="Editar membro"
+          onSubmit={(v) => updateMember.mutate({ id: editing.id, ...v })}
+        />
+      )}
     </div>
   );
 };

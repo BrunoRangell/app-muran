@@ -246,7 +246,11 @@ const LeadDetailModal = ({
               variant="ghost"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={() => deleteLead.mutate(lead.id, { onSuccess: () => onOpenChange(false) })}
+              onClick={() => {
+                if (!window.confirm(`Excluir o lead "${lead.name}"? Esta ação não pode ser desfeita.`))
+                  return;
+                deleteLead.mutate(lead.id, { onSuccess: () => onOpenChange(false) });
+              }}
             >
               <Trash2 className="mr-1 h-4 w-4" /> Excluir
             </Button>

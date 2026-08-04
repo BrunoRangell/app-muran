@@ -31,7 +31,7 @@ export function nextDueDate(
   if (rule.type === "weekly" && rule.weekdays?.length) {
     const days = [...new Set<number>(rule.weekdays)].filter((d) => d >= 0 && d <= 6).sort();
     next = new Date(base);
-    // procura o próximo dia marcado dentro da semana atual
+    // 1) próximo dia marcado ESTRITAMENTE após a data base (até 7 dias à frente)
     let found = false;
     for (let step = 1; step <= 7; step += 1) {
       const candidate = new Date(base);
@@ -39,14 +39,16 @@ export function nextDueDate(
       if (days.includes(candidate.getDay())) {
         next = candidate;
         found = true;
+        // 2) só soma as semanas extras do intervalo quando o dia encontrado já
+        //    está em outra semana (virou o ciclo). Se ainda sobra um dia marcado
+        //    na semana corrente, ele é usado como está.
+        if (interval > 1 && candidate.getDay() <= base.getDay()) {
+          next.setDate(next.getDate() + 7 * (interval - 1));
+        }
         break;
       }
     }
     if (!found) next.setDate(base.getDate() + 7 * interval);
-    // intervalo > 1 semana: pula as semanas extras quando volta ao 1º dia marcado
-    else if (interval > 1 && next.getDay() === days[0]) {
-      next.setDate(next.getDate() + 7 * (interval - 1));
-    }
   } else if (rule.type === "weekly") {
     next = new Date(base);
     next.setDate(base.getDate() + 7 * interval);

@@ -9,8 +9,6 @@ import {
   Folder,
   FolderOpen,
   LayoutGrid,
-  ListChecks,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,11 +17,6 @@ import { TaskListSkeleton } from "./TasksSkeleton";
 const railItems = [
   { icon: LayoutGrid, label: "Espaços", path: "/tarefas/espacos" },
   { icon: Users, label: "Membros", path: "/tarefas/membros" },
-];
-
-const railStatic = [
-  { icon: Sparkles, label: "IA" },
-  { icon: ListChecks, label: "Painéis" },
 ];
 
 /** Coluna secundária (árvore) usada pelas telas da seção. */
@@ -193,16 +186,6 @@ export const TasksShell = () => {
             </Tooltip>
           );
         })}
-        <div className="my-2 h-px w-8 bg-border" />
-        {railStatic.map((item) => (
-          <div
-            key={item.label}
-            className="flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] text-muted-foreground/50"
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </div>
-        ))}
       </nav>
 
       <div className="flex min-h-0 min-w-0 flex-1">
