@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, LayoutGrid, List, Lock, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, LayoutGrid, List, Lock, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   GroupBy,
@@ -96,6 +96,7 @@ const ViewFormDialog = ({
     view_type: ViewType;
     group_by: GroupBy;
     sort_by: SortValue | null;
+    filters: TaskViewFilters;
     is_private: boolean;
   }) => void;
 }) => {
@@ -106,6 +107,7 @@ const ViewFormDialog = ({
   const [sortBy, setSortBy] = useState<string>(initialSort.field ?? NONE);
   const [sortDir, setSortDir] = useState<SortDir>(initialSort.dir);
   const [isPrivate, setIsPrivate] = useState(!!initial?.is_private);
+
 
   return (
     <Dialog
@@ -211,7 +213,9 @@ const ViewFormDialog = ({
                 view_type: viewType,
                 group_by: groupBy,
                 sort_by: sortBy === NONE ? null : serializeSort(sortBy as SortBy, sortDir),
+                filters: initial?.filters ?? {},
                 is_private: canBePrivate ? isPrivate : false,
+
               });
               onOpenChange(false);
             }}
@@ -233,6 +237,7 @@ export const ViewTabs = ({
   currentMemberId,
   toolbar,
   baseViews = DEFAULT_VIEWS,
+  currentState,
 }: {
   listId: string | null;
   members: TaskMember[];
@@ -243,15 +248,42 @@ export const ViewTabs = ({
   toolbar?: React.ReactNode;
   /** Abas padrão exibidas antes das visualizações salvas. */
   baseViews?: ActiveView[];
+  /** Configuração aplicada na tela agora (usada para pré-preencher a criação). */
+  currentState?: {
+    view_type: ViewType;
+    group_by: GroupBy;
+    sort_by: SortValue | null;
+    filters: TaskViewFilters;
+  };
 }) => {
   const { data: saved = [] } = useTaskViews(listId);
   const createView = useCreateView();
   const updateView = useUpdateView();
   const deleteView = useDeleteView();
-  const [creating, setCreating] = useState(false);
+  /** initial pré-preenchido da criação (null = fechado) */
+  const [createInitial, setCreateInitial] = useState<Partial<ActiveView> | null>(null);
   const [editing, setEditing] = useState<TaskView | null>(null);
 
   const tabs = [...baseViews, ...saved.map(toActive)];
+
+  const openCreate = () =>
+    setCreateInitial({
+      name: "",
+      view_type: currentState?.view_type ?? "list",
+      group_by: currentState?.group_by ?? "status",
+      sort_by: currentState?.sort_by ?? null,
+      filters: currentState?.filters ?? {},
+      is_private: false,
+    });
+
+  const activeIsBase = baseViews.some((b) => b.id === activeId);
+  const hasCustomState =
+    !!currentState &&
+    (Object.values(currentState.filters ?? {}).some((v) =>
+      Array.isArray(v) ? v.length > 0 : !!v
+    ) ||
+      currentState.group_by !== "status" ||
+      !!currentState.sort_by);
 
   return (
     <div className="mb-3 flex items-center gap-1 border-b border-border/70 pb-0 text-[12px]">
@@ -288,8 +320,11 @@ export const ViewTabs = ({
                     <ChevronDown className="h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="tasks-dark min-w-[160px]">
+                <DropdownMenuContent align="start" className="tasks-dark min-w-[190px]">
                   <DropdownMenuItem onClick={() => setEditing(savedView)}>Editar</DropdownMenuItem>
+                  <DropdownMenuItem onClick={openCreate}>
+                    <Copy className="mr-2 h-3.5 w-3.5" /> Salvar como nova visualização
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -309,30 +344,44 @@ export const ViewTabs = ({
 
       <button
         type="button"
-        onClick={() => setCreating(true)}
+        onClick={openCreate}
         className="mb-1 ml-1 flex items-center gap-1 rounded px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
       >
         <Plus className="h-3.5 w-3.5" /> Visualização
       </button>
 
+      {activeIsBase && hasCustomState && (
+        <button
+          type="button"
+          onClick={openCreate}
+          className="mb-1 flex items-center gap-1 rounded px-2 py-1 text-[12px] text-primary transition-colors hover:bg-accent/60"
+        >
+          <Copy className="h-3.5 w-3.5" /> Salvar como nova visualização
+        </button>
+      )}
+
       {toolbar && <div className="mb-1 ml-auto">{toolbar}</div>}
 
-      <ViewFormDialog
-        open={creating}
-        onOpenChange={setCreating}
-        title="Nova visualização"
-        canBePrivate={!!currentMemberId}
-        onSubmit={(v) =>
-          createView.mutate(
-            {
-              list_id: listId,
-              ...v,
-              owner_id: v.is_private ? currentMemberId ?? null : null,
-            },
-            { onSuccess: (created) => onChange(toActive(created)) }
-          )
-        }
-      />
+      {createInitial && (
+        <ViewFormDialog
+          open
+          onOpenChange={(v) => !v && setCreateInitial(null)}
+          initial={createInitial}
+          title="Nova visualização"
+          canBePrivate={!!currentMemberId}
+          onSubmit={(v) =>
+            createView.mutate(
+              {
+                list_id: listId,
+                ...v,
+                owner_id: v.is_private ? currentMemberId ?? null : null,
+              },
+              { onSuccess: (created) => onChange(toActive(created)) }
+            )
+          }
+        />
+      )}
+
       <ViewFormDialog
         open={!!editing}
         onOpenChange={(v) => !v && setEditing(null)}

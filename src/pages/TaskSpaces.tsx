@@ -180,6 +180,12 @@ const TaskSpaces = () => {
                     activeId={view.id}
                     onChange={setView}
                     currentMemberId={currentMember?.id ?? null}
+                    currentState={{
+                      view_type: view.view_type,
+                      group_by: view.group_by,
+                      sort_by: view.sort_by,
+                      filters: view.filters ?? {},
+                    }}
                     toolbar={
                       <TasksToolbar
                         members={members}
