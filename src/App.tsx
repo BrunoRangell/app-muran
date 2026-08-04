@@ -52,6 +52,7 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 50
 
 const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
 const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
+const DueDatePreview = lazyWithTimeout(() => import("@/pages/DueDatePreview"));
 const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
 
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
@@ -189,6 +190,7 @@ function App() {
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
 
 
+          <Route path="/_ddpreview" element={<DueDatePreview />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
