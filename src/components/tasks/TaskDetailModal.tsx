@@ -208,7 +208,11 @@ export const TaskDetailModal = ({
                       )}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="tasks-dark w-[280px] p-0">
+                  <PopoverContent
+                    align="start"
+                    className="tasks-dark z-[70] w-[280px] p-0"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
                     <DueDateRecurrencePanel
                       dueDate={task.due_date}
                       recurrence={task.recurrence ?? null}
