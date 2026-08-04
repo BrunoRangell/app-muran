@@ -2,78 +2,111 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { InternalArea, Task, TaskComment } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
+import { useShowCompleted } from "@/components/tasks/taskPreferences";
 
 const TASK_SELECT =
   "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at";
 
-export const useListTasks = (listId?: string) =>
-  useQuery({
-    queryKey: ["tasks", "list", listId],
+/** Tamanho de página do PostgREST (limite padrão do Supabase é 1000). */
+const PAGE_SIZE = 1000;
+
+/**
+ * Busca TODAS as linhas de uma query paginando com `.range()`, evitando o corte
+ * silencioso em 1000 registros do PostgREST.
+ */
+async function fetchAllPages<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let page = 0; ; page += 1) {
+    const from = page * PAGE_SIZE;
+    const { data, error } = await build(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const chunk = (data || []) as T[];
+    rows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+const sel = (s: string): string => s;
+
+export const useListTasks = (listId?: string) => {
+  const [showCompleted] = useShowCompleted();
+  return useQuery({
+    queryKey: ["tasks", "list", listId, showCompleted],
     enabled: !!listId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(TASK_SELECT)
-        .eq("list_id", listId!)
-        .order("position")
-        .order("created_at");
-      if (error) throw error;
-      return (data || []) as Task[];
-    },
+    queryFn: () =>
+      fetchAllPages<Task>((from, to) => {
+        let q = supabase
+          .from("tasks")
+          .select(sel(TASK_SELECT))
+          .eq("list_id", listId!);
+        if (!showCompleted) q = q.neq("status", "concluido");
+        return q.order("position").order("created_at").range(from, to);
+      }),
   });
+};
 
 /** Todas as tarefas de todas as listas (visão consolidada "Todas as tarefas"). */
-export const useAllTasks = (enabled = true) =>
-  useQuery({
-    queryKey: ["tasks", "all"],
+export const useAllTasks = (enabled = true) => {
+  const [showCompleted] = useShowCompleted();
+  return useQuery({
+    queryKey: ["tasks", "all", showCompleted],
     enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`)
-        .order("due_date", { ascending: true, nullsFirst: false })
-        .order("created_at");
-      if (error) throw error;
-      return (data || []) as unknown as Task[];
-    },
+    queryFn: () =>
+      fetchAllPages<Task>((from, to) => {
+        let q = supabase
+          .from("tasks")
+          .select(sel(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`));
+        if (!showCompleted) q = q.neq("status", "concluido");
+        return q
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at")
+          .range(from, to);
+      }),
   });
+};
 
-export const useInternalTasks = (area?: InternalArea) =>
-  useQuery({
-    queryKey: ["tasks", "internal", area],
+export const useInternalTasks = (area?: InternalArea) => {
+  const [showCompleted] = useShowCompleted();
+  return useQuery({
+    queryKey: ["tasks", "internal", area, showCompleted],
     enabled: !!area,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(TASK_SELECT)
-        .eq("is_internal", true)
-        .eq("internal_area", area!)
-        .order("position")
-        .order("created_at");
-      if (error) throw error;
-      return (data || []) as Task[];
-    },
+    queryFn: () =>
+      fetchAllPages<Task>((from, to) => {
+        let q = supabase
+          .from("tasks")
+          .select(sel(TASK_SELECT))
+          .eq("is_internal", true)
+          .eq("internal_area", area!);
+        if (!showCompleted) q = q.neq("status", "concluido");
+        return q.order("position").order("created_at").range(from, to);
+      }),
   });
+};
 
 export interface MyTaskRow extends Task {
   task_lists: { name: string; task_folders: { name: string } | null } | null;
 }
 
 /** Tarefas de um membro do módulo (task_members). */
-export const useMyTasks = (taskMemberId?: string) =>
-  useQuery({
-    queryKey: ["tasks", "mine", taskMemberId],
+export const useMyTasks = (taskMemberId?: string) => {
+  const [showCompleted] = useShowCompleted();
+  return useQuery({
+    queryKey: ["tasks", "mine", taskMemberId, showCompleted],
     enabled: !!taskMemberId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`)
-        .eq("assignee_id", taskMemberId!)
-        .order("due_date", { ascending: true, nullsFirst: false });
-      if (error) throw error;
-      return (data || []) as unknown as MyTaskRow[];
-    },
+    queryFn: () =>
+      fetchAllPages<MyTaskRow>((from, to) => {
+        let q = supabase
+          .from("tasks")
+          .select(sel(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`))
+          .eq("assignee_id", taskMemberId!);
+        if (!showCompleted) q = q.neq("status", "concluido");
+        return q.order("due_date", { ascending: true, nullsFirst: false }).range(from, to);
+      }),
   });
+};
 
 const invalidateTasks = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: ["tasks"] });
