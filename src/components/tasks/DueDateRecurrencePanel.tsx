@@ -3,13 +3,6 @@ import { useEffect, useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { TaskRecurrence } from "@/types/tasks";
 import { parseISODate, toISODate, WEEKDAY_LABELS } from "@/components/tasks/recurrence";
@@ -24,6 +17,20 @@ const modeOf = (r: TaskRecurrence | null): Mode => {
   return r.type;
 };
 
+const MODE_OPTIONS: { value: Mode; label: string }[] = [
+  { value: "none", label: "Não repetir" },
+  { value: "daily", label: "Diariamente" },
+  { value: "weekly", label: "Semanalmente" },
+  { value: "monthly", label: "Mensalmente" },
+  { value: "custom", label: "Personalizado" },
+];
+
+const UNIT_OPTIONS: { value: Unit; label: string }[] = [
+  { value: "daily", label: "dias" },
+  { value: "weekly", label: "semanas" },
+  { value: "monthly", label: "meses" },
+];
+
 interface Props {
   dueDate: string | null;
   recurrence: TaskRecurrence | null;
@@ -33,6 +40,13 @@ interface Props {
 /**
  * Conteúdo do popover de data de vencimento: calendário + seção "Repetir".
  * Reutilizado na célula da lista e no modal de detalhe da tarefa.
+ *
+ * IMPORTANTE: nada aqui usa componentes com portal (Radix Select/Dropdown).
+ * Quando o painel vive dentro de um Popover — e esse Popover dentro de um
+ * Dialog — abrir um Select em portal move o foco para fora das camadas e o
+ * Radix interpreta como "interação externa", fechando o popover (perdendo o
+ * estado da recorrência) ou até o modal inteiro. Por isso as opções são
+ * botões inline.
  */
 export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props) => {
   const [mode, setMode] = useState<Mode>(modeOf(recurrence));
@@ -50,20 +64,36 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
   }, [recurrence]);
 
   const selected = dueDate ? parseISODate(dueDate) : undefined;
-  const effectiveUnit: Unit = mode === "custom" ? unit : (mode === "none" ? "weekly" : mode);
   const showWeekdays = mode === "weekly" || (mode === "custom" && unit === "weekly");
 
-  const buildRule = (): TaskRecurrence | null => {
-    if (mode === "none") return null;
+  const buildRule = (state: {
+    mode: Mode;
+    unit: Unit;
+    interval: number;
+    weekdays: number[];
+    endDate: string;
+  }): TaskRecurrence | null => {
+    if (state.mode === "none") return null;
+    const effectiveUnit: Unit = state.mode === "custom" ? state.unit : state.mode;
+    const usesWeekdays = effectiveUnit === "weekly";
     return {
       type: effectiveUnit,
-      interval: mode === "custom" ? Math.max(1, Number(interval) || 1) : 1,
-      weekdays: showWeekdays && weekdays.length ? [...weekdays].sort() : null,
-      end_date: endDate || null,
+      interval: state.mode === "custom" ? Math.max(1, Number(state.interval) || 1) : 1,
+      weekdays: usesWeekdays && state.weekdays.length ? [...state.weekdays].sort() : null,
+      end_date: state.endDate || null,
     };
   };
 
-  const applyRecurrence = () => onChange({ recurrence: buildRule() });
+  /** Aplica a regra imediatamente (sem depender do clique em "Salvar"). */
+  const apply = (patch: Partial<{ mode: Mode; unit: Unit; interval: number; weekdays: number[]; endDate: string }>) => {
+    const next = { mode, unit, interval, weekdays, endDate, ...patch };
+    if (patch.mode !== undefined) setMode(patch.mode);
+    if (patch.unit !== undefined) setUnit(patch.unit);
+    if (patch.interval !== undefined) setIntervalValue(patch.interval);
+    if (patch.weekdays !== undefined) setWeekdays(patch.weekdays);
+    if (patch.endDate !== undefined) setEndDate(patch.endDate);
+    onChange({ recurrence: buildRule(next) });
+  };
 
   return (
     <div className="tasks-dark bg-popover text-popover-foreground">
@@ -75,7 +105,6 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
         initialFocus
         className="p-3 pointer-events-auto"
       />
-
 
       <div className="border-t border-border/70 px-3 py-2">
         <Button
@@ -93,39 +122,54 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
           <Repeat2 className="h-3.5 w-3.5" /> Repetir
         </div>
 
-        <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
-          <SelectTrigger className="h-8 text-[12.5px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="tasks-dark">
-            <SelectItem value="none">Não repetir</SelectItem>
-            <SelectItem value="daily">Diariamente</SelectItem>
-            <SelectItem value="weekly">Semanalmente</SelectItem>
-            <SelectItem value="monthly">Mensalmente</SelectItem>
-            <SelectItem value="custom">Personalizado</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 gap-1">
+          {MODE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => apply({ mode: opt.value })}
+              className={cn(
+                "rounded-md border px-2 py-1.5 text-[12px] font-medium transition-colors",
+                opt.value === "none" && "col-span-2",
+                mode === opt.value
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
 
         {mode === "custom" && (
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] text-muted-foreground">a cada</span>
-            <Input
-              type="number"
-              min={1}
-              value={interval}
-              onChange={(e) => setIntervalValue(Math.max(1, Number(e.target.value) || 1))}
-              className="h-8 w-16 text-[12.5px]"
-            />
-            <Select value={unit} onValueChange={(v) => setUnit(v as Unit)}>
-              <SelectTrigger className="h-8 flex-1 text-[12.5px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="tasks-dark">
-                <SelectItem value="daily">dias</SelectItem>
-                <SelectItem value="weekly">semanas</SelectItem>
-                <SelectItem value="monthly">meses</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-muted-foreground">a cada</span>
+              <Input
+                type="number"
+                min={1}
+                value={interval}
+                onChange={(e) => apply({ interval: Math.max(1, Number(e.target.value) || 1) })}
+                className="h-8 w-16 text-[12.5px]"
+              />
+            </div>
+            <div className="flex gap-1">
+              {UNIT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => apply({ unit: opt.value })}
+                  className={cn(
+                    "flex-1 rounded-md border px-2 py-1 text-[12px] transition-colors",
+                    unit === opt.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -136,9 +180,11 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
                 key={day}
                 type="button"
                 onClick={() =>
-                  setWeekdays((prev) =>
-                    prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-                  )
+                  apply({
+                    weekdays: weekdays.includes(day)
+                      ? weekdays.filter((d) => d !== day)
+                      : [...weekdays, day],
+                  })
                 }
                 className={cn(
                   "h-7 w-7 rounded-full border text-[11px] font-medium transition-colors",
@@ -160,14 +206,11 @@ export const DueDateRecurrencePanel = ({ dueDate, recurrence, onChange }: Props)
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              onBlur={(e) => apply({ endDate: e.target.value })}
               className="h-8 text-[12.5px]"
             />
           </div>
         )}
-
-        <Button size="sm" className="h-7 w-full text-[12px]" onClick={applyRecurrence}>
-          Salvar recorrência
-        </Button>
       </div>
     </div>
   );

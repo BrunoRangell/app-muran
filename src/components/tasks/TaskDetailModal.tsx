@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,8 @@ export const TaskDetailModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="tasks-dark max-h-[90vh] max-w-5xl gap-0 overflow-hidden border-border bg-background p-0 text-foreground">
+        <DialogTitle className="sr-only">{task.title}</DialogTitle>
+        <DialogDescription className="sr-only">Detalhes da tarefa</DialogDescription>
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 border-b border-border px-5 py-3 text-[12px] text-muted-foreground">
           {(breadcrumb ?? ["Tarefas"]).map((part, i, arr) => (
@@ -206,7 +208,11 @@ export const TaskDetailModal = ({
                       )}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="tasks-dark w-[280px] p-0">
+                  <PopoverContent
+                    align="start"
+                    className="tasks-dark pointer-events-auto z-[70] w-[280px] p-0"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
                     <DueDateRecurrencePanel
                       dueDate={task.due_date}
                       recurrence={task.recurrence ?? null}
