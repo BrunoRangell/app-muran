@@ -61,10 +61,24 @@ const StatusCircle = ({ status }: { status: TaskStatus }) => (
 
 const formatDue = (value: string | null) => {
   if (!value) return null;
-  const [y, m, d] = value.split("-").map(Number);
-  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  const date = parseDue(value);
   return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
 };
+
+/** Converte "YYYY-MM-DD" em Date local (evita shift de timezone). */
+function parseDue(value: string) {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Data local → "YYYY-MM-DD". */
+const toISODate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+
+const PRIORITY_OPTIONS: TaskPriority[] = ["baixa", "normal", "alta", "urgente"];
+
 
 const formatCreated = (value: string) => {
   const date = new Date(value);
