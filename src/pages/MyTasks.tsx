@@ -42,17 +42,9 @@ const MyTasks = () => {
   const { data: tasks = [], isLoading } = useMyTasks(currentMember?.id);
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
-  /** Auto-save: views salvas persistem no banco; a aba padrão fica no localStorage. */
+  /** Barra de ferramentas: altera apenas o rascunho local (salvar é explícito). */
   const handleToolbarChange = (next: ToolbarState) => {
     setView({ ...view, ...next });
-    if (view.saved) {
-      updateView.mutate({
-        id: view.id,
-        group_by: next.group_by,
-        sort_by: next.sort_by,
-        filters: next.filters,
-      });
-    }
   };
 
   return (
