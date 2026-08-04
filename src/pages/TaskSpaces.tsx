@@ -61,17 +61,9 @@ const TaskSpaces = () => {
     setViewMap((m) => ({ ...m, [listId]: next }));
   };
 
-  /** Barra de ferramentas: views salvas persistem no banco; abas padrão ficam na sessão. */
+  /** Barra de ferramentas: altera apenas o rascunho local (salvar é explícito). */
   const handleToolbarChange = (next: ToolbarState) => {
     setView({ ...view, ...next });
-    if (view.saved) {
-      updateView.mutate({
-        id: view.id,
-        group_by: next.group_by,
-        sort_by: next.sort_by,
-        filters: next.filters,
-      });
-    }
   };
 
   const groups = buildTaskGroups({
