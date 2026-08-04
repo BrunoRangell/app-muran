@@ -5,6 +5,7 @@ import {
   GroupBy,
   SortValue,
   Task,
+  TaskPriority,
   TaskMember,
   TaskStatus,
   TaskViewFilters,
