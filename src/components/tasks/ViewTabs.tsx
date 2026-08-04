@@ -413,8 +413,6 @@ export const ViewTabs = ({
   }, [activeId, saved]);
 
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
-  const activeSlot: ViewSlot | null =
-    activeTab?.slot ?? (baseViews.some((b) => b.id === activeId) ? "list" : null);
   const autosaveKey = activeTab?.id ?? "";
   const autosave = !!autosaveMap[autosaveKey];
 
@@ -608,6 +606,3 @@ export const ViewTabs = ({
     </div>
   );
 };
-
-/** Evita aviso de variável não usada (activeSlot é informativo). */
-void 0;
