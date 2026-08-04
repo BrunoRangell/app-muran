@@ -9,6 +9,7 @@ import {
   TaskList,
   TaskView,
   TaskViewFilters,
+  ViewSlot,
   ViewType,
 } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
