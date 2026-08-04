@@ -13,7 +13,7 @@ import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { ActiveView, DEFAULT_VIEWS, ViewTabs } from "@/components/tasks/ViewTabs";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
-import { useUpdateView } from "@/hooks/useTaskStructure";
+
 import { useMyTasks } from "@/hooks/useTasks";
 import { CLIENT_TASK_STATUSES } from "@/types/tasks";
 import { CheckSquare } from "lucide-react";
@@ -30,7 +30,6 @@ const MyTasks = () => {
     MINE_BASE_VIEWS[0]
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const updateView = useUpdateView();
 
   useEffect(() => {
     if (!loadingMe && memberId === null && me) {

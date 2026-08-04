@@ -51,7 +51,6 @@ const TaskSpaces = () => {
   const { data: members = [] } = useTaskMembers();
   const { data: currentMember } = useCurrentTaskMember();
   const updateTask = useUpdateTask();
-  const updateView = useUpdateView();
   const pool = shortcut === "all" ? allTasks : tasks;
   const selected: Task | null = pool.find((t) => t.id === selectedId) ?? null;
 
