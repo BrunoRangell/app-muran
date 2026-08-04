@@ -24,7 +24,7 @@ const DueDatePreview = () => {
             <PopoverTrigger asChild>
               <Button variant="outline">Datas</Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="tasks-dark w-[280px] p-0">
+            <PopoverContent align="start" className="tasks-dark z-[70] w-[280px] p-0">
               <DueDateRecurrencePanel
                 dueDate={due}
                 recurrence={rec}
