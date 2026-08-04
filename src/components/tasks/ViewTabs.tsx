@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, LayoutGrid, List, Lock, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, LayoutGrid, List, Lock, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   GroupBy,
