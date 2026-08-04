@@ -96,6 +96,7 @@ const ViewFormDialog = ({
     view_type: ViewType;
     group_by: GroupBy;
     sort_by: SortValue | null;
+    filters: TaskViewFilters;
     is_private: boolean;
   }) => void;
 }) => {
@@ -106,6 +107,7 @@ const ViewFormDialog = ({
   const [sortBy, setSortBy] = useState<string>(initialSort.field ?? NONE);
   const [sortDir, setSortDir] = useState<SortDir>(initialSort.dir);
   const [isPrivate, setIsPrivate] = useState(!!initial?.is_private);
+
 
   return (
     <Dialog
