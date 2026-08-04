@@ -103,7 +103,12 @@ export const parseSort = (value?: SortValue | null): { field: SortBy | null; dir
   return { field: field as SortBy, dir: dir === "desc" ? "desc" : "asc" };
 };
 
+/** Aba padrão que a visualização substitui ("Lista"/"Quadro"). */
+export type ViewSlot = "list" | "board";
+
 export interface TaskView {
+  /** Quando preenchido, esta view É a aba padrão Lista/Quadro do contexto. */
+  slot?: ViewSlot | null;
   id: string;
   list_id: string | null;
   name: string;

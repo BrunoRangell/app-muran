@@ -13,7 +13,7 @@ import { TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { ActiveView, DEFAULT_VIEWS, ViewTabs } from "@/components/tasks/ViewTabs";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
-import { useUpdateView } from "@/hooks/useTaskStructure";
+
 import { useMyTasks } from "@/hooks/useTasks";
 import { CLIENT_TASK_STATUSES } from "@/types/tasks";
 import { CheckSquare } from "lucide-react";
@@ -30,7 +30,6 @@ const MyTasks = () => {
     MINE_BASE_VIEWS[0]
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const updateView = useUpdateView();
 
   useEffect(() => {
     if (!loadingMe && memberId === null && me) {
@@ -42,17 +41,9 @@ const MyTasks = () => {
   const { data: tasks = [], isLoading } = useMyTasks(currentMember?.id);
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
-  /** Auto-save: views salvas persistem no banco; a aba padrão fica no localStorage. */
+  /** Barra de ferramentas: altera apenas o rascunho local (salvar é explícito). */
   const handleToolbarChange = (next: ToolbarState) => {
     setView({ ...view, ...next });
-    if (view.saved) {
-      updateView.mutate({
-        id: view.id,
-        group_by: next.group_by,
-        sort_by: next.sort_by,
-        filters: next.filters,
-      });
-    }
   };
 
   return (

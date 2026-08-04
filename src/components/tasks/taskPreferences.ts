@@ -103,3 +103,10 @@ export const useTaskColumnPrefs = () =>
 
 /** Toggle "Mostrar concluídas" — desligado por padrão. */
 export const useShowCompleted = () => useGlobalPref<boolean>("tasks:showCompleted", false);
+
+/**
+ * "Habilitar salvamento automático" por visualização (chave = id da view).
+ * Desligado por padrão: mudanças de toolbar ficam em rascunho até salvar.
+ */
+export const useViewAutosave = () =>
+  useGlobalPref<Record<string, boolean>>("tasks:viewAutosave", {});

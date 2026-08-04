@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, Copy, LayoutGrid, List, Lock, Plus, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  LayoutGrid,
+  List,
+  Lock,
+  Plus,
+  RotateCcw,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   GroupBy,
@@ -35,6 +47,7 @@ import {
   TaskMember,
   TaskView,
   TaskViewFilters,
+  ViewSlot,
   ViewType,
   parseSort,
   serializeSort,
@@ -45,6 +58,7 @@ import {
   useTaskViews,
   useUpdateView,
 } from "@/hooks/useTaskStructure";
+import { useViewAutosave } from "@/components/tasks/taskPreferences";
 
 const NONE = "__none__";
 
@@ -59,6 +73,8 @@ export interface ActiveView {
   saved?: boolean;
   is_private?: boolean;
   owner_id?: string | null;
+  /** aba padrão que esta view representa (quando aplicável) */
+  slot?: ViewSlot | null;
 }
 
 export const DEFAULT_VIEWS: ActiveView[] = [
@@ -76,7 +92,24 @@ const toActive = (v: TaskView): ActiveView => ({
   saved: true,
   is_private: v.is_private,
   owner_id: v.owner_id,
+  slot: v.slot ?? null,
 });
+
+/** Assinatura estável de (agrupamento, ordenação, filtros) para detectar rascunho. */
+const signature = (state: {
+  group_by: GroupBy;
+  sort_by: SortValue | null;
+  filters?: TaskViewFilters | null;
+}) => {
+  const f = state.filters ?? {};
+  return JSON.stringify({
+    group_by: state.group_by,
+    sort_by: state.sort_by ?? null,
+    assignee_ids: [...(f.assignee_ids ?? [])].sort(),
+    priorities: [...(f.priorities ?? [])].sort(),
+    statuses: [...(f.statuses ?? [])].sort(),
+  });
+};
 
 const ViewFormDialog = ({
   open,
@@ -228,6 +261,92 @@ const ViewFormDialog = ({
   );
 };
 
+/** Botão "Salvar visualização" + chevron com as 4 opções (estilo ClickUp). */
+const SaveViewMenu = ({
+  dirty,
+  autosave,
+  onSave,
+  onToggleAutosave,
+  onSaveAsNew,
+  onRevert,
+}: {
+  dirty: boolean;
+  autosave: boolean;
+  onSave: () => void;
+  onToggleAutosave: (value: boolean) => void;
+  onSaveAsNew: () => void;
+  onRevert: () => void;
+}) => {
+  /** Atalho ⌘↵ / Ctrl+Enter salva a visualização ativa. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && dirty) {
+        e.preventDefault();
+        onSave();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dirty, onSave]);
+
+  return (
+    <div className="flex items-center">
+      <button
+        type="button"
+        disabled={!dirty}
+        onClick={onSave}
+        className={cn(
+          "flex items-center gap-1.5 rounded-l-[4px] border border-border/70 px-2 py-1 text-[12px] transition-colors",
+          dirty
+            ? "border-primary/60 bg-primary/10 text-primary hover:bg-primary/20"
+            : "text-muted-foreground opacity-60"
+        )}
+      >
+        <Save className="h-3.5 w-3.5" />
+        Salvar visualização
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="Opções de salvamento"
+            className="rounded-r-[4px] border border-l-0 border-border/70 px-1.5 py-1 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="tasks-dark min-w-[250px]">
+          <DropdownMenuItem disabled={!dirty} onClick={onSave} className="justify-between">
+            <span className="flex items-center gap-2">
+              <Save className="h-3.5 w-3.5" /> Salvar visualização
+            </span>
+            <span className="text-[11px] text-muted-foreground">⌘↵</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              onToggleAutosave(!autosave);
+            }}
+            className="justify-between"
+          >
+            <span className="flex items-center gap-2">
+              <Check className="h-3.5 w-3.5 opacity-70" /> Habilitar salvamento automático
+            </span>
+            <Switch checked={autosave} onCheckedChange={onToggleAutosave} />
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onSaveAsNew}>
+            <Copy className="mr-2 h-3.5 w-3.5" /> Salvar como nova visualização
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!dirty} onClick={onRevert}>
+            <RotateCcw className="mr-2 h-3.5 w-3.5" /> Reverter alterações
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
 /** Abas Lista/Quadro + visualizações salvas (task_views) com "+" de criação. */
 export const ViewTabs = ({
   listId,
@@ -248,7 +367,7 @@ export const ViewTabs = ({
   toolbar?: React.ReactNode;
   /** Abas padrão exibidas antes das visualizações salvas. */
   baseViews?: ActiveView[];
-  /** Configuração aplicada na tela agora (usada para pré-preencher a criação). */
+  /** Configuração aplicada na tela agora (rascunho). */
   currentState?: {
     view_type: ViewType;
     group_by: GroupBy;
@@ -260,30 +379,104 @@ export const ViewTabs = ({
   const createView = useCreateView();
   const updateView = useUpdateView();
   const deleteView = useDeleteView();
+  const [autosaveMap, setAutosaveMap] = useViewAutosave();
   /** initial pré-preenchido da criação (null = fechado) */
   const [createInitial, setCreateInitial] = useState<Partial<ActiveView> | null>(null);
   const [editing, setEditing] = useState<TaskView | null>(null);
+  const creatingSlot = useRef(false);
 
-  const tabs = [...baseViews, ...saved.map(toActive)];
+  /** Views nomeadas (as com `slot` substituem as abas padrão). */
+  const namedViews = useMemo(() => saved.filter((v) => !v.slot), [saved]);
+  const slotRow = (slot: ViewSlot) => saved.find((v) => v.slot === slot);
+
+  /** Abas padrão resolvidas: se existe linha com o slot, ela assume a aba. */
+  const resolvedBase = useMemo(
+    () =>
+      baseViews.map((b) => {
+        const slot: ViewSlot = b.view_type === "board" ? "board" : "list";
+        const row = saved.find((v) => v.slot === slot);
+        return row ? toActive(row) : { ...b, slot };
+      }),
+    [baseViews, saved]
+  );
+
+  const tabs = [...resolvedBase, ...namedViews.map(toActive)];
+
+  /** Sincroniza o id ativo quando uma aba padrão passou a ter linha no banco. */
+  useEffect(() => {
+    if (tabs.some((t) => t.id === activeId)) return;
+    const base = baseViews.find((b) => b.id === activeId);
+    if (!base) return;
+    const row = slotRow(base.view_type === "board" ? "board" : "list");
+    if (row) onChange(toActive(row));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, saved]);
+
+  const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  const autosaveKey = activeTab?.id ?? "";
+  const autosave = !!autosaveMap[autosaveKey];
+
+  const draft = currentState ?? {
+    view_type: activeTab?.view_type ?? "list",
+    group_by: activeTab?.group_by ?? "status",
+    sort_by: activeTab?.sort_by ?? null,
+    filters: activeTab?.filters ?? {},
+  };
+  const dirty = !!activeTab && signature(draft) !== signature(activeTab);
+
+  const saveActive = () => {
+    if (!activeTab || !dirty) return;
+    const payload = {
+      group_by: draft.group_by,
+      sort_by: draft.sort_by,
+      filters: draft.filters ?? {},
+    };
+    if (activeTab.saved) {
+      updateView.mutate({ id: activeTab.id, ...payload });
+      onChange({ ...activeTab, ...payload, saved: true });
+      return;
+    }
+    /** Aba padrão sem linha ainda: cria a view com o slot correspondente. */
+    if (creatingSlot.current) return;
+    creatingSlot.current = true;
+    createView.mutate(
+      {
+        list_id: listId,
+        name: activeTab.name,
+        view_type: activeTab.view_type,
+        slot: (activeTab.slot ?? (activeTab.view_type === "board" ? "board" : "list")) as ViewSlot,
+        is_private: false,
+        owner_id: null,
+        ...payload,
+      },
+      {
+        onSuccess: (created) => onChange(toActive(created)),
+        onSettled: () => {
+          creatingSlot.current = false;
+        },
+      }
+    );
+  };
+
+  /** Salvamento automático opcional (desligado por padrão). */
+  useEffect(() => {
+    if (autosave && dirty) saveActive();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autosave, dirty, signature(draft)]);
+
+  const revertActive = () => {
+    if (activeTab) onChange({ ...activeTab });
+  };
 
   const openCreate = () =>
     setCreateInitial({
       name: "",
-      view_type: currentState?.view_type ?? "list",
-      group_by: currentState?.group_by ?? "status",
-      sort_by: currentState?.sort_by ?? null,
-      filters: currentState?.filters ?? {},
+      view_type: draft.view_type,
+      group_by: draft.group_by,
+      sort_by: draft.sort_by,
+      filters: draft.filters ?? {},
       is_private: false,
     });
-
-  const activeIsBase = baseViews.some((b) => b.id === activeId);
-  const hasCustomState =
-    !!currentState &&
-    (Object.values(currentState.filters ?? {}).some((v) =>
-      Array.isArray(v) ? v.length > 0 : !!v
-    ) ||
-      currentState.group_by !== "status" ||
-      !!currentState.sort_by);
 
   return (
     <div className="mb-3 flex items-center gap-1 border-b border-border/70 pb-0 text-[12px]">
@@ -291,6 +484,7 @@ export const ViewTabs = ({
         const savedView = saved.find((s) => s.id === tab.id);
         const Icon = tab.view_type === "board" ? LayoutGrid : List;
         const active = activeId === tab.id;
+        const isBaseSlot = !!tab.slot;
         const canManage =
           !!savedView && (!savedView.is_private || savedView.owner_id === currentMemberId);
         return (
@@ -325,16 +519,20 @@ export const ViewTabs = ({
                   <DropdownMenuItem onClick={openCreate}>
                     <Copy className="mr-2 h-3.5 w-3.5" /> Salvar como nova visualização
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => {
-                      deleteView.mutate(savedView.id);
-                      if (active) onChange(baseViews[0]);
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
-                  </DropdownMenuItem>
+                  {!isBaseSlot && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => {
+                          deleteView.mutate(savedView.id);
+                          if (active) onChange(resolvedBase[0]);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -350,17 +548,19 @@ export const ViewTabs = ({
         <Plus className="h-3.5 w-3.5" /> Visualização
       </button>
 
-      {activeIsBase && hasCustomState && (
-        <button
-          type="button"
-          onClick={openCreate}
-          className="mb-1 flex items-center gap-1 rounded px-2 py-1 text-[12px] text-primary transition-colors hover:bg-accent/60"
-        >
-          <Copy className="h-3.5 w-3.5" /> Salvar como nova visualização
-        </button>
-      )}
-
-      {toolbar && <div className="mb-1 ml-auto">{toolbar}</div>}
+      <div className="mb-1 ml-auto flex items-center gap-2">
+        {toolbar}
+        <SaveViewMenu
+          dirty={dirty}
+          autosave={autosave}
+          onSave={saveActive}
+          onToggleAutosave={(value) =>
+            setAutosaveMap({ ...autosaveMap, [autosaveKey]: value })
+          }
+          onSaveAsNew={openCreate}
+          onRevert={revertActive}
+        />
+      </div>
 
       {createInitial && (
         <ViewFormDialog
@@ -374,6 +574,7 @@ export const ViewTabs = ({
               {
                 list_id: listId,
                 ...v,
+                slot: null,
                 owner_id: v.is_private ? currentMemberId ?? null : null,
               },
               { onSuccess: (created) => onChange(toActive(created)) }
@@ -398,6 +599,7 @@ export const ViewTabs = ({
             filters: editing.filters,
             saved: true,
             owner_id,
+            slot: editing.slot ?? null,
           });
         }}
       />

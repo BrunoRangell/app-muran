@@ -5,6 +5,7 @@ import {
   GroupBy,
   SortValue,
   Task,
+  TaskPriority,
   TaskMember,
   TaskStatus,
   TaskViewFilters,
@@ -27,15 +28,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import {
+  CalendarIcon,
   ChevronDown,
   ChevronRight,
   Flag,
+  Maximize2,
   MessageSquare,
   Repeat2,
 } from "lucide-react";
+
 
 /** Ícone circular de status (igual ao ClickUp: anel colorido + tracinhos). */
 const StatusCircle = ({ status }: { status: TaskStatus }) => (
@@ -54,10 +62,24 @@ const StatusCircle = ({ status }: { status: TaskStatus }) => (
 
 const formatDue = (value: string | null) => {
   if (!value) return null;
-  const [y, m, d] = value.split("-").map(Number);
-  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  const date = parseDue(value);
   return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
 };
+
+/** Converte "YYYY-MM-DD" em Date local (evita shift de timezone). */
+function parseDue(value: string) {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Data local → "YYYY-MM-DD". */
+const toISODate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+
+const PRIORITY_OPTIONS: TaskPriority[] = ["baixa", "normal", "alta", "urgente"];
+
 
 const formatCreated = (value: string) => {
   const date = new Date(value);
@@ -151,31 +173,141 @@ export const TaskListView = ({
   });
 
   const renderCell = (id: TaskColumnId, task: Task) => {
+    /** Responsável — dropdown inline com os membros. */
     if (id === "assignee") {
       const member = members.find((m) => m.id === task.assignee_id);
-      return member ? (
-        <MemberAvatar member={member} className="h-[22px] w-[22px]" />
-      ) : (
-        <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
-      );
-    }
-    if (id === "due") {
       return (
-        <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          <Repeat2 className="h-3 w-3 opacity-50" />
-          {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
-        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Alterar responsável"
+              className="inline-flex items-center rounded p-[1px] outline-none transition-colors hover:bg-accent"
+            >
+              {member ? (
+                <MemberAvatar member={member} className="h-[22px] w-[22px]" />
+              ) : (
+                <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="tasks-dark max-h-[320px] min-w-[200px] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenuItem
+              className="text-[12.5px] text-muted-foreground"
+              onClick={() => updateTask.mutate({ id: task.id, assignee_id: null })}
+            >
+              Sem responsável
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {members.map((m) => (
+              <DropdownMenuItem
+                key={m.id}
+                className="gap-2 text-[12.5px]"
+                onClick={() => updateTask.mutate({ id: task.id, assignee_id: m.id })}
+              >
+                <MemberAvatar member={m} className="h-[20px] w-[20px]" />
+                {m.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
     }
+    /** Data de vencimento — popover com calendário. */
+    if (id === "due") {
+      const selected = task.due_date ? parseDue(task.due_date) : undefined;
+      return (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Alterar data de vencimento"
+              className="flex items-center gap-1.5 rounded px-1 py-[2px] text-[12px] text-muted-foreground transition-colors hover:bg-accent"
+            >
+              <Repeat2 className="h-3 w-3 opacity-50" />
+              {formatDue(task.due_date) ?? <span className="opacity-40">—</span>}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="tasks-dark w-auto p-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Calendar
+              mode="single"
+              selected={selected}
+              onSelect={(date) =>
+                updateTask.mutate({ id: task.id, due_date: date ? toISODate(date) : null })
+              }
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+            <div className="border-t border-border/70 p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-full justify-start text-[12px]"
+                onClick={() => updateTask.mutate({ id: task.id, due_date: null })}
+              >
+                <CalendarIcon className="mr-2 h-3.5 w-3.5" /> Limpar data
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      );
+    }
+    /** Prioridade — dropdown inline. */
     if (id === "priority") {
       const priority = task.priority ? TASK_PRIORITY_META[task.priority] : null;
-      return priority ? (
-        <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-          <Flag className={cn("h-3 w-3", priority.flag)} />
-          {priority.label}
-        </span>
-      ) : (
-        <Flag className="h-3 w-3 text-muted-foreground/30" />
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Alterar prioridade"
+              className="inline-flex items-center gap-1 rounded px-1 py-[2px] text-[12px] text-muted-foreground transition-colors hover:bg-accent"
+            >
+              {priority ? (
+                <>
+                  <Flag className={cn("h-3 w-3", priority.flag)} />
+                  {priority.label}
+                </>
+              ) : (
+                <Flag className="h-3 w-3 text-muted-foreground/30" />
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="tasks-dark min-w-[170px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {PRIORITY_OPTIONS.map((p) => (
+              <DropdownMenuItem
+                key={p}
+                className="gap-2 text-[12.5px]"
+                onClick={() => updateTask.mutate({ id: task.id, priority: p })}
+              >
+                <Flag className={cn("h-3 w-3", TASK_PRIORITY_META[p].flag)} />
+                {TASK_PRIORITY_META[p].label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="gap-2 text-[12.5px] text-muted-foreground"
+              onClick={() => updateTask.mutate({ id: task.id, priority: null })}
+            >
+              <Flag className="h-3 w-3 opacity-40" /> Sem prioridade
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
     }
     if (id === "created") {
@@ -259,13 +391,8 @@ export const TaskListView = ({
                   {rows.map((task) => (
                     <div
                       key={task.id}
-                      onClick={() => onOpenTask(task)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") onOpenTask(task);
-                      }}
-                      className="group flex cursor-pointer items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50"
+                      className="group flex items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50"
+
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         {/* Dropdown de status direto na linha */}
@@ -314,12 +441,25 @@ export const TaskListView = ({
                           </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <span className="truncate text-[13px] text-foreground group-hover:underline group-hover:decoration-border">
+                        <button
+                          type="button"
+                          onClick={() => onOpenTask(task)}
+                          className="min-w-0 truncate text-left text-[13px] text-foreground hover:underline hover:decoration-border"
+                        >
                           {task.title}
-                        </span>
+                        </button>
                         {task.description && (
                           <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
                         )}
+                        <button
+                          type="button"
+                          onClick={() => onOpenTask(task)}
+                          aria-label="Abrir tarefa"
+                          className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+                        >
+                          <Maximize2 className="h-3 w-3" />
+                        </button>
+
                       </div>
                       {cols.map((c) => (
                         <div
