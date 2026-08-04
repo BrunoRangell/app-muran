@@ -20,8 +20,11 @@ import {
 } from "@/types/tasks";
 import { useAddTaskComment, useDeleteTask, useTaskComments, useUpdateTask } from "@/hooks/useTasks";
 import { MemberAvatar } from "./MemberAvatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DueDateRecurrencePanel } from "@/components/tasks/DueDateRecurrencePanel";
+import { describeRecurrence, parseISODate } from "@/components/tasks/recurrence";
 import { cn } from "@/lib/utils";
-import { CalendarDays, Circle, Flag, Loader2, Send, Timer, Trash2, User2 } from "lucide-react";
+import { CalendarDays, Circle, Flag, Loader2, Repeat2, Send, Timer, Trash2, User2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -185,13 +188,34 @@ export const TaskDetailModal = ({
               </Field>
 
               <Field icon={CalendarDays} label="Datas">
-                <Input
-                  type="date"
-                  value={task.due_date ?? ""}
-                  onChange={(e) => patch({ due_date: e.target.value || null })}
-                  className="h-8 w-40 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 rounded px-1 py-[3px] text-[13px] text-foreground transition-colors hover:bg-accent"
+                    >
+                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                      {task.due_date
+                        ? format(parseISODate(task.due_date), "dd/MM/yyyy", { locale: ptBR })
+                        : <span className="text-muted-foreground">Sem data</span>}
+                      {task.recurrence && (
+                        <span className="flex items-center gap-1 text-[11px] text-primary">
+                          <Repeat2 className="h-3.5 w-3.5" />
+                          {describeRecurrence(task.recurrence)}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="tasks-dark w-[280px] p-0">
+                    <DueDateRecurrencePanel
+                      dueDate={task.due_date}
+                      recurrence={task.recurrence ?? null}
+                      onChange={(p) => patch(p as Record<string, unknown>)}
+                    />
+                  </PopoverContent>
+                </Popover>
               </Field>
+
 
               <Field icon={Flag} label="Prioridade">
                 <Select
