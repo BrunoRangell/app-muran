@@ -82,6 +82,7 @@ function App() {
         <Route path="/oauth/consent" element={<OAuthConsent />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/__due-preview" element={<DueDatePreview />} />
 
         {/* Módulo de tarefas — app standalone, fora do layout do app-muran */}
         <Route
