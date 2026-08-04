@@ -391,13 +391,8 @@ export const TaskListView = ({
                   {rows.map((task) => (
                     <div
                       key={task.id}
-                      onClick={() => onOpenTask(task)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") onOpenTask(task);
-                      }}
-                      className="group flex cursor-pointer items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50"
+                      className="group flex items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50"
+
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         {/* Dropdown de status direto na linha */}
