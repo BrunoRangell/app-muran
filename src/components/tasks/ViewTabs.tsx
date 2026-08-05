@@ -614,6 +614,9 @@ export const ViewTabs = ({
           initial={createInitial}
           title="Nova visualização"
           canBePrivate={!!currentMemberId}
+          members={members}
+          statuses={statuses}
+
           onSubmit={(v) =>
             createView.mutate(
               {
