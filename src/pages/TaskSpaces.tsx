@@ -10,7 +10,7 @@ import { TasksToolbar, ToolbarState } from "@/components/tasks/TasksToolbar";
 import { TaskBoardSkeleton, TaskListSkeleton } from "@/components/tasks/TasksSkeleton";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { buildTaskGroups } from "@/components/tasks/taskGrouping";
-import { useAllTasks, useListTasks, useUpdateTask } from "@/hooks/useTasks";
+import { useAllTasks, useListTasks, useReorderTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useCurrentTaskMember, useTaskMembers } from "@/hooks/useTaskMembers";
 import { CLIENT_TASK_STATUSES, ListKind, Task, TaskStatus } from "@/types/tasks";
 import LeadsPipeline from "@/components/tasks/LeadsPipeline";
@@ -50,6 +50,8 @@ const TaskSpaces = () => {
   const { data: members = [] } = useTaskMembers();
   const { data: currentMember } = useCurrentTaskMember();
   const updateTask = useUpdateTask();
+  const reorderTasks = useReorderTasks();
+
   const pool = shortcut === "all" ? allTasks : tasks;
   const selected: Task | null = pool.find((t) => t.id === selectedId) ?? null;
 
