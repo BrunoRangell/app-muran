@@ -392,6 +392,7 @@ export const ViewTabs = ({
   toolbar,
   baseViews = DEFAULT_VIEWS,
   currentState,
+  statuses = CLIENT_TASK_STATUSES,
 }: {
   listId: string | null;
   members: TaskMember[];
@@ -402,6 +403,9 @@ export const ViewTabs = ({
   toolbar?: React.ReactNode;
   /** Abas padrão exibidas antes das visualizações salvas. */
   baseViews?: ActiveView[];
+  /** Status disponíveis para os filtros do diálogo de visualização. */
+  statuses?: TaskStatus[];
+
   /** Configuração aplicada na tela agora (rascunho). */
   currentState?: {
     view_type: ViewType;
