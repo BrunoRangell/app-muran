@@ -117,6 +117,8 @@ const ViewFormDialog = ({
   initial,
   title,
   canBePrivate,
+  members,
+  statuses,
   onSubmit,
 }: {
   open: boolean;
@@ -124,6 +126,8 @@ const ViewFormDialog = ({
   initial?: Partial<ActiveView>;
   title: string;
   canBePrivate: boolean;
+  members: TaskMember[];
+  statuses: TaskStatus[];
   onSubmit: (values: {
     name: string;
     view_type: ViewType;
@@ -140,6 +144,11 @@ const ViewFormDialog = ({
   const [sortBy, setSortBy] = useState<string>(initialSort.field ?? NONE);
   const [sortDir, setSortDir] = useState<SortDir>(initialSort.dir);
   const [isPrivate, setIsPrivate] = useState(!!initial?.is_private);
+  /** Filtros salvos da visualização (editáveis aqui dentro). */
+  const [filters, setFilters] = useState<TaskViewFilters>(
+    normalizeFilters(initial?.filters) as TaskViewFilters
+  );
+  const filterCount = countActiveFilters(filters);
 
 
   return (
@@ -155,9 +164,11 @@ const ViewFormDialog = ({
           setSortBy(s.field ?? NONE);
           setSortDir(s.dir);
           setIsPrivate(!!initial?.is_private);
+          setFilters(normalizeFilters(initial?.filters) as TaskViewFilters);
         }
       }}
     >
+
       <DialogContent className="tasks-dark max-w-md border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
