@@ -14,6 +14,8 @@ interface KanbanBoardProps<T extends { id: string }, S extends string> {
   items: T[];
   getStatus: (item: T) => S;
   onStatusChange: (item: T, status: S) => void;
+  /** Ordem manual final da coluna (ids na ordem desejada). */
+  onReorder?: (columnId: S, orderedIds: string[]) => void;
   renderCard: (item: T) => ReactNode;
   emptyLabel?: string;
   footer?: (columnId: S) => ReactNode;
@@ -24,19 +26,42 @@ export function KanbanBoard<T extends { id: string }, S extends string>({
   items,
   getStatus,
   onStatusChange,
+  onReorder,
   renderCard,
   emptyLabel,
   footer,
 }: KanbanBoardProps<T, S>) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<S | null>(null);
+  /** Índice de inserção dentro da coluna sob o cursor. */
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  const reset = () => {
+    setDraggingId(null);
+    setOverColumn(null);
+    setOverIndex(null);
+  };
 
   const handleDrop = (columnId: S) => {
     const item = items.find((i) => i.id === draggingId);
-    setDraggingId(null);
-    setOverColumn(null);
-    if (!item || getStatus(item) === columnId) return;
-    onStatusChange(item, columnId);
+    const index = overIndex;
+    reset();
+    if (!item) return;
+
+    const sameColumn = getStatus(item) === columnId;
+    if (!sameColumn) onStatusChange(item, columnId);
+
+    if (onReorder) {
+      const columnIds = items
+        .filter((i) => getStatus(i) === columnId && i.id !== item.id)
+        .map((i) => i.id);
+      const at = index === null || index > columnIds.length ? columnIds.length : index;
+      const next = [...columnIds.slice(0, at), item.id, ...columnIds.slice(at)];
+      /** Só persiste se a ordem realmente mudou. */
+      const current = items.filter((i) => getStatus(i) === columnId).map((i) => i.id);
+      if (sameColumn && current.join("|") === next.join("|")) return;
+      onReorder(columnId, next);
+    }
   };
 
   return (
@@ -75,20 +100,41 @@ export function KanbanBoard<T extends { id: string }, S extends string>({
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
-              {columnItems.map((item) => (
-                <div
-                  key={item.id}
-                  draggable
-                  onDragStart={() => setDraggingId(item.id)}
-                  onDragEnd={() => {
-                    setDraggingId(null);
-                    setOverColumn(null);
-                  }}
-                  className={cn("cursor-grab active:cursor-grabbing", draggingId === item.id && "opacity-40")}
-                >
-                  {renderCard(item)}
-                </div>
-              ))}
+              {columnItems.map((item, index) => {
+                const dropBefore =
+                  !!draggingId && overColumn === column.id && overIndex === index;
+                return (
+                  <div key={item.id}>
+                    {dropBefore && (
+                      <div className="mb-1 h-[2px] rounded-full bg-primary" aria-hidden />
+                    )}
+                    <div
+                      draggable
+                      onDragStart={() => setDraggingId(item.id)}
+                      onDragEnd={reset}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const after = e.clientY > rect.top + rect.height / 2;
+                        setOverColumn(column.id);
+                        setOverIndex(after ? index + 1 : index);
+                      }}
+                      className={cn(
+                        "cursor-grab active:cursor-grabbing",
+                        draggingId === item.id && "opacity-40"
+                      )}
+                    >
+                      {renderCard(item)}
+                    </div>
+                  </div>
+                );
+              })}
+              {!!draggingId &&
+                overColumn === column.id &&
+                overIndex !== null &&
+                overIndex >= columnItems.length && (
+                  <div className="h-[2px] rounded-full bg-primary" aria-hidden />
+                )}
               {columnItems.length === 0 && emptyLabel && (
                 <p className="px-1 py-2 text-[11px] text-muted-foreground/70">{emptyLabel}</p>
               )}
