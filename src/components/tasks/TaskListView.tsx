@@ -12,7 +12,7 @@ import {
   TASK_PRIORITY_META,
   TASK_STATUS_META,
 } from "@/types/tasks";
-import { useUpdateTask } from "@/hooks/useTasks";
+import { useReorderTasks, useUpdateTask } from "@/hooks/useTasks";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
 import { buildTaskGroups } from "@/components/tasks/taskGrouping";
@@ -40,10 +40,12 @@ import {
   ChevronDown,
   ChevronRight,
   Flag,
+  GripVertical,
   MessageSquare,
   Pencil,
   Repeat2,
 } from "lucide-react";
+
 
 
 /** Ícone circular de status (igual ao ClickUp: anel colorido + tracinhos). */
@@ -124,13 +126,34 @@ export const TaskListView = ({
   const [dragging, setDragging] = useState<{ id: TaskColumnId; width: number } | null>(null);
   /** Renomeação inline do título (ativada pelo lápis no hover). */
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+  /** Arraste manual de reordenação (restrito ao mesmo grupo). */
+  const [dragTask, setDragTask] = useState<{ id: string; groupKey: string } | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ groupKey: string; index: number } | null>(null);
   const updateTask = useUpdateTask();
+  const reorderTasks = useReorderTasks();
+
+  /** Persiste a nova ordem do grupo ao soltar a tarefa arrastada. */
+  const commitReorder = (groupKey: string, rows: Task[]) => {
+    const drag = dragTask;
+    const target = dropTarget;
+    setDragTask(null);
+    setDropTarget(null);
+    if (!drag || drag.groupKey !== groupKey || !target || target.groupKey !== groupKey) return;
+    const ids = rows.map((t) => t.id);
+    const without = ids.filter((id) => id !== drag.id);
+    const removedBefore = ids.indexOf(drag.id) < target.index ? 1 : 0;
+    const at = Math.min(Math.max(target.index - removedBefore, 0), without.length);
+    const next = [...without.slice(0, at), drag.id, ...without.slice(at)];
+    if (next.join("|") === ids.join("|")) return;
+    reorderTasks.mutate(next);
+  };
 
   const commitRename = (task: Task) => {
     const value = renaming?.value.trim();
     setRenaming(null);
     if (value && value !== task.title) updateTask.mutate({ id: task.id, title: value });
   };
+
 
   const visibleStatuses = showCompleted ? statuses : statuses.filter((s) => s !== "concluido");
   const pool = showCompleted ? tasks : tasks.filter((t) => t.status !== "concluido");
