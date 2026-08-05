@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  CLIENT_TASK_STATUSES,
   GroupBy,
   GROUP_BY_LABEL,
   SortBy,
@@ -45,6 +46,7 @@ import {
   SortValue,
   SORT_BY_LABEL,
   TaskMember,
+  TaskStatus,
   TaskView,
   TaskViewFilters,
   ViewSlot,
@@ -58,7 +60,10 @@ import {
   useTaskViews,
   useUpdateView,
 } from "@/hooks/useTaskStructure";
+import { countActiveFilters, normalizeFilters } from "@/components/tasks/taskGrouping";
+import { TaskFiltersPanel } from "@/components/tasks/TaskFiltersPanel";
 import { useViewAutosave } from "@/components/tasks/taskPreferences";
+
 
 const NONE = "__none__";
 
