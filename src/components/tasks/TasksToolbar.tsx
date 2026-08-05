@@ -19,8 +19,6 @@ import {
   useTaskColumnPrefs,
 } from "@/components/tasks/taskPreferences";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
