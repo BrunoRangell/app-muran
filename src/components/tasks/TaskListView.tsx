@@ -439,13 +439,47 @@ export const TaskListView = ({
                     ))}
                   </div>
 
-                  {rows.map((task) => (
+                  {rows.map((task, index) => (
                     <div
                       key={task.id}
-                      className="group flex items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50"
-
+                      onDragOver={(e) => {
+                        if (!dragTask || dragTask.groupKey !== group.key) return;
+                        e.preventDefault();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const after = e.clientY > rect.top + rect.height / 2;
+                        setDropTarget({ groupKey: group.key, index: after ? index + 1 : index });
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        commitReorder(group.key, rows);
+                      }}
+                      className={cn(
+                        "group flex items-center border-b border-border/50 px-3 py-[7px] transition-colors last:border-b-0 hover:bg-accent/50",
+                        dragTask?.id === task.id && "opacity-40",
+                        dropTarget?.groupKey === group.key &&
+                          dropTarget.index === index &&
+                          "border-t-2 border-t-primary",
+                        dropTarget?.groupKey === group.key &&
+                          dropTarget.index === index + 1 &&
+                          "border-b-2 border-b-primary"
+                      )}
                     >
+                      {/* Alça de arraste para reordenar dentro do grupo */}
+                      <span
+                        draggable
+                        onDragStart={() => setDragTask({ id: task.id, groupKey: group.key })}
+                        onDragEnd={() => {
+                          setDragTask(null);
+                          setDropTarget(null);
+                        }}
+                        role="button"
+                        aria-label="Arrastar para reordenar"
+                        className="-ml-2 mr-0.5 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-hover:opacity-100"
+                      >
+                        <GripVertical className="h-3.5 w-3.5" />
+                      </span>
                       <div className="flex min-w-0 flex-1 items-center gap-2">
+
                         {/* Dropdown de status direto na linha */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
