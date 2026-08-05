@@ -217,6 +217,8 @@ const TaskSpaces = () => {
                         const patch = groups.find((g) => g.key === key)?.patch;
                         if (patch) updateTask.mutate({ id: t.id, ...patch });
                       }}
+                      onReorder={(_key, orderedIds) => reorderTasks.mutate(orderedIds)}
+
                       renderCard={(t) => (
                         <TaskCard
                           task={t}
