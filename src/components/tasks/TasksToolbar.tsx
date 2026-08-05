@@ -10,9 +10,7 @@ import {
   GripVertical,
   Group,
   ListFilter,
-  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   TASK_COLUMN_LABEL,
@@ -33,15 +31,13 @@ import {
   SortValue,
   SORT_BY_LABEL,
   TaskMember,
-  TaskPriority,
   TaskStatus,
   TaskViewFilters,
-  TASK_PRIORITY_META,
-  TASK_STATUS_META,
   parseSort,
   serializeSort,
 } from "@/types/tasks";
-import { countActiveFilters, normalizeFilters } from "@/components/tasks/taskGrouping";
+import { countActiveFilters } from "@/components/tasks/taskGrouping";
+import { TaskFiltersPanel } from "@/components/tasks/TaskFiltersPanel";
 
 export interface ToolbarState {
   group_by: GroupBy;
@@ -52,8 +48,6 @@ export interface ToolbarState {
 const btn =
   "flex h-7 items-center gap-1.5 rounded px-2 text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground";
 
-const toggle = <T,>(list: T[], value: T) =>
-  list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
 const CheckRow = ({
   checked,
