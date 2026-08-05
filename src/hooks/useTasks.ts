@@ -201,7 +201,31 @@ export const useUpdateTask = () => {
   });
 };
 
+/**
+ * Persiste a ordem manual das tarefas dentro de um grupo/coluna.
+ * Recebe os ids na ordem final desejada e grava `position` sequencial.
+ */
+export const useReorderTasks = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      for (let i = 0; i < orderedIds.length; i += 1) {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ position: i } as never)
+          .eq("id", orderedIds[i]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => invalidateTasks(qc),
+    onError: (e: Error) =>
+      toast({ title: "Erro ao reordenar tarefas", description: e.message, variant: "destructive" }),
+  });
+};
+
 export const useDeleteTask = () => {
+
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({

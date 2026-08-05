@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  CLIENT_TASK_STATUSES,
   GroupBy,
   GROUP_BY_LABEL,
   SortBy,
@@ -45,6 +46,7 @@ import {
   SortValue,
   SORT_BY_LABEL,
   TaskMember,
+  TaskStatus,
   TaskView,
   TaskViewFilters,
   ViewSlot,
@@ -58,7 +60,10 @@ import {
   useTaskViews,
   useUpdateView,
 } from "@/hooks/useTaskStructure";
+import { countActiveFilters, normalizeFilters } from "@/components/tasks/taskGrouping";
+import { TaskFiltersPanel } from "@/components/tasks/TaskFiltersPanel";
 import { useViewAutosave } from "@/components/tasks/taskPreferences";
+
 
 const NONE = "__none__";
 
@@ -117,6 +122,8 @@ const ViewFormDialog = ({
   initial,
   title,
   canBePrivate,
+  members,
+  statuses,
   onSubmit,
 }: {
   open: boolean;
@@ -124,6 +131,8 @@ const ViewFormDialog = ({
   initial?: Partial<ActiveView>;
   title: string;
   canBePrivate: boolean;
+  members: TaskMember[];
+  statuses: TaskStatus[];
   onSubmit: (values: {
     name: string;
     view_type: ViewType;
@@ -140,6 +149,11 @@ const ViewFormDialog = ({
   const [sortBy, setSortBy] = useState<string>(initialSort.field ?? NONE);
   const [sortDir, setSortDir] = useState<SortDir>(initialSort.dir);
   const [isPrivate, setIsPrivate] = useState(!!initial?.is_private);
+  /** Filtros salvos da visualização (editáveis aqui dentro). */
+  const [filters, setFilters] = useState<TaskViewFilters>(
+    normalizeFilters(initial?.filters) as TaskViewFilters
+  );
+  const filterCount = countActiveFilters(filters);
 
 
   return (
@@ -155,9 +169,11 @@ const ViewFormDialog = ({
           setSortBy(s.field ?? NONE);
           setSortDir(s.dir);
           setIsPrivate(!!initial?.is_private);
+          setFilters(normalizeFilters(initial?.filters) as TaskViewFilters);
         }
       }}
     >
+
       <DialogContent className="tasks-dark max-w-md border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -236,6 +252,24 @@ const ViewFormDialog = ({
               )}
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>
+              Filtros
+              {filterCount > 0 && (
+                <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  {filterCount}
+                </span>
+              )}
+            </Label>
+            <div className="rounded-md border border-border p-2">
+              <TaskFiltersPanel
+                members={members}
+                statuses={statuses}
+                value={filters}
+                onChange={setFilters}
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button
@@ -246,12 +280,13 @@ const ViewFormDialog = ({
                 view_type: viewType,
                 group_by: groupBy,
                 sort_by: sortBy === NONE ? null : serializeSort(sortBy as SortBy, sortDir),
-                filters: initial?.filters ?? {},
+                filters,
                 is_private: canBePrivate ? isPrivate : false,
 
               });
               onOpenChange(false);
             }}
+
           >
             Salvar
           </Button>
@@ -357,6 +392,7 @@ export const ViewTabs = ({
   toolbar,
   baseViews = DEFAULT_VIEWS,
   currentState,
+  statuses = CLIENT_TASK_STATUSES,
 }: {
   listId: string | null;
   members: TaskMember[];
@@ -367,6 +403,9 @@ export const ViewTabs = ({
   toolbar?: React.ReactNode;
   /** Abas padrão exibidas antes das visualizações salvas. */
   baseViews?: ActiveView[];
+  /** Status disponíveis para os filtros do diálogo de visualização. */
+  statuses?: TaskStatus[];
+
   /** Configuração aplicada na tela agora (rascunho). */
   currentState?: {
     view_type: ViewType;
@@ -575,6 +614,9 @@ export const ViewTabs = ({
           initial={createInitial}
           title="Nova visualização"
           canBePrivate={!!currentMemberId}
+          members={members}
+          statuses={statuses}
+
           onSubmit={(v) =>
             createView.mutate(
               {
@@ -597,6 +639,8 @@ export const ViewTabs = ({
         initial={toActive(editing)}
         title="Editar visualização"
         canBePrivate={!!currentMemberId}
+        members={members}
+        statuses={statuses}
         onSubmit={(v) => {
           if (!editing) return;
           const owner_id = v.is_private ? editing.owner_id ?? currentMemberId ?? null : null;
@@ -604,12 +648,12 @@ export const ViewTabs = ({
           onChange({
             id: editing.id,
             ...v,
-            filters: editing.filters,
             saved: true,
             owner_id,
             slot: editing.slot ?? null,
           });
         }}
+
       />
       )}
     </div>

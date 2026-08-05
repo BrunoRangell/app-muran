@@ -17,9 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { TaskMember, TaskPriority, TaskStatus, TASK_PRIORITY_META } from "@/types/tasks";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Plus, Repeat2 } from "lucide-react";
+import {
+  TaskMember,
+  TaskPriority,
+  TaskRecurrence,
+  TaskStatus,
+  TASK_PRIORITY_META,
+} from "@/types/tasks";
 import { TaskInput, useCreateTask } from "@/hooks/useTasks";
+import { DueDateRecurrencePanel } from "@/components/tasks/DueDateRecurrencePanel";
+import { describeRecurrence } from "@/components/tasks/recurrence";
 
 interface Props {
   members: TaskMember[];
@@ -33,12 +42,19 @@ interface Props {
 
 const NONE = "__none__";
 
+const formatDue = (value: string | null) => {
+  if (!value) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  return `${d}/${m}/${String(y).slice(-2)}`;
+};
+
 export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova tarefa" }: Props) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState(defaults?.assignee_id ?? NONE);
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState<string | null>(null);
+  const [recurrence, setRecurrence] = useState<TaskRecurrence | null>(null);
   const [priority, setPriority] = useState<string>(defaults?.priority ?? NONE);
   const createTask = useCreateTask();
 
@@ -52,6 +68,7 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
         status,
         assignee_id: assignee === NONE ? null : assignee,
         due_date: dueDate || null,
+        recurrence,
         priority: priority === NONE ? null : (priority as TaskPriority),
       },
       {
@@ -59,7 +76,8 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
           setTitle("");
           setDescription("");
           setAssignee(defaults?.assignee_id ?? NONE);
-          setDueDate("");
+          setDueDate(null);
+          setRecurrence(null);
           setPriority(defaults?.priority ?? NONE);
           setOpen(false);
         },
@@ -104,9 +122,41 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
                 </SelectContent>
               </Select>
             </div>
+            {/* Prazo + recorrência reutilizando o mesmo painel da edição */}
             <div className="space-y-1.5">
-              <Label>Prazo</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <Label>Prazo e recorrência</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full justify-start gap-2 text-[13px] font-normal"
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5 opacity-60" />
+                    {formatDue(dueDate) ?? <span className="text-muted-foreground">Sem prazo</span>}
+                    {recurrence && <Repeat2 className="ml-auto h-3.5 w-3.5 text-primary" />}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  collisionPadding={12}
+                  className="tasks-dark pointer-events-auto w-[280px] overflow-hidden p-0"
+                >
+                  <DueDateRecurrencePanel
+                    dueDate={dueDate}
+                    recurrence={recurrence}
+                    onChange={(patch) => {
+                      if (patch.due_date !== undefined) setDueDate(patch.due_date);
+                      if (patch.recurrence !== undefined) setRecurrence(patch.recurrence);
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+              {recurrence && (
+                <p className="text-[11px] text-muted-foreground">
+                  {describeRecurrence(recurrence)}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Prioridade</Label>

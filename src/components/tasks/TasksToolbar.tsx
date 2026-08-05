@@ -10,9 +10,7 @@ import {
   GripVertical,
   Group,
   ListFilter,
-  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   TASK_COLUMN_LABEL,
@@ -21,8 +19,6 @@ import {
   useTaskColumnPrefs,
 } from "@/components/tasks/taskPreferences";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
@@ -33,15 +29,13 @@ import {
   SortValue,
   SORT_BY_LABEL,
   TaskMember,
-  TaskPriority,
   TaskStatus,
   TaskViewFilters,
-  TASK_PRIORITY_META,
-  TASK_STATUS_META,
   parseSort,
   serializeSort,
 } from "@/types/tasks";
-import { countActiveFilters, normalizeFilters } from "@/components/tasks/taskGrouping";
+import { countActiveFilters } from "@/components/tasks/taskGrouping";
+import { TaskFiltersPanel } from "@/components/tasks/TaskFiltersPanel";
 
 export interface ToolbarState {
   group_by: GroupBy;
@@ -52,23 +46,8 @@ export interface ToolbarState {
 const btn =
   "flex h-7 items-center gap-1.5 rounded px-2 text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground";
 
-const toggle = <T,>(list: T[], value: T) =>
-  list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
-const CheckRow = ({
-  checked,
-  onToggle,
-  children,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) => (
-  <Label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] font-normal hover:bg-accent/60">
-    <Checkbox checked={checked} onCheckedChange={onToggle} className="h-3.5 w-3.5" />
-    {children}
-  </Label>
-);
+
 
 /** Painel "Colunas" (equivalente ao "Campos" do ClickUp) com drag & drop nativo. */
 const ColumnsMenu = ({ allowOrigin }: { allowOrigin: boolean }) => {
@@ -160,12 +139,10 @@ export const TasksToolbar = ({
 }) => {
   const [showCompleted, setShowCompleted] = useShowCompleted();
 
-  const f = normalizeFilters(value.filters);
   const activeCount = countActiveFilters(value.filters);
   const { field: sortField, dir: sortDir } = parseSort(value.sort_by);
 
-  const setFilters = (patch: Partial<ReturnType<typeof normalizeFilters>>) =>
-    onChange({ ...value, filters: { ...f, ...patch } });
+
 
   const setSort = (field: SortBy | null, dir: SortDir) =>
     onChange({ ...value, sort_by: serializeSort(field, dir) });
@@ -186,68 +163,14 @@ export const TasksToolbar = ({
           </button>
         </PopoverTrigger>
         <PopoverContent align="end" className="tasks-dark w-64 p-2 text-foreground">
-          <div className="max-h-[380px] space-y-2 overflow-y-auto">
-            <div>
-              <p className="px-1.5 pb-1 text-[11px] font-semibold uppercase text-muted-foreground">
-                Responsável
-              </p>
-              {members.map((m) => (
-                <CheckRow
-                  key={m.id}
-                  checked={f.assignee_ids.includes(m.id)}
-                  onToggle={() => setFilters({ assignee_ids: toggle(f.assignee_ids, m.id) })}
-                >
-                  {m.name}
-                </CheckRow>
-              ))}
-            </div>
-            <Separator />
-            <div>
-              <p className="px-1.5 pb-1 text-[11px] font-semibold uppercase text-muted-foreground">
-                Prioridade
-              </p>
-              {(Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => (
-                <CheckRow
-                  key={p}
-                  checked={f.priorities.includes(p)}
-                  onToggle={() => setFilters({ priorities: toggle(f.priorities, p) })}
-                >
-                  <span className={TASK_PRIORITY_META[p].flag}>{TASK_PRIORITY_META[p].label}</span>
-                </CheckRow>
-              ))}
-            </div>
-            <Separator />
-            <div>
-              <p className="px-1.5 pb-1 text-[11px] font-semibold uppercase text-muted-foreground">
-                Status
-              </p>
-              {statuses.map((s) => (
-                <CheckRow
-                  key={s}
-                  checked={f.statuses.includes(s)}
-                  onToggle={() => setFilters({ statuses: toggle(f.statuses, s) })}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span className={cn("h-2 w-2 rounded-full", TASK_STATUS_META[s].dot)} />
-                    {TASK_STATUS_META[s].label}
-                  </span>
-                </CheckRow>
-              ))}
-            </div>
-          </div>
-          {activeCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 h-7 w-full text-[12px]"
-              onClick={() =>
-                onChange({ ...value, filters: { assignee_ids: [], priorities: [], statuses: [] } })
-              }
-            >
-              <X className="mr-1 h-3.5 w-3.5" /> Limpar filtros
-            </Button>
-          )}
+          <TaskFiltersPanel
+            members={members}
+            statuses={statuses}
+            value={value.filters}
+            onChange={(filters) => onChange({ ...value, filters })}
+          />
         </PopoverContent>
+
       </Popover>
 
       {/* Ordenar */}
