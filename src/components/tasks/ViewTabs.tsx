@@ -639,6 +639,8 @@ export const ViewTabs = ({
         initial={toActive(editing)}
         title="Editar visualização"
         canBePrivate={!!currentMemberId}
+        members={members}
+        statuses={statuses}
         onSubmit={(v) => {
           if (!editing) return;
           const owner_id = v.is_private ? editing.owner_id ?? currentMemberId ?? null : null;
@@ -646,12 +648,12 @@ export const ViewTabs = ({
           onChange({
             id: editing.id,
             ...v,
-            filters: editing.filters,
             saved: true,
             owner_id,
             slot: editing.slot ?? null,
           });
         }}
+
       />
       )}
     </div>
