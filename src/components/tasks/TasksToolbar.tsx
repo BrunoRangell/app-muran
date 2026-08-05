@@ -49,20 +49,7 @@ const btn =
   "flex h-7 items-center gap-1.5 rounded px-2 text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground";
 
 
-const CheckRow = ({
-  checked,
-  onToggle,
-  children,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) => (
-  <Label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] font-normal hover:bg-accent/60">
-    <Checkbox checked={checked} onCheckedChange={onToggle} className="h-3.5 w-3.5" />
-    {children}
-  </Label>
-);
+
 
 /** Painel "Colunas" (equivalente ao "Campos" do ClickUp) com drag & drop nativo. */
 const ColumnsMenu = ({ allowOrigin }: { allowOrigin: boolean }) => {
@@ -154,12 +141,10 @@ export const TasksToolbar = ({
 }) => {
   const [showCompleted, setShowCompleted] = useShowCompleted();
 
-  const f = normalizeFilters(value.filters);
   const activeCount = countActiveFilters(value.filters);
   const { field: sortField, dir: sortDir } = parseSort(value.sort_by);
 
-  const setFilters = (patch: Partial<ReturnType<typeof normalizeFilters>>) =>
-    onChange({ ...value, filters: { ...f, ...patch } });
+
 
   const setSort = (field: SortBy | null, dir: SortDir) =>
     onChange({ ...value, sort_by: serializeSort(field, dir) });
