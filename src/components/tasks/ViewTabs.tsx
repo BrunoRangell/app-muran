@@ -252,6 +252,24 @@ const ViewFormDialog = ({
               )}
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>
+              Filtros
+              {filterCount > 0 && (
+                <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  {filterCount}
+                </span>
+              )}
+            </Label>
+            <div className="rounded-md border border-border p-2">
+              <TaskFiltersPanel
+                members={members}
+                statuses={statuses}
+                value={filters}
+                onChange={setFilters}
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button
@@ -262,12 +280,13 @@ const ViewFormDialog = ({
                 view_type: viewType,
                 group_by: groupBy,
                 sort_by: sortBy === NONE ? null : serializeSort(sortBy as SortBy, sortDir),
-                filters: initial?.filters ?? {},
+                filters,
                 is_private: canBePrivate ? isPrivate : false,
 
               });
               onOpenChange(false);
             }}
+
           >
             Salvar
           </Button>
