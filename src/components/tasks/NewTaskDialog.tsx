@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -95,6 +96,7 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
       <DialogContent className="tasks-dark max-w-lg border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>Nova tarefa</DialogTitle>
+          <DialogDescription className="sr-only">Defina título, responsável, prazo e recorrência.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">

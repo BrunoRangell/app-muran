@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -88,6 +89,7 @@ const VisualDialog = ({
       <DialogContent className="tasks-dark max-w-md border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">Preencha os campos e salve para continuar.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -144,6 +146,7 @@ const NameDialog = ({
       <DialogContent className="tasks-dark max-w-sm border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">Confirme a ação para continuar.</DialogDescription>
         </DialogHeader>
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         <DialogFooter>
