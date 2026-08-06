@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TaskMember } from "@/types/tasks";
+import { TaskMember, TaskMemberRole, TaskPermissionLevel, TaskSpaceAccess } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
 
-const SELECT = "id, name, email, color, avatar_url, created_at, auth_user_id";
+const SELECT = "id, name, email, color, avatar_url, created_at, auth_user_id, role";
 
 /** Membros do módulo /tarefas (tabela task_members, isolada de team_members). */
 export const useTaskMembers = () =>
