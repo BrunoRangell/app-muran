@@ -103,6 +103,12 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Usuários exclusivos do módulo de tarefas nunca acessam o app principal
+  if (taskAuth?.isTasksOnlyUser) {
+    return <Navigate to="/tarefas" replace />;
+  }
+
+
   // Redireciona se não for admin (quando necessário)
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/" replace />;
