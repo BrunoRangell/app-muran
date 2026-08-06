@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
+import { TaskPrivateRoute } from "@/components/auth/TaskPrivateRoute";
+import TasksLogin from "@/pages/TasksLogin";
+import TasksSetPassword from "@/pages/TasksSetPassword";
 import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -84,15 +87,19 @@ function App() {
 
         <Route path="/login" element={<Login />} />
 
+        {/* Autenticação própria do módulo de tarefas */}
+        <Route path="/tarefas/login" element={<TasksLogin />} />
+        <Route path="/tarefas/definir-senha" element={<TasksSetPassword />} />
+
         {/* Módulo de tarefas — app standalone, fora do layout do app-muran */}
         <Route
           path="/tarefas"
           element={
-            <PrivateRoute>
+            <TaskPrivateRoute>
               <Suspense fallback={<LoadingState />}>
                 <TasksShell />
               </Suspense>
-            </PrivateRoute>
+            </TaskPrivateRoute>
           }
         >
           <Route index element={<Navigate to="/tarefas/espacos" replace />} />
@@ -101,7 +108,14 @@ function App() {
           <Route path="clientes" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="internas" element={<Navigate to="/tarefas/espacos" replace />} />
           <Route path="leads" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="membros" element={<TaskMembers />} />
+          <Route
+            path="membros"
+            element={
+              <TaskPrivateRoute requireAdmin>
+                <TaskMembers />
+              </TaskPrivateRoute>
+            }
+          />
         </Route>
 
 
