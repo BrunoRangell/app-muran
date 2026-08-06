@@ -1277,6 +1277,7 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          role: Database["public"]["Enums"]["task_member_role"] | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -1287,6 +1288,7 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
+          role?: Database["public"]["Enums"]["task_member_role"] | null
         }
         Update: {
           auth_user_id?: string | null
@@ -1297,8 +1299,58 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          role?: Database["public"]["Enums"]["task_member_role"] | null
         }
         Relationships: []
+      }
+      task_space_access: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          permission_level: Database["public"]["Enums"]["task_permission_level"]
+          space_id: string
+          task_member_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission_level?: Database["public"]["Enums"]["task_permission_level"]
+          space_id: string
+          task_member_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission_level?: Database["public"]["Enums"]["task_permission_level"]
+          space_id?: string
+          task_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_space_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_space_access_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "task_spaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_space_access_task_member_id_fkey"
+            columns: ["task_member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_spaces: {
         Row: {
@@ -1585,6 +1637,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_task_space_access: {
+        Args: {
+          p_min_level: Database["public"]["Enums"]["task_permission_level"]
+          p_space_id: string
+        }
+        Returns: boolean
+      }
       insert_daily_budget_review: {
         Args: {
           p_client_id: string
@@ -1598,9 +1657,15 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_service_role_execution: { Args: never; Returns: boolean }
+      is_task_admin: { Args: never; Returns: boolean }
+      is_task_member: { Args: never; Returns: boolean }
+      is_task_participant: { Args: never; Returns: boolean }
       is_team_member: { Args: never; Returns: boolean }
       manual_cleanup_campaign_health: { Args: never; Returns: Json }
       review_all_google_ads_clients: { Args: never; Returns: Json }
+      task_space_of_folder: { Args: { p_folder_id: string }; Returns: string }
+      task_space_of_list: { Args: { p_list_id: string }; Returns: string }
+      task_space_of_task: { Args: { p_task_id: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
       update_daily_budget_review: {
         Args: {
@@ -1688,6 +1753,8 @@ export type Database = {
         | "REFUNDED"
         | "CANCELLED"
       task_internal_area: "Operacional" | "Financeiro" | "Administrativo"
+      task_member_role: "admin" | "member" | "guest"
+      task_permission_level: "view" | "comment" | "edit"
       task_priority: "baixa" | "normal" | "alta" | "urgente"
       task_status:
         | "pendente"
@@ -1905,6 +1972,8 @@ export const Constants = {
         "CANCELLED",
       ],
       task_internal_area: ["Operacional", "Financeiro", "Administrativo"],
+      task_member_role: ["admin", "member", "guest"],
+      task_permission_level: ["view", "comment", "edit"],
       task_priority: ["baixa", "normal", "alta", "urgente"],
       task_status: [
         "pendente",
