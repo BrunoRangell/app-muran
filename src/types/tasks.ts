@@ -46,6 +46,34 @@ export interface Task {
   task_lists?: { name: string | null; task_folders?: { name: string | null } | null } | null;
 }
 
+/** Papéis do módulo de tarefas (independentes de user_roles do app principal). */
+export type TaskMemberRole = "admin" | "member" | "guest";
+
+/** Nível de permissão de um convidado em um espaço (edit > comment > view). */
+export type TaskPermissionLevel = "view" | "comment" | "edit";
+
+export const TASK_MEMBER_ROLE_LABEL: Record<TaskMemberRole, string> = {
+  admin: "Admin",
+  member: "Membro",
+  guest: "Convidado",
+};
+
+export const TASK_PERMISSION_LEVEL_LABEL: Record<TaskPermissionLevel, string> = {
+  view: "Ver",
+  comment: "Comentar",
+  edit: "Editar",
+};
+
+/** Acesso de um convidado a um espaço. */
+export interface TaskSpaceAccess {
+  id: string;
+  task_member_id: string;
+  space_id: string;
+  permission_level: TaskPermissionLevel;
+  granted_by: string | null;
+  created_at?: string;
+}
+
 /** Membro do módulo de tarefas (isolado de team_members). */
 export interface TaskMember {
   id: string;
@@ -56,6 +84,8 @@ export interface TaskMember {
   created_at?: string;
   /** Vínculo com auth.users (usado para resolver autoria de comentários). */
   auth_user_id?: string | null;
+  /** Papel no módulo de tarefas (null = sem login/não convidado). */
+  role?: TaskMemberRole | null;
 }
 
 /** Espaço (nível 1 da árvore, como no ClickUp). */
