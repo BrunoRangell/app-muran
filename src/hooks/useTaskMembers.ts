@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TaskMember } from "@/types/tasks";
+import { TaskMember, TaskMemberRole, TaskPermissionLevel, TaskSpaceAccess } from "@/types/tasks";
 import { useToast } from "@/hooks/use-toast";
 
-const SELECT = "id, name, email, color, avatar_url, created_at, auth_user_id";
+const SELECT = "id, name, email, color, avatar_url, created_at, auth_user_id, role";
 
 /** Membros do módulo /tarefas (tabela task_members, isolada de team_members). */
 export const useTaskMembers = () =>
@@ -96,3 +96,62 @@ export const useDeleteTaskMember = () => {
       toast({ title: "Erro ao remover membro", description: e.message, variant: "destructive" }),
   });
 };
+
+/** Acessos por espaço (usado para convidados). */
+export const useTaskSpaceAccess = () =>
+  useQuery({
+    queryKey: ["task-space-access"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_space_access")
+        .select("id, task_member_id, space_id, permission_level, granted_by, created_at");
+      if (error) throw error;
+      return (data || []) as TaskSpaceAccess[];
+    },
+  });
+
+export interface SaveTaskMemberAccessInput {
+  member_id?: string | null;
+  name: string;
+  email?: string | null;
+  color?: string | null;
+  role: TaskMemberRole | null;
+  space_ids?: string[];
+  permission_level?: TaskPermissionLevel;
+}
+
+/**
+ * Cria/atualiza membro com papel e acessos de espaço, enviando convite por e-mail
+ * quando um papel é atribuído (edge function `tasks-invite-member`).
+ */
+export const useSaveTaskMemberAccess = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: SaveTaskMemberAccessInput) => {
+      const { data, error } = await supabase.functions.invoke("tasks-invite-member", {
+        body: {
+          ...input,
+          redirect_to: `${window.location.origin}/tarefas/definir-senha`,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { member_id: string; invited: boolean };
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["task-members"] });
+      qc.invalidateQueries({ queryKey: ["task-space-access"] });
+      qc.invalidateQueries({ queryKey: ["task-auth"] });
+      toast({
+        title: data?.invited ? "Convite enviado por e-mail" : "Membro salvo",
+        description: data?.invited
+          ? "O usuário receberá um link para definir a senha."
+          : undefined,
+      });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Erro ao salvar membro", description: e.message, variant: "destructive" }),
+  });
+};
+

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -177,6 +178,7 @@ const ViewFormDialog = ({
       <DialogContent className="tasks-dark max-w-md border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">Configure agrupamento, ordenação e filtros da visualização.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">

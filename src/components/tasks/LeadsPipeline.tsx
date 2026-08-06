@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -92,6 +93,7 @@ const NewLeadDialog = () => {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Novo lead</DialogTitle>
+          <DialogDescription className="sr-only">Cadastre um novo lead no pipeline.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -180,6 +182,7 @@ const LeadDetailModal = ({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{lead.name}</DialogTitle>
+          <DialogDescription className="sr-only">Detalhes e edição do lead.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
+import { useTaskAuth } from "@/hooks/useTaskAuth";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ interface PrivateRouteProps {
 
 export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRouteProps) => {
   const { isAuthenticated, isLoading, user } = useUnifiedAuth();
+  const { data: taskAuth } = useTaskAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [adminLoading, setAdminLoading] = useState(requireAdmin);
   const location = useLocation();
@@ -100,6 +102,12 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+
+  // Usuários exclusivos do módulo de tarefas nunca acessam o app principal
+  if (taskAuth?.isTasksOnlyUser) {
+    return <Navigate to="/tarefas" replace />;
+  }
+
 
   // Redireciona se não for admin (quando necessário)
   if (requireAdmin && !isAdmin) {
