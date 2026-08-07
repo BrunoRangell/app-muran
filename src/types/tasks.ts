@@ -34,6 +34,7 @@ export interface Task {
   title: string;
   description: string | null;
   status: TaskStatus;
+  /** Legado: primeiro responsável (mantido por compatibilidade). */
   assignee_id: string | null;
   due_date: string | null;
   priority: TaskPriority | null;
@@ -44,7 +45,20 @@ export interface Task {
   recurrence?: TaskRecurrence | null;
   /** Origem (preenchida nas visões consolidadas). */
   task_lists?: { name: string | null; task_folders?: { name: string | null } | null } | null;
+  /** Embed cru de `task_assignees` (fonte de verdade dos responsáveis). */
+  task_assignees?: { member_id: string }[] | null;
+  /** Responsáveis normalizados a partir de `task_assignees`. */
+  assignee_ids?: string[];
 }
+
+/** Lista de responsáveis de uma tarefa (com fallback no campo legado). */
+export const assigneeIdsOf = (task: Task): string[] => {
+  const fromTable =
+    task.assignee_ids ?? (task.task_assignees ?? []).map((a) => a.member_id);
+  if (fromTable.length) return fromTable;
+  return task.assignee_id ? [task.assignee_id] : [];
+};
+
 
 /** Papéis do módulo de tarefas (independentes de user_roles do app principal). */
 export type TaskMemberRole = "admin" | "member" | "guest";

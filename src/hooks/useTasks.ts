@@ -6,7 +6,7 @@ import { useShowCompleted } from "@/components/tasks/taskPreferences";
 import { nextDueDate } from "@/components/tasks/recurrence";
 
 const TASK_SELECT =
-  "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at, recurrence";
+  "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at, recurrence, task_assignees ( member_id )";
 
 /** Tamanho de página do PostgREST (limite padrão do Supabase é 1000). */
 const PAGE_SIZE = 1000;
@@ -32,20 +32,64 @@ async function fetchAllPages<T>(
 
 const sel = (s: string): string => s;
 
+/** Normaliza o embed de `task_assignees` em `assignee_ids`. */
+const normalizeTasks = <T extends Task>(rows: T[]): T[] =>
+  rows.map((row) => {
+    const ids = (row.task_assignees ?? []).map((a) => a.member_id);
+    return { ...row, assignee_ids: ids.length ? ids : row.assignee_id ? [row.assignee_id] : [] };
+  });
+
+/**
+ * Sincroniza `task_assignees` com a lista desejada (insere as novas, remove as
+ * desmarcadas) e mantém `tasks.assignee_id` apontando para o primeiro (legado).
+ */
+async function syncAssignees(taskId: string, memberIds: string[]) {
+  const unique = Array.from(new Set(memberIds));
+  const { data: current, error: readError } = await supabase
+    .from("task_assignees")
+    .select("id, member_id")
+    .eq("task_id", taskId);
+  if (readError) throw readError;
+
+  const existing = (current || []) as { id: string; member_id: string }[];
+  const toRemove = existing.filter((row) => !unique.includes(row.member_id)).map((r) => r.id);
+  const toAdd = unique.filter((id) => !existing.some((row) => row.member_id === id));
+
+  if (toRemove.length) {
+    const { error } = await supabase.from("task_assignees").delete().in("id", toRemove);
+    if (error) throw error;
+  }
+  if (toAdd.length) {
+    const { error } = await supabase
+      .from("task_assignees")
+      .insert(toAdd.map((member_id) => ({ task_id: taskId, member_id })) as never);
+    if (error) throw error;
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ assignee_id: unique[0] ?? null } as never)
+    .eq("id", taskId);
+  if (error) throw error;
+}
+
+
 export const useListTasks = (listId?: string) => {
   const [showCompleted] = useShowCompleted();
   return useQuery({
     queryKey: ["tasks", "list", listId, showCompleted],
     enabled: !!listId,
-    queryFn: () =>
-      fetchAllPages<Task>((from, to) => {
-        let q = supabase
-          .from("tasks")
-          .select(sel(TASK_SELECT))
-          .eq("list_id", listId!);
-        if (!showCompleted) q = q.neq("status", "concluido");
-        return q.order("position").order("created_at").range(from, to);
-      }),
+    queryFn: async () =>
+      normalizeTasks(
+        await fetchAllPages<Task>((from, to) => {
+          let q = supabase
+            .from("tasks")
+            .select(sel(TASK_SELECT))
+            .eq("list_id", listId!);
+          if (!showCompleted) q = q.neq("status", "concluido");
+          return q.order("position").order("created_at").range(from, to);
+        })
+      ),
   });
 };
 
@@ -55,17 +99,19 @@ export const useAllTasks = (enabled = true) => {
   return useQuery({
     queryKey: ["tasks", "all", showCompleted],
     enabled,
-    queryFn: () =>
-      fetchAllPages<Task>((from, to) => {
-        let q = supabase
-          .from("tasks")
-          .select(sel(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`));
-        if (!showCompleted) q = q.neq("status", "concluido");
-        return q
-          .order("due_date", { ascending: true, nullsFirst: false })
-          .order("created_at")
-          .range(from, to);
-      }),
+    queryFn: async () =>
+      normalizeTasks(
+        await fetchAllPages<Task>((from, to) => {
+          let q = supabase
+            .from("tasks")
+            .select(sel(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`));
+          if (!showCompleted) q = q.neq("status", "concluido");
+          return q
+            .order("due_date", { ascending: true, nullsFirst: false })
+            .order("created_at")
+            .range(from, to);
+        })
+      ),
   });
 };
 
@@ -74,16 +120,18 @@ export const useInternalTasks = (area?: InternalArea) => {
   return useQuery({
     queryKey: ["tasks", "internal", area, showCompleted],
     enabled: !!area,
-    queryFn: () =>
-      fetchAllPages<Task>((from, to) => {
-        let q = supabase
-          .from("tasks")
-          .select(sel(TASK_SELECT))
-          .eq("is_internal", true)
-          .eq("internal_area", area!);
-        if (!showCompleted) q = q.neq("status", "concluido");
-        return q.order("position").order("created_at").range(from, to);
-      }),
+    queryFn: async () =>
+      normalizeTasks(
+        await fetchAllPages<Task>((from, to) => {
+          let q = supabase
+            .from("tasks")
+            .select(sel(TASK_SELECT))
+            .eq("is_internal", true)
+            .eq("internal_area", area!);
+          if (!showCompleted) q = q.neq("status", "concluido");
+          return q.order("position").order("created_at").range(from, to);
+        })
+      ),
   });
 };
 
@@ -91,21 +139,49 @@ export interface MyTaskRow extends Task {
   task_lists: { name: string; task_folders: { name: string } | null } | null;
 }
 
-/** Tarefas de um membro do módulo (task_members). */
+/**
+ * Tarefas de um membro do módulo (task_members). Considera TODOS os
+ * responsáveis (`task_assignees`), não apenas o campo legado `assignee_id`.
+ */
 export const useMyTasks = (taskMemberId?: string) => {
   const [showCompleted] = useShowCompleted();
   return useQuery({
     queryKey: ["tasks", "mine", taskMemberId, showCompleted],
     enabled: !!taskMemberId,
-    queryFn: () =>
-      fetchAllPages<MyTaskRow>((from, to) => {
-        let q = supabase
-          .from("tasks")
-          .select(sel(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`))
-          .eq("assignee_id", taskMemberId!);
-        if (!showCompleted) q = q.neq("status", "concluido");
-        return q.order("due_date", { ascending: true, nullsFirst: false }).range(from, to);
-      }),
+    queryFn: async () => {
+      const links = await fetchAllPages<{ task_id: string }>((from, to) =>
+        supabase
+          .from("task_assignees")
+          .select("task_id")
+          .eq("member_id", taskMemberId!)
+          .range(from, to)
+      );
+      const ids = Array.from(new Set(links.map((l) => l.task_id)));
+      if (!ids.length) return [];
+
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += 200) chunks.push(ids.slice(i, i + 200));
+
+      const pages = await Promise.all(
+        chunks.map(async (chunk) => {
+          let q = supabase
+            .from("tasks")
+            .select(sel(`${TASK_SELECT}, task_lists ( name, task_folders ( name ) )`))
+            .in("id", chunk);
+          if (!showCompleted) q = q.neq("status", "concluido");
+          const { data, error } = await q.order("due_date", {
+            ascending: true,
+            nullsFirst: false,
+          });
+          if (error) throw new Error(error.message);
+          return (data || []) as unknown as MyTaskRow[];
+        })
+      );
+
+      return normalizeTasks(pages.flat()).sort((a, b) =>
+        (a.due_date ?? "9999-12-31").localeCompare(b.due_date ?? "9999-12-31")
+      );
+    },
   });
 };
 
@@ -117,7 +193,10 @@ export interface TaskInput {
   title: string;
   description?: string | null;
   status?: Task["status"];
+  /** Legado (primeiro responsável). Prefira `assignee_ids`. */
   assignee_id?: string | null;
+  /** Lista completa de responsáveis (gravada em `task_assignees`). */
+  assignee_ids?: string[];
   due_date?: string | null;
   priority?: Task["priority"];
   list_id?: string | null;
@@ -130,15 +209,22 @@ export const useCreateTask = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (input: TaskInput) => {
+    mutationFn: async ({ assignee_ids, ...input }: TaskInput) => {
       const { data: { session } } = await supabase.auth.getSession();
+      const ids = assignee_ids ?? (input.assignee_id ? [input.assignee_id] : []);
       const { data, error } = await supabase
         .from("tasks")
-        .insert({ ...input, created_by: session?.user?.id ?? null } as never)
+        .insert({
+          ...input,
+          assignee_id: ids[0] ?? null,
+          created_by: session?.user?.id ?? null,
+        } as never)
         .select(TASK_SELECT)
         .single();
       if (error) throw error;
-      return data as unknown as Task;
+      const task = data as unknown as Task;
+      if (ids.length) await syncAssignees(task.id, ids);
+      return task;
     },
     onSuccess: () => {
       invalidateTasks(qc);
@@ -154,12 +240,15 @@ export const useCreateTask = () => {
  * `concluido`, a data de vencimento avança para o próximo ciclo e o status
  * volta para `pendente` (igual ao ClickUp). Quando a recorrência expira
  * (`end_date` ultrapassado), a conclusão acontece normalmente.
+ *
+ * Responsáveis: passe `assignee_ids` para sincronizar `task_assignees`.
+ * `assignee_id` (legado) substitui a lista por um único responsável.
  */
 export const useUpdateTask = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<TaskInput> & { id: string }) => {
+    mutationFn: async ({ id, assignee_ids, ...updates }: Partial<TaskInput> & { id: string }) => {
       let patch: Record<string, unknown> = { ...updates };
 
       if (updates.status === "concluido" && updates.recurrence === undefined) {
@@ -178,14 +267,37 @@ export const useUpdateTask = () => {
         }
       }
 
-      const { data, error } = await supabase
-        .from("tasks")
-        .update(patch as never)
-        .eq("id", id)
-        .select(TASK_SELECT)
-        .single();
-      if (error) throw error;
-      return data as unknown as Task;
+      const nextAssignees =
+        assignee_ids ?? (updates.assignee_id !== undefined
+          ? updates.assignee_id
+            ? [updates.assignee_id]
+            : []
+          : null);
+
+      let task: Task | null = null;
+      if (Object.keys(patch).length) {
+        const { data, error } = await supabase
+          .from("tasks")
+          .update(patch as never)
+          .eq("id", id)
+          .select(TASK_SELECT)
+          .single();
+        if (error) throw error;
+        task = data as unknown as Task;
+      }
+
+      if (nextAssignees) await syncAssignees(id, nextAssignees);
+
+      if (!task) {
+        const { data, error } = await supabase
+          .from("tasks")
+          .select(TASK_SELECT)
+          .eq("id", id)
+          .single();
+        if (error) throw error;
+        task = data as unknown as Task;
+      }
+      return normalizeTasks([task])[0];
     },
     onSuccess: (task, vars) => {
       invalidateTasks(qc);
@@ -200,6 +312,7 @@ export const useUpdateTask = () => {
       toast({ title: "Erro ao atualizar tarefa", description: e.message, variant: "destructive" }),
   });
 };
+
 
 /**
  * Persiste a ordem manual das tarefas dentro de um grupo/coluna.

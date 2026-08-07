@@ -8,6 +8,7 @@ import {
   TaskViewFilters,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
+  assigneeIdsOf,
   parseSort,
 } from "@/types/tasks";
 
@@ -41,13 +42,17 @@ export const applyViewFilters = (tasks: Task[], filters?: TaskViewFilters | null
   const f = normalizeFilters(filters);
   if (!f.assignee_ids.length && !f.priorities.length && !f.statuses.length) return tasks;
   return tasks.filter((t) => {
-    if (f.assignee_ids.length && (!t.assignee_id || !f.assignee_ids.includes(t.assignee_id)))
-      return false;
+    if (f.assignee_ids.length) {
+      const ids = assigneeIdsOf(t);
+      /** Corresponde se QUALQUER responsável da tarefa estiver selecionado. */
+      if (!ids.some((id) => f.assignee_ids.includes(id))) return false;
+    }
     if (f.priorities.length && (!t.priority || !f.priorities.includes(t.priority))) return false;
     if (f.statuses.length && !f.statuses.includes(t.status)) return false;
     return true;
   });
 };
+
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   urgente: 0,
@@ -114,12 +119,13 @@ export const buildTaskGroups = ({
   }
 
   if (groupBy === "assignee") {
+    /** Tarefa com vários responsáveis aparece no grupo de cada um deles. */
     const groups: TaskGroup[] = members.map((m) => ({
       key: m.id,
       label: m.name,
       pill: NEUTRAL_PILL,
       pillDot: "bg-primary",
-      tasks: visible.filter((t) => t.assignee_id === m.id),
+      tasks: visible.filter((t) => assigneeIdsOf(t).includes(m.id)),
       patch: { assignee_id: m.id },
     }));
     groups.push({
@@ -127,7 +133,10 @@ export const buildTaskGroups = ({
       label: "Sem responsável",
       pill: NEUTRAL_PILL,
       pillDot: "bg-muted-foreground",
-      tasks: visible.filter((t) => !t.assignee_id || !members.some((m) => m.id === t.assignee_id)),
+      tasks: visible.filter((t) => {
+        const ids = assigneeIdsOf(t);
+        return !ids.length || !ids.some((id) => members.some((m) => m.id === id));
+      }),
       patch: { assignee_id: null },
     });
     return groups;
@@ -139,22 +148,43 @@ export const buildTaskGroups = ({
     const iso = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const todayStr = iso(today);
-    const weekEnd = new Date(today);
-    weekEnd.setDate(weekEnd.getDate() + (7 - ((today.getDay() + 6) % 7)) - 1);
-    const weekEndStr = iso(weekEnd);
+
+    const WEEKDAYS = [
+      "Domingo",
+      "Segunda-feira",
+      "Terça-feira",
+      "Quarta-feira",
+      "Quinta-feira",
+      "Sexta-feira",
+      "Sábado",
+    ];
+
+    /** Um balde por dia para os próximos 7 dias (amanhã + nome do dia). */
+    const dayBuckets: { key: string; label: string; dot: string }[] = [];
+    const dayKeyByDate = new Map<string, string>();
+    for (let offset = 1; offset <= 7; offset += 1) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + offset);
+      const key = `day:${iso(d)}`;
+      dayKeyByDate.set(iso(d), key);
+      dayBuckets.push({
+        key,
+        label: offset === 1 ? "Amanhã" : WEEKDAYS[d.getDay()],
+        dot: offset <= 2 ? "bg-sky-500" : "bg-indigo-400",
+      });
+    }
 
     const bucketOf = (due: string | null) => {
       if (!due) return "none";
       if (due < todayStr) return "overdue";
       if (due === todayStr) return "today";
-      if (due <= weekEndStr) return "week";
-      return "later";
+      return dayKeyByDate.get(due) ?? "later";
     };
 
     const buckets: { key: string; label: string; dot: string }[] = [
       { key: "overdue", label: "Atrasado", dot: "bg-red-500" },
       { key: "today", label: "Hoje", dot: "bg-amber-500" },
-      { key: "week", label: "Esta semana", dot: "bg-sky-500" },
+      ...dayBuckets,
       { key: "later", label: "Mais tarde", dot: "bg-emerald-500" },
       { key: "none", label: "Sem prazo", dot: "bg-muted-foreground" },
     ];
@@ -168,6 +198,7 @@ export const buildTaskGroups = ({
       patch: null,
     }));
   }
+
 
   if (groupBy === "priority") {
     const groups: TaskGroup[] = (Object.keys(TASK_PRIORITY_META) as TaskPriority[]).map((p) => ({

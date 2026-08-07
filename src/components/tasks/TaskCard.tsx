@@ -1,6 +1,6 @@
 import { CalendarDays, Flag, Link2, Repeat2 } from "lucide-react";
 import { Task, TaskMember, TASK_PRIORITY_META } from "@/types/tasks";
-import { MemberAvatar } from "./MemberAvatar";
+import { MemberAvatarStack } from "./MemberAvatarStack";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -8,7 +8,10 @@ import { parseLocalDate } from "@/utils/dateHelpers";
 
 interface Props {
   task: Task;
+  /** Responsável único (compatibilidade) */
   member?: TaskMember | null;
+  /** Todos os responsáveis (pilha de avatares) */
+  assignees?: TaskMember[];
   subtitle?: string;
   onClick?: () => void;
 }
@@ -21,8 +24,9 @@ const formatDue = (value: string) => {
   }
 };
 
-export const TaskCard = ({ task, member, subtitle, onClick }: Props) => {
+export const TaskCard = ({ task, member, assignees, subtitle, onClick }: Props) => {
   const priority = task.priority ? TASK_PRIORITY_META[task.priority] : null;
+  const people = assignees ?? (member ? [member] : []);
 
   return (
     <button
@@ -35,7 +39,8 @@ export const TaskCard = ({ task, member, subtitle, onClick }: Props) => {
 
       <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
         {task.description && <Repeat2 className="h-3.5 w-3.5 opacity-60" />}
-        <MemberAvatar member={member} className="h-5 w-5" />
+        <MemberAvatarStack members={people} className="h-5 w-5" emptyPlaceholder />
+
         {task.due_date && (
           <span className="flex items-center gap-1">
             <CalendarDays className="h-3 w-3" />

@@ -1117,6 +1117,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_clickup_sync_state: {
         Row: {
           backfill_active: boolean
