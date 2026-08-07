@@ -6,7 +6,7 @@ import { useShowCompleted } from "@/components/tasks/taskPreferences";
 import { nextDueDate } from "@/components/tasks/recurrence";
 
 const TASK_SELECT =
-  "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at, recurrence";
+  "id, list_id, is_internal, internal_area, title, description, status, assignee_id, due_date, priority, position, created_by, created_at, updated_at, recurrence, task_assignees ( member_id )";
 
 /** Tamanho de página do PostgREST (limite padrão do Supabase é 1000). */
 const PAGE_SIZE = 1000;
@@ -31,6 +31,48 @@ async function fetchAllPages<T>(
 }
 
 const sel = (s: string): string => s;
+
+/** Normaliza o embed de `task_assignees` em `assignee_ids`. */
+const normalizeTasks = <T extends Task>(rows: T[]): T[] =>
+  rows.map((row) => {
+    const ids = (row.task_assignees ?? []).map((a) => a.member_id);
+    return { ...row, assignee_ids: ids.length ? ids : row.assignee_id ? [row.assignee_id] : [] };
+  });
+
+/**
+ * Sincroniza `task_assignees` com a lista desejada (insere as novas, remove as
+ * desmarcadas) e mantém `tasks.assignee_id` apontando para o primeiro (legado).
+ */
+async function syncAssignees(taskId: string, memberIds: string[]) {
+  const unique = Array.from(new Set(memberIds));
+  const { data: current, error: readError } = await supabase
+    .from("task_assignees")
+    .select("id, member_id")
+    .eq("task_id", taskId);
+  if (readError) throw readError;
+
+  const existing = (current || []) as { id: string; member_id: string }[];
+  const toRemove = existing.filter((row) => !unique.includes(row.member_id)).map((r) => r.id);
+  const toAdd = unique.filter((id) => !existing.some((row) => row.member_id === id));
+
+  if (toRemove.length) {
+    const { error } = await supabase.from("task_assignees").delete().in("id", toRemove);
+    if (error) throw error;
+  }
+  if (toAdd.length) {
+    const { error } = await supabase
+      .from("task_assignees")
+      .insert(toAdd.map((member_id) => ({ task_id: taskId, member_id })) as never);
+    if (error) throw error;
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ assignee_id: unique[0] ?? null } as never)
+    .eq("id", taskId);
+  if (error) throw error;
+}
+
 
 export const useListTasks = (listId?: string) => {
   const [showCompleted] = useShowCompleted();
