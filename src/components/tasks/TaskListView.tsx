@@ -206,51 +206,19 @@ export const TaskListView = ({
   });
 
   const renderCell = (id: TaskColumnId, task: Task) => {
-    /** Responsável — dropdown inline com os membros. */
+    /** Responsáveis — multi-select inline com pilha de avatares. */
     if (id === "assignee") {
-      const member = members.find((m) => m.id === task.assignee_id);
+      const ids = assigneeIdsOf(task);
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Alterar responsável"
-              className="inline-flex items-center rounded p-[1px] outline-none transition-colors hover:bg-accent"
-            >
-              {member ? (
-                <MemberAvatar member={member} className="h-[22px] w-[22px]" />
-              ) : (
-                <span className="inline-block h-[22px] w-[22px] rounded-full border border-dashed border-border" />
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="tasks-dark max-h-[320px] min-w-[200px] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenuItem
-              className="text-[12.5px] text-muted-foreground"
-              onClick={() => updateTask.mutate({ id: task.id, assignee_id: null })}
-            >
-              Sem responsável
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {members.map((m) => (
-              <DropdownMenuItem
-                key={m.id}
-                className="gap-2 text-[12.5px]"
-                onClick={() => updateTask.mutate({ id: task.id, assignee_id: m.id })}
-              >
-                <MemberAvatar member={m} className="h-[20px] w-[20px]" />
-                {m.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <AssigneeMultiSelect
+          variant="avatars"
+          members={members}
+          value={ids}
+          onChange={(next) => updateTask.mutate({ id: task.id, assignee_ids: next })}
+        />
       );
     }
+
     /** Status — badge colorido com dropdown inline. */
     if (id === "status") {
       const meta = TASK_STATUS_META[task.status];
