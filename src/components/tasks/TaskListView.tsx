@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/tasks/MemberAvatar";
+import { AssigneeMultiSelect } from "@/components/tasks/AssigneeMultiSelect";
 import {
   GroupBy,
   SortValue,
@@ -11,7 +12,9 @@ import {
   TaskViewFilters,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
+  assigneeIdsOf,
 } from "@/types/tasks";
+
 import { useReorderTasks, useUpdateTask } from "@/hooks/useTasks";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { usePersistentState } from "@/components/tasks/usePersistentState";
