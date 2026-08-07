@@ -8,6 +8,7 @@ import {
   TaskViewFilters,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
+  assigneeIdsOf,
   parseSort,
 } from "@/types/tasks";
 
@@ -41,13 +42,17 @@ export const applyViewFilters = (tasks: Task[], filters?: TaskViewFilters | null
   const f = normalizeFilters(filters);
   if (!f.assignee_ids.length && !f.priorities.length && !f.statuses.length) return tasks;
   return tasks.filter((t) => {
-    if (f.assignee_ids.length && (!t.assignee_id || !f.assignee_ids.includes(t.assignee_id)))
-      return false;
+    if (f.assignee_ids.length) {
+      const ids = assigneeIdsOf(t);
+      /** Corresponde se QUALQUER responsável da tarefa estiver selecionado. */
+      if (!ids.some((id) => f.assignee_ids.includes(id))) return false;
+    }
     if (f.priorities.length && (!t.priority || !f.priorities.includes(t.priority))) return false;
     if (f.statuses.length && !f.statuses.includes(t.status)) return false;
     return true;
   });
 };
+
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   urgente: 0,
