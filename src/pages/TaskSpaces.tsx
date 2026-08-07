@@ -224,10 +224,11 @@ const TaskSpaces = () => {
                       renderCard={(t) => (
                         <TaskCard
                           task={t}
-                          member={members.find((m) => m.id === t.assignee_id)}
+                          assignees={members.filter((m) => assigneeIdsOf(t).includes(m.id))}
                           onClick={() => setSelectedId(t.id)}
                         />
                       )}
+
                       footer={(key) => {
                         const patch = groups.find((g) => g.key === key)?.patch ?? {};
                         return (

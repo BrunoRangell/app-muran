@@ -17,7 +17,9 @@ import {
   TaskStatus,
   TASK_PRIORITY_META,
   TASK_STATUS_META,
+  assigneeIdsOf,
 } from "@/types/tasks";
+
 import {
   useAddTaskComment,
   useCurrentAuthUserId,
@@ -27,7 +29,9 @@ import {
   useUpdateTask,
 } from "@/hooks/useTasks";
 import { MemberAvatar } from "./MemberAvatar";
+import { AssigneeMultiSelect } from "@/components/tasks/AssigneeMultiSelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { DueDateRecurrencePanel } from "@/components/tasks/DueDateRecurrencePanel";
 import { describeRecurrence, parseISODate } from "@/components/tasks/recurrence";
 import { cn } from "@/lib/utils";
@@ -176,27 +180,15 @@ export const TaskDetailModal = ({
                 </Select>
               </Field>
 
-              <Field icon={User2} label="Responsável">
-                <Select
-                  value={task.assignee_id ?? NONE}
-                  onValueChange={(v) => patch({ assignee_id: v === NONE ? null : v })}
-                >
-                  <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus:ring-0">
-                    <span className="flex items-center gap-2">
-                      <MemberAvatar member={memberById(task.assignee_id)} className="h-5 w-5" />
-                      {memberById(task.assignee_id)?.name ?? "Sem responsável"}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent className="tasks-dark">
-                    <SelectItem value={NONE}>Sem responsável</SelectItem>
-                    {members.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Field icon={User2} label="Responsáveis">
+                <AssigneeMultiSelect
+                  members={members}
+                  value={assigneeIdsOf(task)}
+                  onChange={(ids) => patch({ assignee_ids: ids })}
+                  className="h-8 border-0 bg-transparent px-0"
+                />
               </Field>
+
 
               <Field icon={CalendarDays} label="Datas">
                 <Popover>

@@ -29,7 +29,9 @@ import {
 } from "@/types/tasks";
 import { TaskInput, useCreateTask } from "@/hooks/useTasks";
 import { DueDateRecurrencePanel } from "@/components/tasks/DueDateRecurrencePanel";
+import { AssigneeMultiSelect } from "@/components/tasks/AssigneeMultiSelect";
 import { describeRecurrence } from "@/components/tasks/recurrence";
+
 
 interface Props {
   members: TaskMember[];
@@ -111,21 +113,10 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Responsável</Label>
-              <Select value={assignee} onValueChange={setAssignee}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sem responsável" />
-                </SelectTrigger>
-                <SelectContent className="tasks-dark">
-                  <SelectItem value={NONE}>Sem responsável</SelectItem>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Responsáveis</Label>
+              <AssigneeMultiSelect members={members} value={assignees} onChange={setAssignees} />
             </div>
+
             {/* Prazo + recorrência reutilizando o mesmo painel da edição */}
             <div className="space-y-1.5">
               <Label>Prazo e recorrência</Label>
