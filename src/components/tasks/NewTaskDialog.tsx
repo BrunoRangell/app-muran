@@ -50,10 +50,11 @@ const formatDue = (value: string | null) => {
 };
 
 export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova tarefa" }: Props) => {
+  const initialAssignees = defaults?.assignee_id ? [defaults.assignee_id] : [];
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [assignee, setAssignee] = useState(defaults?.assignee_id ?? NONE);
+  const [assignees, setAssignees] = useState<string[]>(initialAssignees);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState<TaskRecurrence | null>(null);
   const [priority, setPriority] = useState<string>(defaults?.priority ?? NONE);
@@ -67,7 +68,7 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
         title: title.trim(),
         description: description || null,
         status,
-        assignee_id: assignee === NONE ? null : assignee,
+        assignee_ids: assignees,
         due_date: dueDate || null,
         recurrence,
         priority: priority === NONE ? null : (priority as TaskPriority),
@@ -76,7 +77,7 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
         onSuccess: () => {
           setTitle("");
           setDescription("");
-          setAssignee(defaults?.assignee_id ?? NONE);
+          setAssignees(initialAssignees);
           setDueDate(null);
           setRecurrence(null);
           setPriority(defaults?.priority ?? NONE);
@@ -85,6 +86,7 @@ export const NewTaskDialog = ({ members, status, scope, defaults, label = "Nova 
       }
     );
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
