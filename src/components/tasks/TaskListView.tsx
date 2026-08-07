@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { AssigneeMultiSelect } from "@/components/tasks/AssigneeMultiSelect";
-import { AssigneeMultiSelect } from "@/components/tasks/AssigneeMultiSelect";
+
 import {
   GroupBy,
   SortValue,
