@@ -1158,7 +1158,9 @@ export type Database = {
           backfill_active: boolean
           backfill_page: number
           backfill_since: string | null
+          backfill_started_at: string | null
           id: string
+          incremental_page: number
           last_error: string | null
           last_run_at: string | null
           last_run_status: string | null
@@ -1169,7 +1171,9 @@ export type Database = {
           backfill_active?: boolean
           backfill_page?: number
           backfill_since?: string | null
+          backfill_started_at?: string | null
           id?: string
+          incremental_page?: number
           last_error?: string | null
           last_run_at?: string | null
           last_run_status?: string | null
@@ -1180,7 +1184,9 @@ export type Database = {
           backfill_active?: boolean
           backfill_page?: number
           backfill_since?: string | null
+          backfill_started_at?: string | null
           id?: string
+          incremental_page?: number
           last_error?: string | null
           last_run_at?: string | null
           last_run_status?: string | null
