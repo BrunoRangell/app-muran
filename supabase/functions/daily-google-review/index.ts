@@ -63,7 +63,7 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
     
     // Obter tokens da API do Google Ads
     const tokenResponse = await fetch(
-      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_token_expiry)&select=name,value`, {
+      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_token_expires_at)&select=name,value`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -89,7 +89,7 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
     }
     
     // Verificar expiração do token atual
-    const tokenExpiry = tokens.google_ads_token_expiry ? parseInt(tokens.google_ads_token_expiry) : 0;
+    const tokenExpiry = tokens.google_ads_token_expires_at ? parseInt(tokens.google_ads_token_expires_at) : 0;
     const currentTime = Math.floor(Date.now() / 1000);
     
     // Se o token expirou ou expirará em menos de 5 minutos
@@ -142,7 +142,7 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
       
       // Atualizar a data de expiração no banco de dados
       const expiryUpdateResponse = await fetch(
-        `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_token_expiry`, {
+        `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_token_expires_at`, {
         method: "PATCH",
         headers: {
           "apikey": supabaseKey,
