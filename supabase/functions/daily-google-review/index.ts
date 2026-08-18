@@ -60,6 +60,8 @@ async function recordGoogleApiError(
 async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
   try {
     console.log("Verificando status do token de acesso do Google Ads");
+    GOOGLE_DIAG.supabaseUrl = supabaseUrl;
+    GOOGLE_DIAG.supabaseKey = supabaseKey;
     
     // Obter tokens da API do Google Ads
     const tokenResponse = await fetch(
