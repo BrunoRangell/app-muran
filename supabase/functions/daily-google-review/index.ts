@@ -9,6 +9,53 @@ function validateGoogleAccountId(accountId: string): boolean {
   return accountIdRegex.test(accountId);
 }
 
+// ===== DIAGNÓSTICO: registrar falhas reais da API do Google Ads =====
+const GOOGLE_DIAG: { supabaseUrl: string; supabaseKey: string } = { supabaseUrl: "", supabaseKey: "" };
+const loggedGoogleErrorKeys = new Set<string>();
+
+async function recordGoogleApiError(
+  step: string,
+  googleAccountId: string,
+  status: number | null,
+  body: unknown,
+  clientId?: string
+) {
+  const bodyText = typeof body === "string" ? body : (body as any)?.message ?? JSON.stringify(body);
+  const message = `[GOOGLE_API_ERROR] ${step} | conta ${googleAccountId} | status ${status ?? "n/a"}`;
+  console.error(`${message} | body: ${String(bodyText).slice(0, 1500)}`);
+
+  const key = `${googleAccountId}:${step}`;
+  if (loggedGoogleErrorKeys.has(key)) return;
+  loggedGoogleErrorKeys.add(key);
+
+  if (!GOOGLE_DIAG.supabaseUrl || !GOOGLE_DIAG.supabaseKey) return;
+
+  try {
+    await fetch(`${GOOGLE_DIAG.supabaseUrl}/rest/v1/system_logs`, {
+      method: "POST",
+      headers: {
+        "apikey": GOOGLE_DIAG.supabaseKey,
+        "Authorization": `Bearer ${GOOGLE_DIAG.supabaseKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        event_type: "google_review_api_error",
+        message,
+        details: {
+          step,
+          google_account_id: googleAccountId,
+          client_id: clientId ?? null,
+          status,
+          response: String(bodyText).slice(0, 4000)
+        }
+      })
+    });
+  } catch (logError) {
+    console.error("Falha ao gravar erro em system_logs:", logError);
+  }
+}
+
 // Função para verificar e possivelmente atualizar o token de acesso
 async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
   try {
