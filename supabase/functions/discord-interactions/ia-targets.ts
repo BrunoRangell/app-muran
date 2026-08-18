@@ -4,7 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const META_API_VERSION = 'v24.0';
-const GOOGLE_ADS_API = 'https://googleads.googleapis.com/v21';
+const GOOGLE_ADS_API = 'https://googleads.googleapis.com/v25';
 
 export type Hierarchy = {
   campaign_id?: string;

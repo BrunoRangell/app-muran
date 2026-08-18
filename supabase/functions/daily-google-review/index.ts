@@ -9,14 +9,63 @@ function validateGoogleAccountId(accountId: string): boolean {
   return accountIdRegex.test(accountId);
 }
 
+// ===== DIAGNÓSTICO: registrar falhas reais da API do Google Ads =====
+const GOOGLE_DIAG: { supabaseUrl: string; supabaseKey: string } = { supabaseUrl: "", supabaseKey: "" };
+const loggedGoogleErrorKeys = new Set<string>();
+
+async function recordGoogleApiError(
+  step: string,
+  googleAccountId: string,
+  status: number | null,
+  body: unknown,
+  clientId?: string
+) {
+  const bodyText = typeof body === "string" ? body : (body as any)?.message ?? JSON.stringify(body);
+  const message = `[GOOGLE_API_ERROR] ${step} | conta ${googleAccountId} | status ${status ?? "n/a"}`;
+  console.error(`${message} | body: ${String(bodyText).slice(0, 1500)}`);
+
+  const key = `${googleAccountId}:${step}`;
+  if (loggedGoogleErrorKeys.has(key)) return;
+  loggedGoogleErrorKeys.add(key);
+
+  if (!GOOGLE_DIAG.supabaseUrl || !GOOGLE_DIAG.supabaseKey) return;
+
+  try {
+    await fetch(`${GOOGLE_DIAG.supabaseUrl}/rest/v1/system_logs`, {
+      method: "POST",
+      headers: {
+        "apikey": GOOGLE_DIAG.supabaseKey,
+        "Authorization": `Bearer ${GOOGLE_DIAG.supabaseKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        event_type: "google_review_api_error",
+        message,
+        details: {
+          step,
+          google_account_id: googleAccountId,
+          client_id: clientId ?? null,
+          status,
+          response: String(bodyText).slice(0, 4000)
+        }
+      })
+    });
+  } catch (logError) {
+    console.error("Falha ao gravar erro em system_logs:", logError);
+  }
+}
+
 // Função para verificar e possivelmente atualizar o token de acesso
 async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
   try {
     console.log("Verificando status do token de acesso do Google Ads");
+    GOOGLE_DIAG.supabaseUrl = supabaseUrl;
+    GOOGLE_DIAG.supabaseKey = supabaseKey;
     
     // Obter tokens da API do Google Ads
     const tokenResponse = await fetch(
-      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_token_expiry)&select=name,value`, {
+      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_token_expires_at)&select=name,value`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -42,7 +91,9 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
     }
     
     // Verificar expiração do token atual
-    const tokenExpiry = tokens.google_ads_token_expiry ? parseInt(tokens.google_ads_token_expiry) : 0;
+    // O valor armazenado pode estar em milissegundos (13 dígitos) ou segundos (10 dígitos)
+    const rawExpiry = tokens.google_ads_token_expires_at ? parseInt(tokens.google_ads_token_expires_at) : 0;
+    const tokenExpiry = rawExpiry > 1e11 ? Math.floor(rawExpiry / 1000) : rawExpiry;
     const currentTime = Math.floor(Date.now() / 1000);
     
     // Se o token expirou ou expirará em menos de 5 minutos
@@ -71,8 +122,8 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
       
       const refreshData = await refreshResponse.json();
       
-      // Calcular nova data de expiração
-      const newExpiry = Math.floor(Date.now() / 1000) + refreshData.expires_in;
+      // Calcular nova data de expiração (armazenada em milissegundos, padrão do app)
+      const newExpiry = Date.now() + (refreshData.expires_in * 1000);
       
       // Atualizar o token de acesso no banco de dados
       const updateResponse = await fetch(
@@ -95,7 +146,7 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
       
       // Atualizar a data de expiração no banco de dados
       const expiryUpdateResponse = await fetch(
-        `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_token_expiry`, {
+        `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_token_expires_at`, {
         method: "PATCH",
         headers: {
           "apikey": supabaseKey,
@@ -169,7 +220,7 @@ async function fetchRealAccountName(
     `;
     
     const response = await fetch(
-      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+      `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
       {
         method: "POST",
         headers: headers,
@@ -179,7 +230,7 @@ async function fetchRealAccountName(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, errorText);
+      await recordGoogleApiError("account_name", googleAccountId, response.status, errorText);
       return null;
     }
     
@@ -200,7 +251,7 @@ async function fetchRealAccountName(
     return null;
     
   } catch (error) {
-    console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, error);
+    await recordGoogleApiError("account_name_exception", googleAccountId, null, error);
     return null;
   }
 }
@@ -266,7 +317,7 @@ async function fetchDailySpend(
     `;
     
     const response = await fetch(
-      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+      `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
       {
         method: "POST",
         headers: headers,
@@ -276,7 +327,7 @@ async function fetchDailySpend(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Erro na API do Google Ads para ${targetDate}:`, errorText);
+      await recordGoogleApiError(`daily_spend_${targetDate}`, googleAccountId, response.status, errorText);
       return 0; // Retornar 0 em caso de erro
     }
     
@@ -383,7 +434,7 @@ async function fetchGoogleActiveCampaigns(
       WHERE campaign.status = 'ENABLED'
     `;
 
-    const url = `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`;
+    const url = `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`;
 
     const [respMetrics, respEnabled] = await Promise.all([
       fetch(url, { method: "POST", headers, body: JSON.stringify({ query: metricsQuery }) }),
@@ -392,12 +443,12 @@ async function fetchGoogleActiveCampaigns(
 
     if (!respEnabled.ok) {
       const errorText = await respEnabled.text();
-      console.error(`❌ [CAMPAIGNS] Erro enabled query:`, errorText);
+      await recordGoogleApiError("campaign_health_enabled", googleAccountId, respEnabled.status, errorText);
       return { cost: 0, impressions: 0, activeCampaigns: 0, unservedCampaigns: 0, campaignsDetails: [] };
     }
     if (!respMetrics.ok) {
       const errorText = await respMetrics.text();
-      console.error(`❌ [CAMPAIGNS] Erro metrics query:`, errorText);
+      await recordGoogleApiError("campaign_health_metrics", googleAccountId, respMetrics.status, errorText);
     }
 
     const enabledData = await respEnabled.json();
@@ -930,7 +981,7 @@ async function processIndividualGoogleReview(
       console.log(`📊 Consultando gasto total do mês para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
       
       const monthlyResponse = await fetch(
-        `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+        `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,
@@ -952,6 +1003,9 @@ async function processIndividualGoogleReview(
           console.log("📊 Nenhum gasto mensal encontrado - mantendo valores zerados");
           totalSpent = 0;
         }
+      } else {
+        const monthlyErrorText = await monthlyResponse.text();
+        await recordGoogleApiError("monthly_spend", googleAccountId, monthlyResponse.status, monthlyErrorText, clientId);
       }
       
       // Query para obter orçamentos das campanhas ativas
@@ -970,7 +1024,7 @@ async function processIndividualGoogleReview(
       console.log(`🔍 Consultando orçamentos REAIS das campanhas ativas para a conta ${googleAccountId}`);
       
       const campaignsResponse = await fetch(
-        `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+        `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,
@@ -1004,7 +1058,7 @@ async function processIndividualGoogleReview(
         }
       } else {
         const errorText = await campaignsResponse.text();
-        console.error("❌ Erro ao obter orçamentos das campanhas:", errorText);
+        await recordGoogleApiError("campaign_budgets", googleAccountId, campaignsResponse.status, errorText, clientId);
         currentDailyBudget = 0;
       }
       
@@ -1027,7 +1081,7 @@ async function processIndividualGoogleReview(
       );
       
     } catch (apiError: any) {
-      console.error("❌ Erro ao acessar API do Google Ads - usando valores zerados:", apiError);
+      await recordGoogleApiError("api_block_exception", googleAccountId, null, apiError, clientId);
       // Valores já estão zerados, não fazer nada
       totalSpent = 0;
       lastFiveDaysSpent = 0;
