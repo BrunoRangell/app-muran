@@ -1003,6 +1003,9 @@ async function processIndividualGoogleReview(
           console.log("📊 Nenhum gasto mensal encontrado - mantendo valores zerados");
           totalSpent = 0;
         }
+      } else {
+        const monthlyErrorText = await monthlyResponse.text();
+        await recordGoogleApiError("monthly_spend", googleAccountId, monthlyResponse.status, monthlyErrorText, clientId);
       }
       
       // Query para obter orçamentos das campanhas ativas
