@@ -89,7 +89,9 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
     }
     
     // Verificar expiração do token atual
-    const tokenExpiry = tokens.google_ads_token_expires_at ? parseInt(tokens.google_ads_token_expires_at) : 0;
+    // O valor armazenado pode estar em milissegundos (13 dígitos) ou segundos (10 dígitos)
+    const rawExpiry = tokens.google_ads_token_expires_at ? parseInt(tokens.google_ads_token_expires_at) : 0;
+    const tokenExpiry = rawExpiry > 1e11 ? Math.floor(rawExpiry / 1000) : rawExpiry;
     const currentTime = Math.floor(Date.now() / 1000);
     
     // Se o token expirou ou expirará em menos de 5 minutos
