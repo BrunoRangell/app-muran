@@ -230,7 +230,7 @@ async function fetchRealAccountName(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, errorText);
+      await recordGoogleApiError("account_name", googleAccountId, response.status, errorText);
       return null;
     }
     
@@ -251,7 +251,7 @@ async function fetchRealAccountName(
     return null;
     
   } catch (error) {
-    console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, error);
+    await recordGoogleApiError("account_name_exception", googleAccountId, null, error);
     return null;
   }
 }
@@ -327,7 +327,7 @@ async function fetchDailySpend(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Erro na API do Google Ads para ${targetDate}:`, errorText);
+      await recordGoogleApiError(`daily_spend_${targetDate}`, googleAccountId, response.status, errorText);
       return 0; // Retornar 0 em caso de erro
     }
     
@@ -443,12 +443,12 @@ async function fetchGoogleActiveCampaigns(
 
     if (!respEnabled.ok) {
       const errorText = await respEnabled.text();
-      console.error(`❌ [CAMPAIGNS] Erro enabled query:`, errorText);
+      await recordGoogleApiError("campaign_health_enabled", googleAccountId, respEnabled.status, errorText);
       return { cost: 0, impressions: 0, activeCampaigns: 0, unservedCampaigns: 0, campaignsDetails: [] };
     }
     if (!respMetrics.ok) {
       const errorText = await respMetrics.text();
-      console.error(`❌ [CAMPAIGNS] Erro metrics query:`, errorText);
+      await recordGoogleApiError("campaign_health_metrics", googleAccountId, respMetrics.status, errorText);
     }
 
     const enabledData = await respEnabled.json();
@@ -1055,7 +1055,7 @@ async function processIndividualGoogleReview(
         }
       } else {
         const errorText = await campaignsResponse.text();
-        console.error("❌ Erro ao obter orçamentos das campanhas:", errorText);
+        await recordGoogleApiError("campaign_budgets", googleAccountId, campaignsResponse.status, errorText, clientId);
         currentDailyBudget = 0;
       }
       
@@ -1078,7 +1078,7 @@ async function processIndividualGoogleReview(
       );
       
     } catch (apiError: any) {
-      console.error("❌ Erro ao acessar API do Google Ads - usando valores zerados:", apiError);
+      await recordGoogleApiError("api_block_exception", googleAccountId, null, apiError, clientId);
       // Valores já estão zerados, não fazer nada
       totalSpent = 0;
       lastFiveDaysSpent = 0;
