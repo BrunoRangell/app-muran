@@ -120,8 +120,8 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
       
       const refreshData = await refreshResponse.json();
       
-      // Calcular nova data de expiração
-      const newExpiry = Math.floor(Date.now() / 1000) + refreshData.expires_in;
+      // Calcular nova data de expiração (armazenada em milissegundos, padrão do app)
+      const newExpiry = Date.now() + (refreshData.expires_in * 1000);
       
       // Atualizar o token de acesso no banco de dados
       const updateResponse = await fetch(
