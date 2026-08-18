@@ -220,7 +220,7 @@ async function fetchRealAccountName(
     `;
     
     const response = await fetch(
-      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+      `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
       {
         method: "POST",
         headers: headers,
@@ -317,7 +317,7 @@ async function fetchDailySpend(
     `;
     
     const response = await fetch(
-      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+      `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
       {
         method: "POST",
         headers: headers,
@@ -434,7 +434,7 @@ async function fetchGoogleActiveCampaigns(
       WHERE campaign.status = 'ENABLED'
     `;
 
-    const url = `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`;
+    const url = `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`;
 
     const [respMetrics, respEnabled] = await Promise.all([
       fetch(url, { method: "POST", headers, body: JSON.stringify({ query: metricsQuery }) }),
@@ -981,7 +981,7 @@ async function processIndividualGoogleReview(
       console.log(`📊 Consultando gasto total do mês para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
       
       const monthlyResponse = await fetch(
-        `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+        `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,
@@ -1024,7 +1024,7 @@ async function processIndividualGoogleReview(
       console.log(`🔍 Consultando orçamentos REAIS das campanhas ativas para a conta ${googleAccountId}`);
       
       const campaignsResponse = await fetch(
-        `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
+        `https://googleads.googleapis.com/v25/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,

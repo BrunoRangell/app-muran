@@ -407,7 +407,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
       WHERE campaign.status = 'ENABLED'
     `;
 
-    const googleAdsUrl = `https://googleads.googleapis.com/v21/customers/${clientCustomerId}/googleAds:search`;
+    const googleAdsUrl = `https://googleads.googleapis.com/v25/customers/${clientCustomerId}/googleAds:search`;
 
     const headers: { [key: string]: string } = {
       'Authorization': `Bearer ${accessToken}`,

@@ -280,7 +280,7 @@ async function fetchGoogleAdsApiInsights(
     ORDER BY segments.date ASC
   `;
 
-  const url = `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v25/customers/${customerId}/googleAds:search`;
 
   console.log(`🌐 [GOOGLE-API] Fetching insights: ${startDate} to ${endDate}`);
   console.log(`🔑 [GOOGLE-API] Customer ID: ${customerId}`);
@@ -449,7 +449,7 @@ async function fetchGoogleAdsDemographics(
     headers['login-customer-id'] = managerId.replace(/-/g, '');
   }
 
-  const url = `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v25/customers/${customerId}/googleAds:search`;
 
   const demographics: Demographics = {
     byAge: [],
@@ -658,7 +658,7 @@ async function fetchGoogleTopAds(
     headers['login-customer-id'] = managerId.replace(/-/g, '');
   }
 
-  const url = `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v25/customers/${customerId}/googleAds:search`;
 
   try {
     const query = `

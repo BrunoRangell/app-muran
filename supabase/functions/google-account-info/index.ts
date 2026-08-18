@@ -83,7 +83,7 @@ serve(async (req: Request) => {
     `;
 
     const response = await fetch(
-      `https://googleads.googleapis.com/v21/customers/${googleCustomerId}/googleAds:search`,
+      `https://googleads.googleapis.com/v25/customers/${googleCustomerId}/googleAds:search`,
       {
         method: 'POST',
         headers: {

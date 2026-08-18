@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getGoogleAccessToken } from './ia-targets.ts';
 
 const META_API_VERSION = 'v24.0';
-const GOOGLE_ADS_API = 'https://googleads.googleapis.com/v21';
+const GOOGLE_ADS_API = 'https://googleads.googleapis.com/v25';
 
 async function getMetaToken(supabase: ReturnType<typeof createClient>): Promise<string> {
   const { data } = await supabase.from('api_tokens').select('value').eq('name', 'meta_access_token').maybeSingle();

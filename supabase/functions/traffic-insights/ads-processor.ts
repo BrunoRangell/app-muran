@@ -578,7 +578,7 @@ export async function fetchGoogleTopAds(
     LIMIT ${limit}
   `;
 
-  const url = `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v25/customers/${customerId}/googleAds:search`;
 
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${accessToken}`,
