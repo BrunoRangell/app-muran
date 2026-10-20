@@ -173,6 +173,14 @@ export default function AnunciosAtivos() {
     toast({ title: "Lista copiada", description: "Texto pronto para colar." });
   };
 
+  const handleCopyLinks = async () => {
+    const text = filteredAds
+      .map((ad, i) => `${i + 1}. ${ad.ad_link || "link indisponível"}`)
+      .join("\n");
+    await navigator.clipboard.writeText(text);
+    toast({ title: "Links copiados", description: "Lista numerada pronta para colar." });
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-[1400px]">
       {/* Header */}
@@ -351,6 +359,14 @@ export default function AnunciosAtivos() {
               Copiar lista
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLinks}
+              disabled={!data || filteredAds.length === 0}
+            >
+              Copiar links
+            </Button>
+            <Button
               size="sm"
               onClick={handleExport}
               disabled={!data || filteredAds.length === 0 || exporting}
@@ -445,6 +461,7 @@ export default function AnunciosAtivos() {
                     <th className="px-3 py-2 w-px"></th>
                     <th className="px-3 py-2 font-semibold w-px whitespace-nowrap">Anúncio</th>
                     {!exporting && <th className="px-3 py-2 font-semibold">Campanha</th>}
+                    {!exporting && <th className="px-3 py-2 font-semibold w-px whitespace-nowrap">Link</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -506,6 +523,17 @@ export default function AnunciosAtivos() {
                           title={ad.campaign_name || ""}
                         >
                           {ad.campaign_name || "—"}
+                        </td>
+                      )}
+                      {!exporting && (
+                        <td className="px-3 py-2 w-px whitespace-nowrap">
+                          {ad.ad_link ? (
+                            <a href={ad.ad_link} target="_blank" rel="noopener noreferrer" className="text-muran-primary hover:underline">
+                              Abrir link
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">indisponível</span>
+                          )}
                         </td>
                       )}
                     </tr>
