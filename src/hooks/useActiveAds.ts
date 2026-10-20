@@ -9,6 +9,7 @@ export interface ActiveAd {
   campaign_id: string | null;
   campaign_name: string | null;
   image_url: string | null;
+  ad_link?: string | null;
 }
 
 export interface ActiveAdsResponse {
