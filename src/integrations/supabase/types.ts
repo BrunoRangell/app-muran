@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.3"
   }
   public: {
     Tables: {
@@ -1117,6 +1117,54 @@ export type Database = {
         }
         Relationships: []
       }
+      task_activity: {
+        Row: {
+          actor_member_id: string | null
+          created_at: string
+          from_value: string | null
+          id: string
+          kind: string
+          task_id: string
+          to_value: string | null
+          via_clickup: boolean
+        }
+        Insert: {
+          actor_member_id?: string | null
+          created_at?: string
+          from_value?: string | null
+          id?: string
+          kind: string
+          task_id: string
+          to_value?: string | null
+          via_clickup?: boolean
+        }
+        Update: {
+          actor_member_id?: string | null
+          created_at?: string
+          from_value?: string | null
+          id?: string
+          kind?: string
+          task_id?: string
+          to_value?: string | null
+          via_clickup?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_activity_actor_member_id_fkey"
+            columns: ["actor_member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_activity_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignees: {
         Row: {
           created_at: string
@@ -1152,6 +1200,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_clickup_comment_sync: {
+        Row: {
+          full_pass_cursor: number
+          id: string
+          invoke_secret: string
+          last_run_at: string | null
+          last_status: string | null
+          last_summary: Json | null
+        }
+        Insert: {
+          full_pass_cursor?: number
+          id?: string
+          invoke_secret?: string
+          last_run_at?: string | null
+          last_status?: string | null
+          last_summary?: Json | null
+        }
+        Update: {
+          full_pass_cursor?: number
+          id?: string
+          invoke_secret?: string
+          last_run_at?: string | null
+          last_status?: string | null
+          last_summary?: Json | null
+        }
+        Relationships: []
       }
       task_clickup_sync_state: {
         Row: {
@@ -1195,29 +1270,100 @@ export type Database = {
         }
         Relationships: []
       }
+      task_comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          emoji: string
+          id: string
+          member_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          member_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "task_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comment_reactions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_comments: {
         Row: {
-          author_id: string
+          author_id: string | null
+          author_member_id: string | null
+          clickup_comment_id: string | null
           content: string
           created_at: string
+          edited_at: string | null
+          external_author_name: string | null
           id: string
+          mentions: string[]
+          parent_id: string | null
           task_id: string
         }
         Insert: {
-          author_id?: string
+          author_id?: string | null
+          author_member_id?: string | null
+          clickup_comment_id?: string | null
           content: string
           created_at?: string
+          edited_at?: string | null
+          external_author_name?: string | null
           id?: string
+          mentions?: string[]
+          parent_id?: string | null
           task_id: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
+          author_member_id?: string | null
+          clickup_comment_id?: string | null
           content?: string
           created_at?: string
+          edited_at?: string | null
+          external_author_name?: string | null
           id?: string
+          mentions?: string[]
+          parent_id?: string | null
           task_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_comments_author_member_id_fkey"
+            columns: ["author_member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "task_comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_comments_task_id_fkey"
             columns: ["task_id"]
@@ -1229,6 +1375,7 @@ export type Database = {
       }
       task_folders: {
         Row: {
+          archived_at: string | null
           clickup_folder_id: string | null
           color: string
           created_at: string
@@ -1240,6 +1387,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           clickup_folder_id?: string | null
           color?: string
           created_at?: string
@@ -1251,6 +1399,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           clickup_folder_id?: string | null
           color?: string
           created_at?: string
@@ -1345,6 +1494,74 @@ export type Database = {
         }
         Relationships: []
       }
+      task_notifications: {
+        Row: {
+          actor_member_id: string | null
+          cleared_at: string | null
+          comment_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_member_id: string
+          snippet: string | null
+          task_id: string
+        }
+        Insert: {
+          actor_member_id?: string | null
+          cleared_at?: string | null
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_member_id: string
+          snippet?: string | null
+          task_id: string
+        }
+        Update: {
+          actor_member_id?: string | null
+          cleared_at?: string | null
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_member_id?: string
+          snippet?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_notifications_actor_member_id_fkey"
+            columns: ["actor_member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "task_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_notifications_recipient_member_id_fkey"
+            columns: ["recipient_member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_space_access: {
         Row: {
           created_at: string
@@ -1401,6 +1618,7 @@ export type Database = {
           created_at: string
           icon: string | null
           id: string
+          is_template: boolean
           name: string
           position: number
         }
@@ -1410,6 +1628,7 @@ export type Database = {
           created_at?: string
           icon?: string | null
           id?: string
+          is_template?: boolean
           name: string
           position?: number
         }
@@ -1419,6 +1638,7 @@ export type Database = {
           created_at?: string
           icon?: string | null
           id?: string
+          is_template?: boolean
           name?: string
           position?: number
         }
@@ -1705,6 +1925,7 @@ export type Database = {
       is_team_member: { Args: never; Returns: boolean }
       manual_cleanup_campaign_health: { Args: never; Returns: Json }
       review_all_google_ads_clients: { Args: never; Returns: Json }
+      task_current_member: { Args: never; Returns: string }
       task_space_of_folder: { Args: { p_folder_id: string }; Returns: string }
       task_space_of_list: { Args: { p_list_id: string }; Returns: string }
       task_space_of_task: { Args: { p_task_id: string }; Returns: string }
@@ -1819,12 +2040,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1848,11 +2069,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1873,11 +2094,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1898,11 +2119,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1915,11 +2136,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

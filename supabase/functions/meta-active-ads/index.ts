@@ -50,6 +50,7 @@ async function fetchAllAds(accountId: string, accessToken: string, statuses: str
     'effective_status',
     'status',
     'campaign{id,name}',
+    'preview_shareable_link',
     'creative{image_url,thumbnail_url,object_story_spec}',
   ].join(',');
 
@@ -140,6 +141,8 @@ Deno.serve(async (req) => {
       campaign_id: ad.campaign?.id || null,
       campaign_name: ad.campaign?.name || null,
       image_url: resolveImageUrl(ad),
+      ad_link: ad.preview_shareable_link ||
+        `https://adsmanager.facebook.com/adsmanager/manage/ads?act=${acc.account_id}&selected_ad_ids=${ad.id}`,
     }));
 
     return json({
