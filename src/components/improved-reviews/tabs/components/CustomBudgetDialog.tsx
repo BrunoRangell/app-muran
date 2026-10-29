@@ -43,8 +43,8 @@ export function CustomBudgetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>
             {budget ? "Editar Orçamento Personalizado" : "Novo Orçamento Personalizado"}
           </DialogTitle>
