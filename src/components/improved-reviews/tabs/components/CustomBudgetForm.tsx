@@ -64,7 +64,8 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-4">
         <FormField
           control={form.control}
           name="platform"
@@ -98,44 +99,7 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente</FormLabel>
-              <div className="rounded-md border">
-                <Input
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  placeholder={
-                    clients.find((c) => c.id === field.value)?.company_name
-                      ? `Selecionado: ${clients.find((c) => c.id === field.value)?.company_name} — pesquisar outro...`
-                      : "Pesquisar cliente..."
-                  }
-                  className="border-0 border-b rounded-b-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-                <div
-                  className="max-h-48 overflow-y-auto p-1"
-                  onWheel={(e) => e.stopPropagation()}
-                >
-                  {(() => {
-                    const q = normalize(clientSearch.trim());
-                    const list = q ? clients.filter((c) => normalize(c.company_name).includes(q)) : clients;
-                    if (list.length === 0) {
-                      return <p className="py-4 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</p>;
-                    }
-                    return list.map((client) => (
-                      <button
-                        type="button"
-                        key={client.id}
-                        onClick={() => field.onChange(client.id)}
-                        className={cn(
-                          "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground",
-                          field.value === client.id && "bg-accent text-accent-foreground font-medium"
-                        )}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4 shrink-0", field.value === client.id ? "opacity-100" : "opacity-0")} />
-                        <span className="truncate">{client.company_name}</span>
-                      </button>
-                    ));
-                  })()}
-                </div>
-              </div>
+              <ClientCombobox clients={clients} value={field.value} onChange={field.onChange} />
               <FormMessage />
             </FormItem>
           )}
