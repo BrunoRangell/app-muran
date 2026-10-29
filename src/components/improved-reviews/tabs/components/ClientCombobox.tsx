@@ -49,6 +49,10 @@ export function ClientCombobox({ clients, value, onChange }: ClientComboboxProps
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      handleOpenChange(false);
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (filtered[active]) choose(filtered[active].id);
