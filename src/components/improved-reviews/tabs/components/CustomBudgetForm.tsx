@@ -261,7 +261,9 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
           )}
         />
 
-        <div className="flex justify-end gap-3">
+        </div>
+
+        <div className="flex shrink-0 justify-end gap-3 border-t bg-background px-6 py-4">
           <Button
             type="button"
             variant="outline"
