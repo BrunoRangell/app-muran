@@ -1167,18 +1167,21 @@ export type Database = {
       }
       task_assignees: {
         Row: {
+          completed_at: string | null
           created_at: string
           id: string
           member_id: string
           task_id: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           id?: string
           member_id: string
           task_id: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           id?: string
           member_id?: string
@@ -1383,6 +1386,7 @@ export type Database = {
           id: string
           name: string
           position: number
+          restricted: boolean
           space_id: string
           updated_at: string
         }
@@ -1395,6 +1399,7 @@ export type Database = {
           id?: string
           name: string
           position?: number
+          restricted?: boolean
           space_id: string
           updated_at?: string
         }
@@ -1407,6 +1412,7 @@ export type Database = {
           id?: string
           name?: string
           position?: number
+          restricted?: boolean
           space_id?: string
           updated_at?: string
         }
@@ -1420,6 +1426,38 @@ export type Database = {
           },
         ]
       }
+      task_item_access: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          member_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          member_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_item_access_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_lists: {
         Row: {
           clickup_list_id: string | null
@@ -1429,6 +1467,7 @@ export type Database = {
           kind: string
           name: string
           position: number
+          restricted: boolean
         }
         Insert: {
           clickup_list_id?: string | null
@@ -1438,6 +1477,7 @@ export type Database = {
           kind?: string
           name: string
           position?: number
+          restricted?: boolean
         }
         Update: {
           clickup_list_id?: string | null
@@ -1447,6 +1487,7 @@ export type Database = {
           kind?: string
           name?: string
           position?: number
+          restricted?: boolean
         }
         Relationships: [
           {
@@ -1621,6 +1662,7 @@ export type Database = {
           is_template: boolean
           name: string
           position: number
+          restricted: boolean
         }
         Insert: {
           clickup_space_id?: string | null
@@ -1631,6 +1673,7 @@ export type Database = {
           is_template?: boolean
           name: string
           position?: number
+          restricted?: boolean
         }
         Update: {
           clickup_space_id?: string | null
@@ -1641,6 +1684,7 @@ export type Database = {
           is_template?: boolean
           name?: string
           position?: number
+          restricted?: boolean
         }
         Relationships: []
       }
@@ -1706,8 +1750,10 @@ export type Database = {
       }
       tasks: {
         Row: {
+          approver_id: string | null
           assignee_id: string | null
           clickup_task_id: string | null
+          complete_mode: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -1721,13 +1767,16 @@ export type Database = {
           position: number
           priority: Database["public"]["Enums"]["task_priority"] | null
           recurrence: Json | null
+          start_days_before: number
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
         }
         Insert: {
+          approver_id?: string | null
           assignee_id?: string | null
           clickup_task_id?: string | null
+          complete_mode?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1741,13 +1790,16 @@ export type Database = {
           position?: number
           priority?: Database["public"]["Enums"]["task_priority"] | null
           recurrence?: Json | null
+          start_days_before?: number
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
         }
         Update: {
+          approver_id?: string | null
           assignee_id?: string | null
           clickup_task_id?: string | null
+          complete_mode?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1761,11 +1813,19 @@ export type Database = {
           position?: number
           priority?: Database["public"]["Enums"]["task_priority"] | null
           recurrence?: Json | null
+          start_days_before?: number
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "task_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assignee_id_fkey"
             columns: ["assignee_id"]
@@ -1924,11 +1984,35 @@ export type Database = {
       is_task_participant: { Args: never; Returns: boolean }
       is_team_member: { Args: never; Returns: boolean }
       manual_cleanup_campaign_health: { Args: never; Returns: Json }
+      member_can_see_folder: {
+        Args: { p_folder: string; p_member: string }
+        Returns: boolean
+      }
+      member_can_see_list: {
+        Args: { p_list: string; p_member: string }
+        Returns: boolean
+      }
+      member_can_see_space: {
+        Args: { p_member: string; p_space: string }
+        Returns: boolean
+      }
       review_all_google_ads_clients: { Args: never; Returns: Json }
+      task_accessible_folder_ids: { Args: never; Returns: string[] }
+      task_accessible_list_ids: {
+        Args: { p_level?: Database["public"]["Enums"]["task_permission_level"] }
+        Returns: string[]
+      }
+      task_accessible_space_ids: { Args: never; Returns: string[] }
+      task_can_see_folder: { Args: { p_folder: string }; Returns: boolean }
+      task_can_see_list: { Args: { p_list: string }; Returns: boolean }
+      task_can_see_space: { Args: { p_space: string }; Returns: boolean }
+      task_can_see_task: { Args: { p_task: string }; Returns: boolean }
       task_current_member: { Args: never; Returns: string }
+      task_list_member_ids: { Args: { p_list: string }; Returns: string[] }
       task_space_of_folder: { Args: { p_folder_id: string }; Returns: string }
       task_space_of_list: { Args: { p_list_id: string }; Returns: string }
       task_space_of_task: { Args: { p_task_id: string }; Returns: string }
+      task_start_reminders: { Args: never; Returns: number }
       unaccent: { Args: { "": string }; Returns: string }
       update_daily_budget_review: {
         Args: {
