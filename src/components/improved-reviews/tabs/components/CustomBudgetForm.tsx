@@ -15,9 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const normalize = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -32,7 +31,7 @@ interface CustomBudgetFormProps {
 }
 
 export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }: CustomBudgetFormProps) {
-  const [clientOpen, setClientOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
   const { data: clients = [] } = useQuery({
     queryKey: ["custom-budget-form-clients"],
     queryFn: async () => {
@@ -104,50 +103,44 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente</FormLabel>
-              <Popover open={clientOpen} onOpenChange={setClientOpen}>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      role="combobox"
-                      className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
-                    >
-                      <span className="truncate">
-                        {clients.find((c) => c.id === field.value)?.company_name || "Selecione um cliente"}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command
-                    filter={(value, search) =>
-                      normalize(value).includes(normalize(search)) ? 1 : 0
+              <div className="rounded-md border">
+                <Input
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  placeholder={
+                    clients.find((c) => c.id === field.value)?.company_name
+                      ? `Selecionado: ${clients.find((c) => c.id === field.value)?.company_name} — pesquisar outro...`
+                      : "Pesquisar cliente..."
+                  }
+                  className="border-0 border-b rounded-b-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+                <div
+                  className="max-h-48 overflow-y-auto p-1"
+                  onWheel={(e) => e.stopPropagation()}
+                >
+                  {(() => {
+                    const q = normalize(clientSearch.trim());
+                    const list = q ? clients.filter((c) => normalize(c.company_name).includes(q)) : clients;
+                    if (list.length === 0) {
+                      return <p className="py-4 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</p>;
                     }
-                  >
-                    <CommandInput placeholder="Pesquisar cliente..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {clients.map((client) => (
-                          <CommandItem
-                            key={client.id}
-                            value={`${client.company_name} ${client.id}`}
-                            onSelect={() => {
-                              field.onChange(client.id);
-                              setClientOpen(false);
-                            }}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", field.value === client.id ? "opacity-100" : "opacity-0")} />
-                            {client.company_name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                    return list.map((client) => (
+                      <button
+                        type="button"
+                        key={client.id}
+                        onClick={() => field.onChange(client.id)}
+                        className={cn(
+                          "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+                          field.value === client.id && "bg-accent text-accent-foreground font-medium"
+                        )}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4 shrink-0", field.value === client.id ? "opacity-100" : "opacity-0")} />
+                        <span className="truncate">{client.company_name}</span>
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
               <FormMessage />
             </FormItem>
           )}
