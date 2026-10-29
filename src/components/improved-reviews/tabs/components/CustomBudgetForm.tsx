@@ -15,9 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const normalize = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -32,7 +31,7 @@ interface CustomBudgetFormProps {
 }
 
 export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }: CustomBudgetFormProps) {
-  const [clientOpen, setClientOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
   const { data: clients = [] } = useQuery({
     queryKey: ["custom-budget-form-clients"],
     queryFn: async () => {
