@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,20 @@ export function ClientCombobox({ clients, value, onChange }: ClientComboboxProps
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [active, setActive] = useState(0);
+
+  // Esc fecha só a lista, sem fechar o modal
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setOpen(false);
+      setSearch("");
+    };
+    window.addEventListener("keydown", onEsc, true);
+    return () => window.removeEventListener("keydown", onEsc, true);
+  }, [open]);
 
   const selected = clients.find((c) => c.id === value);
   const q = normalize(search.trim());
@@ -49,10 +63,6 @@ export function ClientCombobox({ clients, value, onChange }: ClientComboboxProps
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      handleOpenChange(false);
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (filtered[active]) choose(filtered[active].id);
