@@ -13,13 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
-const normalize = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+import { ClientCombobox } from "./ClientCombobox";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { customBudgetSchema, CustomBudgetFormData } from "../schemas/customBudgetSchema";
 
@@ -31,7 +27,6 @@ interface CustomBudgetFormProps {
 }
 
 export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }: CustomBudgetFormProps) {
-  const [clientSearch, setClientSearch] = useState("");
   const { data: clients = [] } = useQuery({
     queryKey: ["custom-budget-form-clients"],
     queryFn: async () => {
