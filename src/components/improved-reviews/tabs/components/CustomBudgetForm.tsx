@@ -13,7 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useClientsPaginated } from "@/hooks/queries/useClientsPaginated";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+
+const normalize = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { customBudgetSchema, CustomBudgetFormData } from "../schemas/customBudgetSchema";
 
@@ -25,7 +32,20 @@ interface CustomBudgetFormProps {
 }
 
 export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }: CustomBudgetFormProps) {
-  const { clients = [] } = useClientsPaginated({ status: 'active' });
+  const [clientOpen, setClientOpen] = useState(false);
+  const { data: clients = [] } = useQuery({
+    queryKey: ["custom-budget-form-clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, company_name")
+        .eq("status", "active")
+        .order("company_name")
+        .range(0, 4999);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   
   const form = useForm<CustomBudgetFormData>({
     resolver: zodResolver(customBudgetSchema),
@@ -84,20 +104,50 @@ export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }:
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={clientOpen} onOpenChange={setClientOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
+                    >
+                      <span className="truncate">
+                        {clients.find((c) => c.id === field.value)?.company_name || "Selecione um cliente"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command
+                    filter={(value, search) =>
+                      normalize(value).includes(normalize(search)) ? 1 : 0
+                    }
+                  >
+                    <CommandInput placeholder="Pesquisar cliente..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {clients.map((client) => (
+                          <CommandItem
+                            key={client.id}
+                            value={`${client.company_name} ${client.id}`}
+                            onSelect={() => {
+                              field.onChange(client.id);
+                              setClientOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", field.value === client.id ? "opacity-100" : "opacity-0")} />
+                            {client.company_name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <FormMessage />
             </FormItem>
           )}
