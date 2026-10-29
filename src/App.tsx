@@ -9,7 +9,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingState } from "@/components/ui/loading-state";
 import Login from "@/pages/Login";
-import DevBudgetHarness from "@/pages/DevBudgetHarness";
 
 // Pré-carregamento das rotas principais com retry
 const Index = lazy(() => {
@@ -86,7 +85,6 @@ function App() {
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
         <Route path="/oauth/consent" element={<OAuthConsent />} />
 
-        <Route path="/__dev-budget" element={<DevBudgetHarness />} />
         <Route path="/login" element={<Login />} />
 
         {/* Autenticação própria do módulo de tarefas */}
