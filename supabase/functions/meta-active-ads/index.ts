@@ -49,7 +49,8 @@ async function fetchAllAds(accountId: string, accessToken: string, statuses: str
     'name',
     'effective_status',
     'status',
-    'campaign{id,name}',
+    'campaign{id,name,stop_time,effective_status}',
+    'adset{id,name,end_time,effective_status}',
     'creative{image_url,thumbnail_url,object_story_spec,instagram_permalink_url,effective_object_story_id}',
   ].join(',');
 
@@ -132,7 +133,19 @@ Deno.serve(async (req) => {
 
     const ads = await fetchAllAds(acc.account_id as string, tokRow.value as string, statuses);
 
-    const normalized = ads.map((ad: any) => ({
+    const now = Date.now();
+    const onlyActive = statuses.length === 1 && statuses[0] === 'ACTIVE';
+    const isPast = (t?: string) => !!t && !isNaN(Date.parse(t)) && Date.parse(t) < now;
+    const running = ads.filter((ad: any) => {
+      if (isPast(ad.adset?.end_time) || isPast(ad.campaign?.stop_time)) return false;
+      if (onlyActive) {
+        if (ad.adset?.effective_status && ad.adset.effective_status !== 'ACTIVE') return false;
+        if (ad.campaign?.effective_status && ad.campaign.effective_status !== 'ACTIVE') return false;
+      }
+      return true;
+    });
+
+    const normalized = running.map((ad: any) => ({
       id: ad.id,
       name: ad.name,
       status: ad.effective_status,
