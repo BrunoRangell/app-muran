@@ -14,7 +14,6 @@ import {
   UserPlus,
   Settings2,
   Target,
-  TrendingUp,
   UserX,
   Megaphone
 } from "lucide-react";
