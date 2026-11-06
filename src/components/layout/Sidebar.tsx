@@ -14,7 +14,6 @@ import {
   UserPlus,
   Settings2,
   Target,
-  TrendingUp,
   UserX,
   Megaphone
 } from "lucide-react";
@@ -53,7 +52,6 @@ const adminMenuItems: MenuItem[] = [
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-  { icon: TrendingUp, label: "Relatórios de Tráfego", path: "/relatorios-trafego" },
   { icon: Megaphone, label: "Anúncios Ativos", path: "/anuncios-ativos" },
 ];
 
@@ -63,7 +61,6 @@ const regularMenuItems: MenuItem[] = [
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-  { icon: TrendingUp, label: "Relatórios de Tráfego", path: "/relatorios-trafego" },
   { icon: Megaphone, label: "Anúncios Ativos", path: "/anuncios-ativos" },
 ];
 
