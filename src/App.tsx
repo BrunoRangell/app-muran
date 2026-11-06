@@ -65,8 +65,7 @@ const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDaily
 const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
 const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
-const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
-const TrafficReportsDashboard = lazyWithTimeout(() => import("@/pages/TrafficReportsDashboard"));
+const ReportMoved = lazyWithTimeout(() => import("@/pages/ReportMoved"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
 const TaskSpaces = lazyWithTimeout(() => import("@/pages/TaskSpaces"));
@@ -78,7 +77,7 @@ function App() {
     <TooltipProvider>
       <Routes>
         {/* Rota pública do portal do cliente */}
-        <Route path="/cliente/:accessToken" element={<TrafficReports />} />
+        <Route path="/cliente/:accessToken" element={<ReportMoved />} />
 
 
         {/* Tela de consentimento OAuth (MCP) — rota pública, faz seu próprio check de sessão */}
@@ -188,8 +187,6 @@ function App() {
           <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
 
           {/* Relatórios de Tráfego — modelo único, sem editor */}
-          <Route path="/relatorios-trafego" element={<TrafficReportsDashboard />} />
-          <Route path="/relatorios-trafego/visualizar" element={<TrafficReports />} />
           <Route path="/anuncios-ativos" element={<AnunciosAtivos />} />
 
 

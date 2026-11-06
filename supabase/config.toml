@@ -47,9 +47,6 @@ verify_jwt = false
 [functions.convert-meta-token]
 verify_jwt = false
 
-[functions.traffic-insights]
-verify_jwt = false
-
 [functions.meta-image-proxy]
 verify_jwt = false
 
