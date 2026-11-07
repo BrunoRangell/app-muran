@@ -42,48 +42,45 @@ Deno.serve(async (req) => {
 
     const results: Record<string, number> = {};
 
-    // Calcular LTV para cada mês solicitado
+    // LTV de cada mês = mesma regra do card e do detalhe do LTV:
+    // pagamentos dos 12 meses até o mês (inclusive), só de clientes ativos no período e com pagamento > 0,
+    // divididos pela quantidade desses clientes. ("Outras receitas" sem cliente não entram.)
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     for (const monthStr of targetMonths) {
       const [year, month] = monthStr.split('-').map(Number);
-      const targetDate = new Date(year, month - 1, 1);
-      
-      // Data de início: 12 meses antes
-      const startDate = new Date(targetDate);
-      startDate.setMonth(startDate.getMonth() - 12);
-      
-      // Data de fim: último dia do mês alvo
-      const endDate = new Date(year, month, 0);
+      const startDate = new Date(year, month - 12, 1); // 12 meses: 11 anteriores + o próprio
+      const endDate = new Date(year, month, 0); // último dia do mês alvo
+      const startStr = ymd(startDate);
+      const endStr = ymd(endDate);
 
-      // Buscar pagamentos do período
       const { data: payments, error: paymentsError } = await supabaseClient
         .from('payments')
         .select('client_id, amount')
-        .gte('reference_month', startDate.toISOString().split('T')[0])
-        .lte('reference_month', endDate.toISOString().split('T')[0])
-        .not('client_id', 'is', null) // "outras receitas" (placas, comissões...) não entram no LTV
+        .gte('reference_month', startStr)
+        .lte('reference_month', endStr)
+        .not('client_id', 'is', null)
         .gt('amount', 0);
 
       if (paymentsError) throw paymentsError;
 
-      // Filtrar clientes ativos no período
-      const activeClients = clients?.filter(client => {
-        const firstPayment = client.first_payment_date ? new Date(client.first_payment_date) : null;
-        const lastPayment = client.last_payment_date ? new Date(client.last_payment_date) : null;
+      const byClient: Record<string, number> = {};
+      for (const p of payments ?? []) byClient[p.client_id] = (byClient[p.client_id] || 0) + Number(p.amount);
 
-        if (!firstPayment) return false;
+      let total = 0;
+      let count = 0;
+      for (const client of clients ?? []) {
+        if (!client.first_payment_date) continue;
+        const first = String(client.first_payment_date).slice(0, 10);
+        const last = client.last_payment_date ? String(client.last_payment_date).slice(0, 10) : '9999-12-31';
+        if (first > endStr || last < startStr) continue;
+        const paid = byClient[client.id] || 0;
+        if (paid > 0) {
+          total += paid;
+          count++;
+        }
+      }
 
-        const isActiveInPeriod = firstPayment <= endDate &&
-          (client.status === 'active' || (lastPayment && lastPayment >= startDate));
-
-        return isActiveInPeriod;
-      }) || [];
-
-      // Calcular receita total do período
-      const totalRevenue = payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) || 0;
-
-      // Calcular LTV
-      const ltv = activeClients.length > 0 ? totalRevenue / activeClients.length : 0;
-      results[monthStr] = Math.round(ltv * 100) / 100;
+      results[monthStr] = count > 0 ? Math.round((total / count) * 100) / 100 : 0;
     }
 
     return new Response(

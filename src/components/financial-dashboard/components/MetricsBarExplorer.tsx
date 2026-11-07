@@ -4,7 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
 import { useCostsPaginated } from "@/hooks/queries/useCostsPaginated";
-import { useClientsPaginated } from "@/hooks/queries/useClientsPaginated";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { formatBrazilianCurrency } from "@/utils/currencyUtils";
 import { BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
@@ -128,7 +130,11 @@ export const MetricsBarExplorer = () => {
     endDate: format(dateRange.end, "yyyy-MM-dd"),
   });
   
-  const { clients = [], isLoading: loadingClients } = useClientsPaginated();
+  // todos os clientes (a lista paginada trazia só 30: CAC e detalhes de novos/cancelados saíam errados)
+  const { data: clients = [], isLoading: loadingClients } = useQuery({
+    queryKey: ["metrics-bar-all-clients"],
+    queryFn: () => fetchAllRows<any>((from, to) => supabase.from("clients").select("*").order("id").range(from, to)),
+  });
 
   const { getClientsForPeriod } = useClientFiltering();
 
