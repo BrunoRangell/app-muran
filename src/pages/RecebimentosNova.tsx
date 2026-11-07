@@ -150,7 +150,8 @@ export default function RecebimentosNova() {
 
   // Calcular totais
   const totais = clientesFiltrados.reduce((acc, cliente) => ({
-    valorContratual: acc.valorContratual + Number(cliente.contract_value || 0),
+    // "Total Mensal" = contratos dos clientes ativos (inativos não pagam mais por mês)
+    valorContratual: acc.valorContratual + (cliente.status === "active" ? Number(cliente.contract_value || 0) : 0),
     totalRecebido: acc.totalRecebido + Number(cliente.totalRecebido || 0)
   }), { valorContratual: 0, totalRecebido: 0 });
 
@@ -290,7 +291,7 @@ export default function RecebimentosNova() {
           {clientesFiltrados.length > 0 && (
             <div className="flex justify-between pt-4 border-t text-sm">
               <div>
-                <span className="font-medium">Total Mensal: </span>
+                <span className="font-medium">Total Mensal (ativos): </span>
                 <span>{formatCurrency(totais.valorContratual)}</span>
               </div>
               <div>
