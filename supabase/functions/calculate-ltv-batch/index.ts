@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
         auth: {
           persistSession: false,
         },
+        // consulta como o usuário logado (sem isso roda como anônimo, o RLS esconde tudo e o LTV dá 0)
+        global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
       }
     );
 
