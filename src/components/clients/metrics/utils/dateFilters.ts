@@ -1,3 +1,4 @@
+// datas lidas no horário local (parseLocalDate); o antigo "+1 dia" compensava a leitura em UTC e não é mais necessário
 import { parseLocalDate } from "@/utils/dateHelpers";
 
 import { Client } from "../../types";
@@ -7,12 +8,10 @@ export const isClientActiveInMonth = (client: Client, monthStart: Date, monthEnd
   try {
     if (!client.first_payment_date) return false;
     const clientStart = parseLocalDate(client.first_payment_date);
-    clientStart.setDate(clientStart.getDate() + 1);
     
     const clientEnd = client.last_payment_date ? 
       (() => {
         const date = parseLocalDate(client.last_payment_date);
-        date.setDate(date.getDate() + 1);
         return date;
       })() : 
       new Date();
@@ -47,7 +46,6 @@ export const isClientNewInMonth = (client: Client, monthStart: Date, monthEnd: D
   try {
     if (!client.first_payment_date) return false;
     const firstPayment = parseLocalDate(client.first_payment_date);
-    firstPayment.setDate(firstPayment.getDate() + 1);
     return isValid(firstPayment) && 
            isWithinInterval(firstPayment, { start: monthStart, end: monthEnd });
   } catch (error) {
@@ -60,7 +58,6 @@ export const isClientChurnedInMonth = (client: Client, monthStart: Date, monthEn
   if (!client.last_payment_date) return false;
   try {
     const lastPaymentDate = parseLocalDate(client.last_payment_date);
-    lastPaymentDate.setDate(lastPaymentDate.getDate() + 1);
     return isValid(lastPaymentDate) && 
            isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
   } catch (error) {
@@ -73,7 +70,6 @@ export const getActiveClientsAtStartOfMonth = (clients: Client[], monthStart: Da
   return clients.filter((client: Client) => {
     if (!client.first_payment_date) return false;
     const clientStart = parseLocalDate(client.first_payment_date);
-    clientStart.setDate(clientStart.getDate() + 1);
     
     return clientStart <= monthStart && 
            (!client.last_payment_date || parseLocalDate(client.last_payment_date) > monthStart);

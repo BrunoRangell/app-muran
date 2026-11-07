@@ -34,7 +34,6 @@ const isClientNewInMonth = (client: any, monthStart: Date, monthEnd: Date): bool
   try {
     if (!client.first_payment_date) return false;
     const firstPayment = toLocalDate(client.first_payment_date);
-    firstPayment.setDate(firstPayment.getDate() + 1);
     return firstPayment >= monthStart && firstPayment <= monthEnd;
   } catch (error) {
     return false;
