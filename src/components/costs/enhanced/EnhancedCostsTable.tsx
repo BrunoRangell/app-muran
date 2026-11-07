@@ -74,7 +74,9 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    // "2026-10-01" lido como UTC aparecia como 30/09 no Brasil
+    const [y, m, d] = dateString.slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('pt-BR');
   };
 
   const totalAmount = costs.reduce((sum, cost) => sum + cost.amount, 0);

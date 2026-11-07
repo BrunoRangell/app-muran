@@ -179,7 +179,8 @@ const calculatePreviousMonthMetrics = (clients: any[], payments: any[], costs: a
       }, 0) / activeClientsPrevious.length
     : 1;
 
-  const ltvPrevious = averageTicketPrevious * averageRetentionPrevious;
+  // mesma fórmula do LTV atual (pagamentos dos 12 meses até o mês anterior), senão a comparação não faz sentido
+  const ltvPrevious = calculateLTV12Months(clients, payments, previousDate);
   const ltvCacRatioPrevious = cacPrevious > 0 ? ltvPrevious / cacPrevious : 0;
 
   return {

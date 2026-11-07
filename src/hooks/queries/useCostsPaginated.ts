@@ -45,10 +45,20 @@ export const useCostsPaginated = (filters?: CostFilters) => {
         throw error;
       });
 
+      // a tela usa cost.categories (lista de ids); o banco devolve costs_categories
+      const withCategories = costs.map((c: any) => ({
+        ...c,
+        categories: (c.costs_categories ?? []).map((cc: { category_id: string }) => cc.category_id),
+      })) as Cost[];
+      const selected = filters?.categories ?? [];
+      const filtered = selected.length
+        ? withCategories.filter((c) => (c.categories ?? []).some((id) => selected.includes(id)))
+        : withCategories;
+
       return {
-        costs,
+        costs: filtered,
         nextPage: undefined as number | undefined,
-        totalCount: costs.length,
+        totalCount: filtered.length,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,

@@ -80,7 +80,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           title="Retenção Média"
           value={formatDecimal(metrics?.averageRetention || 0) + " meses"}
           icon={Clock}
-          trend={metrics?.trends?.ltvTrend} // LTV is related to retention
           color="bg-purple-500"
           description="Tempo médio de permanência dos clientes"
         />
