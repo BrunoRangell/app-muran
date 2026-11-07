@@ -3,49 +3,52 @@ import { supabase } from "@/integrations/supabase/client";
 import { Cost, CostFilters } from "@/types/cost";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
-const PAGE_SIZE = 50;
 
 export const useCostsPaginated = (filters?: CostFilters) => {
   const queryClient = useQueryClient();
 
   const costsQuery = useInfiniteQuery({
     queryKey: ["costs-paginated", filters],
-    queryFn: async ({ pageParam = 0 }) => {
-      let query = supabase
-        .from("costs")
-        .select(`
+    // Busca TODOS os custos do filtro (em lotes de 1000): os cards, gráficos e totais
+    // precisam do conjunto inteiro, não só dos 50 primeiros. A tabela pagina na tela.
+    queryFn: async () => {
+      const costs = await fetchAllRows<Cost>((from, to) => {
+        let query = supabase
+          .from("costs")
+          .select(`
           *,
           costs_categories (
             category_id
           )
-        `, { count: "exact" });
+        `);
 
-      if (filters?.startDate) {
-        query = query.gte("date", filters.startDate);
-      }
+        if (filters?.startDate) {
+          query = query.gte("date", filters.startDate);
+        }
 
-      if (filters?.endDate) {
-        query = query.lte("date", filters.endDate);
-      }
+        if (filters?.endDate) {
+          query = query.lte("date", filters.endDate);
+        }
 
-      if (filters?.search) {
-        query = query.ilike("name", `%${filters.search}%`);
-      }
+        if (filters?.search) {
+          query = query.ilike("name", `%${filters.search}%`);
+        }
 
-      const { data, error, count } = await query
-        .order("date", { ascending: false })
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
-
-      if (error) {
+        return query
+          .order("date", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to) as unknown as PromiseLike<{ data: Cost[] | null; error: unknown }>;
+      }).catch((error) => {
         logger.error("Erro ao buscar custos:", error);
         throw error;
-      }
+      });
 
       return {
-        costs: data as Cost[],
-        nextPage: data.length === PAGE_SIZE ? pageParam + 1 : undefined,
-        totalCount: count || 0,
+        costs,
+        nextPage: undefined as number | undefined,
+        totalCount: costs.length,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,

@@ -7,6 +7,7 @@ import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears }
 import { useFinancialWorker } from "@/hooks/useFinancialWorker";
 import { Client } from "@/components/clients/types";
 import { logger } from "@/lib/logger";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export const useFinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('last-12-months');
@@ -113,16 +114,12 @@ export const useFinancialMetrics = () => {
         logger.debug("🔧 [WORKER] Calculando métricas financeiras...");
         
         // FASE 4C: Select otimizado - apenas colunas necessárias
-        const [paymentsResult, costsResult] = await Promise.all([
-          supabase.from("payments").select("id, client_id, amount, reference_month, created_at"),
-          supabase.from("costs").select("id, amount, date, name")
+        const [payments, costs] = await Promise.all([
+          fetchAllRows((from, to) => supabase.from("payments").select("id, client_id, amount, reference_month, created_at").order("id").range(from, to)),
+          fetchAllRows((from, to) => supabase.from("costs").select("id, amount, date, name").order("id").range(from, to)),
         ]);
         
-        const result = await calculateMetrics(
-          clients,
-          paymentsResult.data || [],
-          costsResult.data || []
-        );
+        const result = await calculateMetrics(clients, payments, costs);
         
         setWorkerMetrics(result);
         logger.info("✅ [WORKER] Métricas calculadas");

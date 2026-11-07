@@ -7,6 +7,7 @@ import { calculateRetention } from "../table/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 interface ClientsRankingProps {
   clients: Client[];
@@ -26,11 +27,9 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
     queryKey: ['payments_totals_by_client', allIds],
     queryFn: async () => {
       if (!allIds.length) return {} as Record<string, number>;
-      const { data, error } = await supabase
-        .from('payments')
-        .select('client_id, amount')
-        .in('client_id', allIds);
-      if (error) throw error;
+      const data = await fetchAllRows((from, to) =>
+        supabase.from('payments').select('client_id, amount').not('client_id', 'is', null).order('id').range(from, to)
+      );
       const totals: Record<string, number> = {};
       (data || []).forEach((row: any) => {
         const n = Number(row.amount) || 0;

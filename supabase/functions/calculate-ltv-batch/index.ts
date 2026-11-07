@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
         .select('client_id, amount')
         .gte('reference_month', startDate.toISOString().split('T')[0])
         .lte('reference_month', endDate.toISOString().split('T')[0])
+        .not('client_id', 'is', null) // "outras receitas" (placas, comissões...) não entram no LTV
         .gt('amount', 0);
 
       if (paymentsError) throw paymentsError;

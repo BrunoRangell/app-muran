@@ -42,7 +42,7 @@ export const calculatePaymentBasedMRR = async (
     // Calcular métricas baseadas em pagamentos reais
     const monthlyRevenue = payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
     const totalPayments = payments.length;
-    const uniqueClients = new Set(payments.map(p => p.client_id)).size;
+    const uniqueClients = new Set(payments.filter(p => p.client_id).map(p => p.client_id)).size;
 
     console.log(`Payment-based metrics for ${monthStr}:`, {
       monthlyRevenue,

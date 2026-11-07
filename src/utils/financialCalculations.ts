@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
 import { calculateCAC, calculatePreviousMonthMetrics, calculateTrend } from './trendsCalculations';
 import { calculateLTVForDashboard } from './unifiedLTVCalculations';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 
 // Função atualizada para usar o cálculo unificado de LTV
 export const calculateLTV12Months = async (clients: Client[]) => {
@@ -125,9 +126,9 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   healthScore = Math.max(0, Math.min(100, healthScore));
 
   // Buscar total de custos
-  const { data: costs } = await supabase
-    .from("costs")
-    .select("amount");
+  const costs = await fetchAllRows<{ amount: number }>((from, to) =>
+    supabase.from("costs").select("amount").order("id").range(from, to)
+  ).catch(() => []);
 
   const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
 

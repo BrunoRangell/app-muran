@@ -11,21 +11,18 @@ import { SmartFiltersBar } from "@/components/costs/enhanced/SmartFiltersBar";
 import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
 import { CostsVisualization } from "@/components/costs/enhanced/CostsVisualization";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
-  const [filters, setFilters] = useState<CostFilters>({});
+  const [filters, setFiltersState] = useState<CostFilters>({});
 
-  const { 
-    costs, 
-    totalCount,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage 
-  } = useCostsPaginated(filters);
+  const setFilters = (f: CostFilters) => { setFiltersState(f); setVisible(50); };
+  const { costs, totalCount, isLoading } = useCostsPaginated(filters);
+  // a tabela mostra 50 por vez; métricas e gráficos usam todos os custos do filtro
+  const [visible, setVisible] = useState(50);
+  const shownCosts = costs.slice(0, visible);
+  const hasMore = costs.length > visible;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,31 +50,23 @@ export default function Costs() {
         {/* Tabela aprimorada */}
         <div className="mb-6 space-y-4">
           <div className="text-sm text-muted-foreground px-2">
-            Exibindo {costs.length} de {totalCount} custos
+            Exibindo {shownCosts.length} de {totalCount} custos
           </div>
           
           <EnhancedCostsTable 
-            costs={costs || []} 
+            costs={shownCosts} 
             isLoading={isLoading} 
             onEditClick={setSelectedCost}
           />
 
-          {hasNextPage && (
+          {hasMore && (
             <div className="flex justify-center py-4">
               <Button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
+                onClick={() => setVisible((v) => v + 50)}
                 variant="outline"
                 className="min-w-[200px]"
               >
-                {isFetchingNextPage ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Carregando...
-                  </>
-                ) : (
-                  `Carregar mais custos`
-                )}
+                Carregar mais custos
               </Button>
             </div>
           )}

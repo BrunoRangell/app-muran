@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
 import { HistoricoPagamentosDialog } from "@/components/recebimentos-nova/HistoricoPagamentosDialog";
 import { FinanceSheetSync } from "@/components/financial-sync/FinanceSheetSync";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -43,11 +44,9 @@ export default function RecebimentosNova() {
         if (erroClientes) throw erroClientes;
 
         // Buscar pagamentos
-        const { data: pagamentos, error: erroPagamentos } = await supabase
-          .from("payments")
-          .select("*");
-
-        if (erroPagamentos) throw erroPagamentos;
+        const pagamentos = await fetchAllRows((from, to) =>
+          supabase.from("payments").select("*").order("id").range(from, to)
+        );
 
         // Processar dados
         const dataAtual = new Date();

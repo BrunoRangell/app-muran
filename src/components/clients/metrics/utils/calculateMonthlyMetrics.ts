@@ -75,13 +75,14 @@ export const calculateMonthlyMetrics = async (
       .select(`
         amount,
         client_id,
+        label,
         clients!client_id(company_name)
       `)
       .gte("reference_month", monthStart.toISOString().split('T')[0])
       .lt("reference_month", new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).toISOString().split('T')[0]);
 
     const paymentDetails: PaymentDetail[] = payments?.map(payment => ({
-      company_name: payment.clients?.company_name || 'Cliente não encontrado',
+      company_name: payment.clients?.company_name || (payment.label ? `${payment.label} (outras receitas)` : 'Cliente não encontrado'),
       amount: Number(payment.amount),
       status: 'RECEBIDO' // Todos os pagamentos na tabela são considerados recebidos
     })).filter(payment => payment.amount > 0) || []; // Filtrar apenas pagamentos com valor real
