@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { parseLocalDate } from "@/utils/dateHelpers";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
@@ -111,7 +112,7 @@ export const CostsDetailsTable = ({ monthStr }: CostsDetailsTableProps) => {
                 }
               </TableCell>
               <TableCell>
-                {format(new Date(cost.date), 'dd/MM/yyyy', { locale: ptBR })}
+                {format(parseLocalDate(cost.date), 'dd/MM/yyyy', { locale: ptBR })}
               </TableCell>
               <TableCell className="text-right">{formatCurrency(cost.amount)}</TableCell>
             </TableRow>

@@ -42,12 +42,17 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
       const month = cost.date.substring(0, 7); // YYYY-MM
       months[month] = (months[month] || 0) + cost.amount;
     });
+    // ordena por "YYYY-MM" (cronológico) e monta o rótulo com data local
+    // (new Date("2024-01") é UTC e no Brasil virava "dez. de 2023")
     return Object.entries(months)
-      .map(([month, value]) => ({
-        month: new Date(month).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-        value
-      }))
-      .sort((a, b) => a.month.localeCompare(b.month));
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, value]) => {
+        const [y, m] = month.split('-').map(Number);
+        return {
+          month: new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+          value
+        };
+      });
   }, [costs]);
 
   const renderLegend = (props: any) => {

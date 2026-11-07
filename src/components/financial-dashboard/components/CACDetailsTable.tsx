@@ -167,7 +167,7 @@ export const CACDetailsTable = ({ monthStr }: CACDetailsTableProps) => {
                 <TableRow key={index}>
                   <TableCell className="font-medium">{cost.name}</TableCell>
                   <TableCell>
-                    {format(new Date(cost.date), 'dd/MM/yyyy', { locale: ptBR })}
+                    {format(parseLocalDate(cost.date), 'dd/MM/yyyy', { locale: ptBR })}
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(cost.amount)}</TableCell>
                 </TableRow>

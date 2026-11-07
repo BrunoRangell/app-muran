@@ -16,6 +16,14 @@ export interface WorkerResponse {
 
 // ============== FUNÇÕES AUXILIARES ==============
 
+// "2024-01-01" vira meia-noite UTC, que no Brasil ainda é 31/12 às 21h: tudo do dia 1º caía no mês anterior.
+// Datas "YYYY-MM-DD" (ou começando assim) são lidas no horário local.
+const toLocalDate = (value: string | Date): Date => {
+  if (value instanceof Date) return value;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
+};
+
 // Normalizar data
 const normalizeDate = (date: Date): Date => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -25,7 +33,7 @@ const normalizeDate = (date: Date): Date => {
 const isClientNewInMonth = (client: any, monthStart: Date, monthEnd: Date): boolean => {
   try {
     if (!client.first_payment_date) return false;
-    const firstPayment = new Date(client.first_payment_date);
+    const firstPayment = toLocalDate(client.first_payment_date);
     firstPayment.setDate(firstPayment.getDate() + 1);
     return firstPayment >= monthStart && firstPayment <= monthEnd;
   } catch (error) {
@@ -57,7 +65,7 @@ const calculateLTV12Months = (clients: any[], payments: any[], targetMonth: Date
 
   // Filtrar payments no período
   const paymentsInPeriod = payments.filter((p: any) => {
-    const refDate = new Date(p.reference_month);
+    const refDate = toLocalDate(p.reference_month);
     return refDate >= startOfPeriod && refDate <= endOfPeriod;
   });
 
@@ -72,8 +80,8 @@ const calculateLTV12Months = (clients: any[], payments: any[], targetMonth: Date
 
   // Filtrar clientes ativos no período
   const activeClientsInPeriod = clients.filter((client: any) => {
-    const firstPayment = new Date(client.first_payment_date);
-    const lastPayment = client.last_payment_date ? new Date(client.last_payment_date) : new Date();
+    const firstPayment = toLocalDate(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? toLocalDate(client.last_payment_date) : new Date();
     return firstPayment <= endOfPeriod && lastPayment >= startOfPeriod;
   });
 
@@ -102,7 +110,7 @@ const calculateCAC = (clients: any[], costs: any[], currentDate: Date): number =
   // Como não temos costs_categories no worker, vamos usar todos os custos por enquanto
   // NOTA: Isso seria otimizado passando os custos já filtrados do hook
   const costsInPeriod = costs.filter((cost: any) => {
-    const costDate = new Date(cost.date);
+    const costDate = toLocalDate(cost.date);
     return costDate >= threeMonthsStart && costDate <= monthEnd;
   });
 
@@ -127,14 +135,14 @@ const calculatePreviousMonthMetrics = (clients: any[], payments: any[], costs: a
 
   // Clientes ativos no mês anterior
   const activeClientsPrevious = clients.filter((client: any) => {
-    const firstPayment = new Date(client.first_payment_date);
-    const lastPayment = client.last_payment_date ? new Date(client.last_payment_date) : null;
+    const firstPayment = toLocalDate(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? toLocalDate(client.last_payment_date) : null;
     return firstPayment <= monthEnd && (!lastPayment || lastPayment >= monthStart);
   });
 
   // MRR do mês anterior baseado em payments
   const previousMonthPayments = payments.filter((p: any) => {
-    const refDate = new Date(p.reference_month);
+    const refDate = toLocalDate(p.reference_month);
     return refDate >= monthStart && refDate <= monthEnd;
   });
   const previousMrr = previousMonthPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
@@ -148,14 +156,14 @@ const calculatePreviousMonthMetrics = (clients: any[], payments: any[], costs: a
   // Churn do mês anterior
   const churned = clients.filter((client: any) => {
     if (!client.last_payment_date || client.status !== "inactive") return false;
-    const lastPayment = new Date(client.last_payment_date);
+    const lastPayment = toLocalDate(client.last_payment_date);
     return lastPayment >= monthStart && lastPayment <= monthEnd;
   });
   const churnRatePrevious = activeClientsPrevious.length > 0 ? (churned.length / activeClientsPrevious.length) * 100 : 0;
 
   // Custos do mês anterior
   const previousCosts = costs.filter((cost: any) => {
-    const costDate = new Date(cost.date);
+    const costDate = toLocalDate(cost.date);
     return costDate >= monthStart && costDate <= monthEnd;
   });
   const totalCostsPrevious = previousCosts.reduce((sum: number, cost: any) => sum + Number(cost.amount), 0);
@@ -166,7 +174,7 @@ const calculatePreviousMonthMetrics = (clients: any[], payments: any[], costs: a
   // Retenção média simplificada
   const averageRetentionPrevious = activeClientsPrevious.length > 0 
     ? activeClientsPrevious.reduce((sum: number, client: any) => {
-        const months = differenceInMonths(previousDate, new Date(client.first_payment_date));
+        const months = differenceInMonths(previousDate, toLocalDate(client.first_payment_date));
         return sum + Math.max(months, 1);
       }, 0) / activeClientsPrevious.length
     : 1;
@@ -212,11 +220,11 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
   const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
   const currentMonthPayments = payments.filter((p: any) => {
-    const refDate = new Date(p.reference_month);
+    const refDate = toLocalDate(p.reference_month);
     return refDate >= currentMonthStart && refDate <= currentMonthEnd;
   });
   const lastMonthPayments = payments.filter((p: any) => {
-    const refDate = new Date(p.reference_month);
+    const refDate = toLocalDate(p.reference_month);
     return refDate >= lastMonthStart && refDate <= lastMonthEnd;
   });
 
@@ -229,10 +237,10 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
 
   // Retenção Média (em meses)
   const retentionPeriods = clients.map((client: any) => {
-    const startDate = new Date(client.first_payment_date);
+    const startDate = toLocalDate(client.first_payment_date);
     const endDate = client.status === "active" 
       ? today 
-      : (client.last_payment_date ? new Date(client.last_payment_date) : today);
+      : (client.last_payment_date ? toLocalDate(client.last_payment_date) : today);
     return Math.max(differenceInMonths(endDate, startDate), 1);
   });
   const averageRetention = totalClients > 0 
@@ -242,13 +250,13 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
   // Churn Rate (apenas mês atual)
   const churnedThisMonth = clients.filter((client: any) => {
     if (!client.last_payment_date || client.status !== "inactive") return false;
-    const lastPayment = new Date(client.last_payment_date);
+    const lastPayment = toLocalDate(client.last_payment_date);
     return lastPayment >= currentMonthStart && lastPayment <= currentMonthEnd;
   }).length;
 
   const activeClientsThisMonth = clients.filter((client: any) => {
-    const firstPayment = new Date(client.first_payment_date);
-    const lastPayment = client.last_payment_date ? new Date(client.last_payment_date) : null;
+    const firstPayment = toLocalDate(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? toLocalDate(client.last_payment_date) : null;
     return firstPayment <= currentMonthEnd && (!lastPayment || lastPayment >= currentMonthStart);
   }).length;
 
@@ -286,12 +294,33 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
 
   healthScore = Math.max(0, Math.min(100, healthScore));
 
-  // Total de custos
-  const totalCosts = costs.reduce((sum: number, cost: any) => sum + Number(cost.amount), 0);
+  // Custos e lucro do "mês de referência": o último mês (até hoje) que já tem custos lançados.
+  // Antes somava os custos de TODOS os meses e tirava da receita de um mês só (lucro de -R$ 889 mil).
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const todayKey = monthKey(today);
+  const costMonths = [...new Set(costs.map((c: any) => String(c.date).slice(0, 7)))]
+    .filter((k) => k <= todayKey)
+    .sort();
+  const refKey = costMonths[costMonths.length - 1] ?? todayKey;
+  const [refY, refM] = refKey.split("-").map(Number);
+  const prevRef = new Date(refY, refM - 2, 1);
+  const prevKey = monthKey(prevRef);
+  const sumBy = (rows: any[], field: string, key: string) =>
+    rows.filter((r: any) => String(r[field]).slice(0, 7) === key).reduce((s: number, r: any) => s + Number(r.amount), 0);
+
+  const totalCosts = sumBy(costs, "date", refKey);
+  const monthRevenue = sumBy(payments, "reference_month", refKey);
+  const monthProfit = monthRevenue - totalCosts;
+  const prevCosts = sumBy(costs, "date", prevKey);
+  const prevRevenue = sumBy(payments, "reference_month", prevKey);
+  const prevProfit = prevRevenue - prevCosts;
+  const referenceMonthLabel = new Date(refY, refM - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
   // Cálculo de trends
   const previousDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const previousMetrics = calculatePreviousMonthMetrics(clients, payments, costs, previousDate);
+  // custos comparam mês de referência x mês anterior a ele
+  previousMetrics.totalCosts = prevCosts;
 
   return {
     mrr,
@@ -303,6 +332,9 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
     totalClients,
     averageTicket,
     totalCosts,
+    monthRevenue,
+    monthProfit,
+    referenceMonthLabel,
     newClientsCount: newClientsThisMonth,
     mrrGrowthRate,
     ltvCacRatio,
@@ -317,6 +349,9 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
       cacTrend: calculateTrend(cac, previousMetrics.cac, true),
       ltvTrend: calculateTrend(ltv, previousMetrics.ltv),
       ltvCacRatioTrend: calculateTrend(ltvCacRatio, previousMetrics.ltvCacRatio),
+      profitTrend: prevProfit === 0
+        ? { value: 0, isPositive: true }
+        : { value: Math.abs(((monthProfit - prevProfit) / Math.abs(prevProfit)) * 100), isPositive: monthProfit >= prevProfit },
     }
   };
 }
@@ -329,8 +364,8 @@ function calculateLTV(clients: any[], payments: any[], targetMonth: Date) {
   startDate.setDate(1);
 
   const activeClients = clients.filter(client => {
-    const firstPayment = client.first_payment_date ? new Date(client.first_payment_date) : null;
-    const lastPayment = client.last_payment_date ? new Date(client.last_payment_date) : null;
+    const firstPayment = client.first_payment_date ? toLocalDate(client.first_payment_date) : null;
+    const lastPayment = client.last_payment_date ? toLocalDate(client.last_payment_date) : null;
 
     if (!firstPayment) return false;
     if (firstPayment > endDate) return false;
@@ -340,7 +375,7 @@ function calculateLTV(clients: any[], payments: any[], targetMonth: Date) {
   });
 
   const relevantPayments = payments.filter(payment => {
-    const refDate = new Date(payment.reference_month);
+    const refDate = toLocalDate(payment.reference_month);
     return refDate >= startDate && refDate <= endDate;
   });
 

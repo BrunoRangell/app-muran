@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { parseLocalDate } from "@/utils/dateHelpers";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
@@ -105,7 +106,7 @@ function aggregateCostsByMonth(costs: Cost[]) {
   const totals: Record<string, number> = {};
   const marketingSales: Record<string, number> = {};
   for (const c of costs) {
-    const month = formatMonth(new Date(c.date));
+    const month = formatMonth(parseLocalDate(c.date));
     const amount = Number(c.amount) || 0;
     totals[month] = (totals[month] || 0) + amount;
 

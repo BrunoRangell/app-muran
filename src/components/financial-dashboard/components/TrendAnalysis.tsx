@@ -43,8 +43,8 @@ export const TrendAnalysis = ({ filters }: TrendAnalysisProps) => {
   const churnTarget = 2; // Industry benchmark: 2%
   const marginTarget = 25; // Industry benchmark: 25%
 
-  const currentMargin = allClientsMetrics.mrr > 0 
-    ? ((allClientsMetrics.mrr - allClientsMetrics.totalCosts) / allClientsMetrics.mrr) * 100 
+  const currentMargin = allClientsMetrics.monthRevenue > 0 
+    ? (allClientsMetrics.monthProfit / allClientsMetrics.monthRevenue) * 100 
     : 0;
 
   const trends = [

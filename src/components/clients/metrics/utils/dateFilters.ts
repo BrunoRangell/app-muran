@@ -1,3 +1,4 @@
+import { parseLocalDate } from "@/utils/dateHelpers";
 
 import { Client } from "../../types";
 import { isValid, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
@@ -5,12 +6,12 @@ import { isValid, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
 export const isClientActiveInMonth = (client: Client, monthStart: Date, monthEnd: Date): boolean => {
   try {
     if (!client.first_payment_date) return false;
-    const clientStart = new Date(client.first_payment_date);
+    const clientStart = parseLocalDate(client.first_payment_date);
     clientStart.setDate(clientStart.getDate() + 1);
     
     const clientEnd = client.last_payment_date ? 
       (() => {
-        const date = new Date(client.last_payment_date);
+        const date = parseLocalDate(client.last_payment_date);
         date.setDate(date.getDate() + 1);
         return date;
       })() : 
@@ -45,7 +46,7 @@ export const isClientActiveInMonth = (client: Client, monthStart: Date, monthEnd
 export const isClientNewInMonth = (client: Client, monthStart: Date, monthEnd: Date): boolean => {
   try {
     if (!client.first_payment_date) return false;
-    const firstPayment = new Date(client.first_payment_date);
+    const firstPayment = parseLocalDate(client.first_payment_date);
     firstPayment.setDate(firstPayment.getDate() + 1);
     return isValid(firstPayment) && 
            isWithinInterval(firstPayment, { start: monthStart, end: monthEnd });
@@ -58,7 +59,7 @@ export const isClientNewInMonth = (client: Client, monthStart: Date, monthEnd: D
 export const isClientChurnedInMonth = (client: Client, monthStart: Date, monthEnd: Date): boolean => {
   if (!client.last_payment_date) return false;
   try {
-    const lastPaymentDate = new Date(client.last_payment_date);
+    const lastPaymentDate = parseLocalDate(client.last_payment_date);
     lastPaymentDate.setDate(lastPaymentDate.getDate() + 1);
     return isValid(lastPaymentDate) && 
            isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
@@ -71,10 +72,10 @@ export const isClientChurnedInMonth = (client: Client, monthStart: Date, monthEn
 export const getActiveClientsAtStartOfMonth = (clients: Client[], monthStart: Date): number => {
   return clients.filter((client: Client) => {
     if (!client.first_payment_date) return false;
-    const clientStart = new Date(client.first_payment_date);
+    const clientStart = parseLocalDate(client.first_payment_date);
     clientStart.setDate(clientStart.getDate() + 1);
     
     return clientStart <= monthStart && 
-           (!client.last_payment_date || new Date(client.last_payment_date) > monthStart);
+           (!client.last_payment_date || parseLocalDate(client.last_payment_date) > monthStart);
   }).length;
 };

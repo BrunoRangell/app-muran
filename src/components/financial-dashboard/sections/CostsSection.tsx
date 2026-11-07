@@ -36,8 +36,10 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
     }).format(value);
   };
 
+  // custos do último mês com custos lançados (antes era a soma de todos os meses)
+  const refLabel = metrics?.referenceMonthLabel ? ` (${metrics.referenceMonthLabel})` : "";
   const costPerClient = metrics?.activeClientsCount ? (metrics?.totalCosts || 0) / metrics.activeClientsCount : 0;
-  const costToRevenueRatio = metrics?.mrr ? ((metrics?.totalCosts || 0) / metrics.mrr) * 100 : 0;
+  const costToRevenueRatio = metrics?.monthRevenue ? ((metrics?.totalCosts || 0) / metrics.monthRevenue) * 100 : 0;
 
   return (
     <Card className="p-3 border-l-2 border-l-red-500">
@@ -52,12 +54,12 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
         <InteractiveMetricCard
-          title="Total de Custos"
+          title={`Custos do mês${refLabel}`}
           value={formatCurrency(metrics?.totalCosts || 0)}
           icon={CreditCard}
           trend={metrics?.trends?.totalCostsTrend}
           color="bg-red-500"
-          description="Custos totais do período"
+          description="Custos do último mês com custos lançados na planilha"
         />
 
         <InteractiveMetricCard
@@ -75,7 +77,7 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
           icon={Calculator}
           trend={metrics?.trends?.totalCostsTrend}
           color="bg-yellow-500"
-          description="Custo médio mensal por cliente ativo"
+          description="Custos do mês divididos pelos clientes ativos"
         />
 
         <InteractiveMetricCard
@@ -84,7 +86,7 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
           icon={AlertTriangle}
           trend={metrics?.trends?.totalCostsTrend}
           color={costToRevenueRatio <= 30 ? "bg-green-500" : costToRevenueRatio <= 50 ? "bg-yellow-500" : "bg-red-500"}
-          description="Percentual dos custos sobre receita"
+          description="Custos do mês sobre a receita recebida no mesmo mês"
         />
       </div>
     </Card>

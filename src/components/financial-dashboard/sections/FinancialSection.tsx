@@ -28,8 +28,10 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
   }
 
   const metrics = allClientsMetrics;
-  const profit = (metrics?.mrr || 0) - (metrics?.totalCosts || 0);
-  const marginProfit = metrics?.mrr ? (profit / metrics.mrr) * 100 : 0;
+  // lucro do último mês com custos lançados: receita real do mês menos os custos do mesmo mês
+  const profit = metrics?.monthProfit || 0;
+  const marginProfit = metrics?.monthRevenue ? (profit / metrics.monthRevenue) * 100 : 0;
+  const refLabel = metrics?.referenceMonthLabel ? ` (${metrics.referenceMonthLabel})` : "";
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -76,27 +78,21 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
         />
 
         <InteractiveMetricCard
-          title="Lucro Líquido"
+          title={`Lucro Líquido${refLabel}`}
           value={formatCurrency(profit)}
           icon={Wallet}
-          trend={metrics?.trends?.totalCostsTrend ? { 
-            value: metrics.trends.totalCostsTrend.value, 
-            isPositive: !metrics.trends.totalCostsTrend.isPositive // Invert for profit (lower costs = better)
-          } : undefined}
+          trend={metrics?.trends?.profitTrend}
           color="bg-blue-500"
-          description="Receita menos custos totais"
+          description="Receita recebida no mês menos os custos do mesmo mês (último mês com custos lançados)"
         />
 
         <InteractiveMetricCard
-          title="Margem de Lucro"
+          title={`Margem de Lucro${refLabel}`}
           value={formatDecimal(marginProfit) + "%"}
           icon={TrendingUp}
-          trend={metrics?.trends?.totalCostsTrend ? { 
-            value: metrics.trends.totalCostsTrend.value, 
-            isPositive: !metrics.trends.totalCostsTrend.isPositive // Invert for margin (lower costs = better margin)
-          } : undefined}
+          trend={metrics?.trends?.profitTrend}
           color="bg-purple-500"
-          description="Percentual de lucro sobre receita"
+          description="Lucro do mês sobre a receita recebida no mesmo mês"
         />
       </div>
     </Card>
