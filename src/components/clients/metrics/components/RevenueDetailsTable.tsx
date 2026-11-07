@@ -114,8 +114,9 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
   // Ordenar dados por status (ativo primeiro) e depois alfabeticamente
   const sortedData = [...data].sort((a, b) => {
     // Status: ativos primeiro, depois inativos
-    const statusA = a.clients?.status === 'active' ? 0 : 1;
-    const statusB = b.clients?.status === 'active' ? 0 : 1;
+    // ativos, depois inativos, por último "outras receitas"
+    const statusA = !a.clients ? 2 : a.clients.status === 'active' ? 0 : 1;
+    const statusB = !b.clients ? 2 : b.clients.status === 'active' ? 0 : 1;
     
     if (statusA !== statusB) {
       return statusA - statusB;
@@ -149,6 +150,9 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
               </TableCell>
               <TableCell>{formatCurrency(item.amount)}</TableCell>
               <TableCell>
+                {!item.clients ? (
+                  <span className="text-xs text-muted-foreground">Outras receitas</span>
+                ) : (
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   item.clients?.status === 'active' 
                     ? 'bg-green-100 text-green-800' 
@@ -156,11 +160,12 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
                 }`}>
                   {item.clients?.status === 'active' ? 'Ativo' : 'Inativo'}
                 </span>
+                )}
               </TableCell>
               <TableCell>
                 {item.clients?.first_payment_date 
                   ? format(parseLocalDate(item.clients.first_payment_date.split('T')[0]), 'dd/MM/yyyy', { locale: ptBR })
-                  : 'Data não disponível'
+                  : item.clients ? 'Data não disponível' : '-'
                 }
               </TableCell>
             </TableRow>

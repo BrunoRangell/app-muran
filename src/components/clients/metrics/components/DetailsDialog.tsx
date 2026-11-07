@@ -29,7 +29,9 @@ export const DetailsDialog = ({ selectedPoint, onOpenChange, clients }: DetailsD
         </DialogHeader>
         
         {(() => {
-          switch (selectedPoint?.metric) {
+          // "CAC (3 meses, marketing + vendas)" e afins: o detalhe é escolhido pelo começo do nome
+          const metricKey = selectedPoint?.metric?.startsWith('CAC') ? 'CAC' : selectedPoint?.metric;
+          switch (metricKey) {
             case 'Receita Mensal':
               return <RevenueDetailsTable monthStr={selectedPoint.month} />;
             case 'Lucro':

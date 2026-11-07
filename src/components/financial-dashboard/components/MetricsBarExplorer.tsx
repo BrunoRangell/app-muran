@@ -370,10 +370,10 @@ export const MetricsBarExplorer = () => {
 
       <div className="text-xs text-muted-foreground space-y-1">
         {metric === "cac" && (
-          <p>ℹ️ CAC = Custos ÷ Novos Clientes</p>
+          <p>ℹ️ CAC = custos de marketing + vendas dos últimos 3 meses ÷ clientes novos nesses 3 meses</p>
         )}
         {metric === "ltv" && (
-          <p>ℹ️ LTV = Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
+          <p>ℹ️ LTV = recebido dos clientes nos últimos 12 meses ÷ clientes que pagaram no período</p>
         )}
       </div>
 
