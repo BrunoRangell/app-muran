@@ -176,6 +176,9 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
+                        {(cost as any).source === "planilha" ? (
+                          <span className="text-xs text-muted-foreground">da planilha</span>
+                        ) : (
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
@@ -194,6 +197,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

@@ -580,6 +580,7 @@ export type Database = {
       }
       costs: {
         Row: {
+          source: string | null
           amount: number
           created_at: string
           date: string
@@ -591,6 +592,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          source?: string | null
           amount?: number
           created_at?: string
           date: string
@@ -602,6 +604,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          source?: string | null
           amount?: number
           created_at?: string
           date?: string
@@ -1003,6 +1006,8 @@ export type Database = {
       }
       payments: {
         Row: {
+          label: string | null
+          source: string | null
           amount: number
           client_id: string | null
           created_at: string
@@ -1012,6 +1017,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          label?: string | null
+          source?: string | null
           amount?: number
           client_id?: string | null
           created_at?: string
@@ -1021,6 +1028,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          label?: string | null
+          source?: string | null
           amount?: number
           client_id?: string | null
           created_at?: string

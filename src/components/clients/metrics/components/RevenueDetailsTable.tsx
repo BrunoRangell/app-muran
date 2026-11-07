@@ -14,6 +14,7 @@ interface RevenueDetailsTableProps {
 }
 
 interface PaymentWithClient {
+  label?: string | null;
   id: number;
   amount: number;
   client_id: string;
@@ -42,6 +43,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
             id,
             amount,
             client_id,
+            label,
             clients:client_id(
               company_name,
               first_payment_date,
@@ -62,7 +64,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
         // Filtrar pagamentos válidos
         const validPayments = payments?.filter(payment => 
           payment.amount > 0 && 
-          payment.clients?.company_name
+          (payment.clients?.company_name || payment.label)
         ) || [];
 
         console.log('Pagamentos encontrados:', validPayments.length);
@@ -120,8 +122,8 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
     }
     
     // Dentro do mesmo status, ordenar alfabeticamente
-    const nameA = a.clients?.company_name || '';
-    const nameB = b.clients?.company_name || '';
+    const nameA = a.clients?.company_name || a.label || '';
+    const nameB = b.clients?.company_name || b.label || '';
     return nameA.localeCompare(nameB);
   });
 
@@ -143,7 +145,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
           {sortedData.map((item: any, index: number) => (
             <TableRow key={item.id || index}>
               <TableCell className="font-medium">
-                {item.clients?.company_name || 'Nome não encontrado'}
+                {item.clients?.company_name || (item.label ? `${item.label} (outras receitas)` : 'Nome não encontrado')}
               </TableCell>
               <TableCell>{formatCurrency(item.amount)}</TableCell>
               <TableCell>

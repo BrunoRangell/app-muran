@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
 import { HistoricoPagamentosDialog } from "@/components/recebimentos-nova/HistoricoPagamentosDialog";
+import { FinanceSheetSync } from "@/components/financial-sync/FinanceSheetSync";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -108,6 +109,16 @@ export default function RecebimentosNova() {
           return a.company_name.localeCompare(b.company_name);
         });
 
+        // "Outras receitas": linhas da planilha sem cadastro de cliente (comissões, parceiros, placas...)
+        const outras: Record<string, { label: string; total: number; ultimoMes: string }> = {};
+        pagamentos?.forEach((p: any) => {
+          if (p.client_id || !p.label) return;
+          const o = (outras[p.label] ??= { label: p.label, total: 0, ultimoMes: p.reference_month });
+          o.total += Number(p.amount || 0);
+          if (p.reference_month > o.ultimoMes) o.ultimoMes = p.reference_month;
+        });
+        (clientesProcessados as any).outrasReceitas = Object.values(outras).sort((a, b) => b.ultimoMes.localeCompare(a.ultimoMes));
+
         return clientesProcessados;
       } catch (error) {
         console.error("Erro ao buscar dados:", error);
@@ -188,6 +199,8 @@ export default function RecebimentosNova() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Recebimentos</h1>
       </div>
+
+      <FinanceSheetSync />
       
       <Card>
         <CardHeader>
@@ -212,13 +225,12 @@ export default function RecebimentosNova() {
                   <TableHead>Valor Mensal</TableHead>
                   <TableHead>Total Recebido</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clientesFiltrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                       Nenhum cliente encontrado
                     </TableCell>
                   </TableRow>
@@ -269,17 +281,6 @@ export default function RecebimentosNova() {
                           {cliente.status === 'active' ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => handleRegistrarPagamento(cliente)}
-                        >
-                          <DollarSign className="h-4 w-4" />
-                          <span>Registrar Pagamento</span>
-                        </Button>
-                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -301,6 +302,39 @@ export default function RecebimentosNova() {
           )}
         </CardContent>
       </Card>
+
+      {((data as any)?.outrasReceitas?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Outras receitas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Receitas da planilha que não são de um cliente cadastrado (comissões, parceiros, placas, clientes de pouco tempo).
+            </p>
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Último mês</TableHead>
+                    <TableHead className="text-right">Total recebido</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(data as any).outrasReceitas.map((o: any) => (
+                    <TableRow key={o.label}>
+                      <TableCell className="font-medium">{o.label}</TableCell>
+                      <TableCell>{o.ultimoMes?.slice(5, 7)}/{o.ultimoMes?.slice(0, 4)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(o.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Diálogo de Registro de Pagamento */}
       {clienteSelecionado && (

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Plus, Download, Upload } from "lucide-react";
-import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
+import { FinanceSheetSync } from "@/components/financial-sync/FinanceSheetSync";
 
 interface CostsPageHeaderProps {
   onNewCostClick: () => void;
@@ -8,13 +8,14 @@ interface CostsPageHeaderProps {
 
 export function CostsPageHeader({ onNewCostClick }: CostsPageHeaderProps) {
   return (
+    <>
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h1 className="text-2xl font-bold text-muran-complementary">
           Registro de Custos
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Gerencie e acompanhe todos os custos do seu negócio
+          Custos da Muran, atualizados a partir da planilha Financeiro Muran
         </p>
       </div>
       
@@ -28,16 +29,11 @@ export function CostsPageHeader({ onNewCostClick }: CostsPageHeaderProps) {
           Exportar
         </Button>
         
-        <ImportCostsDialog />
-        
-        <Button 
-          onClick={onNewCostClick}
-          className="bg-muran-primary hover:bg-muran-primary/90 gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Novo Custo
-        </Button>
       </div>
     </div>
+    <div className="mt-4">
+      <FinanceSheetSync />
+    </div>
+    </>
   );
 }

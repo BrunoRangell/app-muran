@@ -130,6 +130,9 @@ export function HistoricoPagamentosDialog({
                           <p className="text-sm text-gray-500 mt-1">{pagamento.notes}</p>
                         )}
                       </div>
+                      {pagamento.source === "planilha" ? (
+                        <span className="text-xs text-muted-foreground">da planilha</span>
+                      ) : (
                       <div className="flex space-x-1">
                         <Button
                           variant="ghost"
@@ -177,6 +180,7 @@ export function HistoricoPagamentosDialog({
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
+                      )}
                     </div>
                   </div>
                 ))}
