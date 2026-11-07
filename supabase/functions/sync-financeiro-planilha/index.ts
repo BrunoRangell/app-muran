@@ -88,6 +88,10 @@ Deno.serve(async (req) => {
     for (const a of aliases ?? []) aliasMap.set(norm(a.sheet_name), a.client_ids ?? []);
     const contractOf = (id: string) => (clients ?? []).find((c) => c.id === id)?.contract_value ?? 0;
 
+    // meses que ainda não chegaram (ex.: parcelas de placa lançadas adiantado) ficam de fora até o mês chegar
+    const nowBr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date());
+    const currentMonth = `${nowBr.slice(0, 7)}-01`;
+
     const years: number[] = [];
     const payments: Record<string, unknown>[] = [];
     const costs: Record<string, unknown>[] = [];
@@ -111,6 +115,7 @@ Deno.serve(async (req) => {
             const amount = num(r[2 + m]);
             if (amount <= 0) continue;
             const month = `${year}-${pad(m + 1)}-01`;
+            if (month > currentMonth) continue;
             if (!ids || ids.length === 0) {
               unmatched.add(name);
               payments.push({ client_id: null, label: name, amount: Math.round(amount * 100) / 100, month });
@@ -138,6 +143,7 @@ Deno.serve(async (req) => {
           for (let m = 0; m < 12; m++) {
             const amount = num(r[2 + m]);
             if (amount <= 0) continue;
+            if (`${year}-${pad(m + 1)}-01` > currentMonth) continue;
             costs.push({ name, section, category: categoryOf(section, name), amount: Math.round(amount * 100) / 100, month: `${year}-${pad(m + 1)}-01` });
           }
         }

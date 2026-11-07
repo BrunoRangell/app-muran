@@ -105,12 +105,11 @@ const calculateCAC = (clients: any[], costs: any[], currentDate: Date): number =
   const threeMonthsStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 2, 1);
   const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-  // Filtrar custos de marketing e vendas dos últimos 3 meses
-  // Como não temos costs_categories no worker, vamos usar todos os custos por enquanto
-  // NOTA: Isso seria otimizado passando os custos já filtrados do hook
+  // Só custos de aquisição: categorias marketing e vendas, nos últimos 3 meses
   const costsInPeriod = costs.filter((cost: any) => {
     const costDate = toLocalDate(cost.date);
-    return costDate >= threeMonthsStart && costDate <= monthEnd;
+    const isAcquisition = (cost.categories ?? []).some((id: string) => id === "marketing" || id === "vendas");
+    return isAcquisition && costDate >= threeMonthsStart && costDate <= monthEnd;
   });
 
   const totalMarketingCosts = costsInPeriod.reduce((sum: number, cost: any) => sum + Number(cost.amount), 0);
@@ -265,8 +264,18 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
   // LTV baseado em payments dos últimos 12 meses
   const ltv = calculateLTV12Months(clients, payments, today);
 
-  // CAC baseado em custos
-  const cac = calculateCAC(clients, costs, today);
+  // Mês de referência: o último mês (até hoje) que já tem custos lançados.
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const todayKey = monthKey(today);
+  const costMonths = [...new Set(costs.map((c: any) => String(c.date).slice(0, 7)))]
+    .filter((k) => k <= todayKey)
+    .sort();
+  const refKey = costMonths[costMonths.length - 1] ?? todayKey;
+  const [refY, refM] = refKey.split("-").map(Number);
+  const refDate = new Date(refY, refM - 1, 1);
+
+  // CAC (3 meses até o mês de referência): marketing + vendas / clientes novos nesses 3 meses
+  const cac = calculateCAC(clients, costs, refDate);
 
   // LTV:CAC Ratio
   const ltvCacRatio = cac > 0 ? ltv / cac : 0;
@@ -296,13 +305,6 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
 
   // Custos e lucro do "mês de referência": o último mês (até hoje) que já tem custos lançados.
   // Antes somava os custos de TODOS os meses e tirava da receita de um mês só (lucro de -R$ 889 mil).
-  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const todayKey = monthKey(today);
-  const costMonths = [...new Set(costs.map((c: any) => String(c.date).slice(0, 7)))]
-    .filter((k) => k <= todayKey)
-    .sort();
-  const refKey = costMonths[costMonths.length - 1] ?? todayKey;
-  const [refY, refM] = refKey.split("-").map(Number);
   const prevRef = new Date(refY, refM - 2, 1);
   const prevKey = monthKey(prevRef);
   const sumBy = (rows: any[], field: string, key: string) =>
@@ -319,8 +321,11 @@ function calculateFinancialMetrics(clients: any[], payments: any[], costs: any[]
   // Cálculo de trends
   const previousDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const previousMetrics = calculatePreviousMonthMetrics(clients, payments, costs, previousDate);
-  // custos comparam mês de referência x mês anterior a ele
+  // custos e CAC comparam mês de referência x mês anterior a ele
   previousMetrics.totalCosts = prevCosts;
+  previousMetrics.cac = calculateCAC(clients, costs, prevRef);
+  const ltvAtPrevRef = calculateLTV12Months(clients, payments, prevRef);
+  previousMetrics.ltvCacRatio = previousMetrics.cac > 0 ? ltvAtPrevRef / previousMetrics.cac : 0;
 
   return {
     mrr,

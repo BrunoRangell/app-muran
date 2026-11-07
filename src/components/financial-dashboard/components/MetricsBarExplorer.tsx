@@ -38,7 +38,7 @@ const METRICS: MetricOption[] = [
   { id: "newClients", label: "Novos Clientes", kind: "number" },
   { id: "churn", label: "Clientes Cancelados", kind: "number" },
   { id: "totalCosts", label: "Custos Totais", kind: "currency" },
-  { id: "cac", label: "CAC", kind: "currency" },
+  { id: "cac", label: "CAC (3 meses, marketing + vendas)", kind: "currency" },
   { id: "ltv", label: "LTV (12 meses)", kind: "currency" },
 ];
 
@@ -122,8 +122,9 @@ export const MetricsBarExplorer = () => {
     end: dateRange.end,
   });
   
+  // busca 2 meses antes do período: o CAC de cada mês olha os 3 últimos meses
   const { costs: costsData = [], isLoading: loadingCosts } = useCostsPaginated({
-    startDate: format(dateRange.start, "yyyy-MM-dd"),
+    startDate: format(new Date(dateRange.start.getFullYear(), dateRange.start.getMonth() - 2, 1), "yyyy-MM-dd"),
     endDate: format(dateRange.end, "yyyy-MM-dd"),
   });
   
@@ -133,6 +134,34 @@ export const MetricsBarExplorer = () => {
 
   // Agregar custos por mês
   const costsByMonth = useMemo(() => aggregateCostsByMonth(costsData || []), [costsData]);
+
+  // CAC (3 meses): custos de marketing + vendas dos 3 últimos meses / clientes novos nesses 3 meses
+  const cacByMonthKey = useMemo(() => {
+    const mkt: Record<string, number> = {};
+    for (const c of costsData || []) {
+      if ((c.categories ?? []).some((id) => id === "marketing" || id === "vendas")) {
+        const k = String(c.date).slice(0, 7);
+        mkt[k] = (mkt[k] || 0) + Number(c.amount || 0);
+      }
+    }
+    const novos: Record<string, number> = {};
+    for (const cl of (clients as any[]) || []) {
+      if (cl.first_payment_date) {
+        const k = String(cl.first_payment_date).slice(0, 7);
+        novos[k] = (novos[k] || 0) + 1;
+      }
+    }
+    return (monthKey: string) => {
+      const [y, m] = monthKey.split("-").map(Number);
+      let custo = 0, n = 0;
+      for (let i = 0; i < 3; i++) {
+        const k = format(new Date(y, m - 1 - i, 1), "yyyy-MM");
+        custo += mkt[k] || 0;
+        n += novos[k] || 0;
+      }
+      return n > 0 ? custo / n : 0;
+    };
+  }, [costsData, clients]);
 
   // Preparar meses para cálculo de LTV em batch
   const targetMonths = useMemo(() => {
@@ -172,7 +201,7 @@ export const MetricsBarExplorer = () => {
         profit: profit,
         newClients: item.newClients,
         churn: item.churn,
-        cac: item.newClients > 0 ? monthCosts / item.newClients : 0,
+        cac: cacByMonthKey(monthKey),
         ltv: ltv,
       };
     }).sort((a, b) => {
@@ -184,7 +213,7 @@ export const MetricsBarExplorer = () => {
         return 0;
       }
     });
-  }, [monthlyMetrics, costsByMonth, ltvValues]);
+  }, [monthlyMetrics, costsByMonth, ltvValues, cacByMonthKey]);
 
   const selected = METRICS.find((m) => m.id === metric)!;
   const primaryColor = "#ff6e00";

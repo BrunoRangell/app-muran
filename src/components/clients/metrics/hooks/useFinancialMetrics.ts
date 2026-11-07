@@ -116,10 +116,16 @@ export const useFinancialMetrics = () => {
         // FASE 4C: Select otimizado - apenas colunas necessárias
         const [payments, costs] = await Promise.all([
           fetchAllRows((from, to) => supabase.from("payments").select("id, client_id, amount, reference_month, created_at").order("id").range(from, to)),
-          fetchAllRows((from, to) => supabase.from("costs").select("id, amount, date, name").order("id").range(from, to)),
+          fetchAllRows((from, to) => supabase.from("costs").select("id, amount, date, name, costs_categories(category_id)").order("id").range(from, to)),
         ]);
+        // o worker usa cost.categories (ids) para o CAC só com marketing + vendas
+        const costsWithCategories = (costs as any[]).map((c) => ({
+          ...c,
+          categories: (c.costs_categories ?? []).map((cc: { category_id: string }) => cc.category_id),
+          costs_categories: undefined,
+        }));
         
-        const result = await calculateMetrics(clients, payments, costs);
+        const result = await calculateMetrics(clients, payments, costsWithCategories);
         
         setWorkerMetrics(result);
         logger.info("✅ [WORKER] Métricas calculadas");

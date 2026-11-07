@@ -18,8 +18,8 @@ export const CACDetailsTable = ({ monthStr }: CACDetailsTableProps) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['cac-details', monthStr],
     queryFn: async () => {
-      // Buscar custos de aquisição (marketing + vendas) nos últimos 3 meses
-      const threeMonthsAgo = new Date(fullYear, month - 3, 1);
+      // CAC (3 meses): custos de marketing + vendas do mês e dos 2 anteriores / clientes novos nesses 3 meses
+      const threeMonthsAgo = new Date(fullYear, month - 2, 1);
       
       const { data: costs, error: costsError } = await supabase
         .from("costs")
@@ -53,7 +53,7 @@ export const CACDetailsTable = ({ monthStr }: CACDetailsTableProps) => {
           contract_value,
           acquisition_channel
         `)
-        .gte("first_payment_date", monthStart.toISOString().split('T')[0])
+        .gte("first_payment_date", threeMonthsAgo.toISOString().split('T')[0])
         .lte("first_payment_date", monthEnd.toISOString().split('T')[0]);
 
       if (clientsError) throw clientsError;
@@ -111,7 +111,7 @@ export const CACDetailsTable = ({ monthStr }: CACDetailsTableProps) => {
             <div className="font-medium">{formatCurrency(data.totalAcquisitionCosts)}</div>
           </div>
           <div>
-            <span className="text-muted-foreground">Novos Clientes:</span>
+            <span className="text-muted-foreground">Novos Clientes (3 meses):</span>
             <div className="font-medium">{data.newClientsCount}</div>
           </div>
           <div>
@@ -124,7 +124,7 @@ export const CACDetailsTable = ({ monthStr }: CACDetailsTableProps) => {
       {/* Novos Clientes */}
       {data.newClients.length > 0 && (
         <div>
-          <h3 className="font-semibold mb-2">Novos Clientes - {monthStr}</h3>
+          <h3 className="font-semibold mb-2">Novos Clientes (3 meses até {monthStr})</h3>
           <Table>
             <TableHeader>
               <TableRow>

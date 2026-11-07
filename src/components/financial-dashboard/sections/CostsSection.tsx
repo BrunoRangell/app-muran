@@ -63,12 +63,12 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
         />
 
         <InteractiveMetricCard
-          title="CAC (3 meses)"
+          title={`CAC (3 meses${metrics?.referenceMonthLabel ? ` até ${metrics.referenceMonthLabel}` : ""})`}
           value={formatCurrency(metrics?.cac || 0)}
           icon={TrendingDown}
           trend={metrics?.trends?.cacTrend}
           color="bg-orange-500"
-          description="Custo de Aquisição de Cliente dos últimos 3 meses"
+          description="Custos de marketing + vendas dos últimos 3 meses divididos pelos clientes novos no mesmo período"
         />
 
         <InteractiveMetricCard
