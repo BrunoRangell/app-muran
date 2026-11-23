@@ -12,9 +12,7 @@ import {
   ChevronLeft,
   Wallet,
   UserPlus,
-  Settings2,
   Target,
-  UserX,
   Megaphone
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,8 +45,6 @@ const adminMenuItems: MenuItem[] = [
     submenu: financialSubMenu
   },
   { icon: ListTodo, label: "Tarefas", path: "/tarefas", external: true },
-  { icon: Settings2, label: "Onboarding", path: "/onboarding" },
-  { icon: UserX, label: "Offboarding", path: "/offboarding" },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },

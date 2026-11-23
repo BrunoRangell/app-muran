@@ -62,8 +62,8 @@ const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
-const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
-const Offboarding = lazyWithTimeout(() => import("@/pages/Offboarding"));
+// Onboarding/offboarding foram para o gestor de tarefas (clickup.muranmarketing.com.br); as páginas antigas ficam no repositório.
+const OnboardingMoved = lazyWithTimeout(() => import("@/pages/OnboardingMoved"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 const ReportMoved = lazyWithTimeout(() => import("@/pages/ReportMoved"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
@@ -140,7 +140,7 @@ function App() {
             path="/onboarding"
             element={
               <PrivateRoute requireAdmin>
-                <Onboarding />
+                <OnboardingMoved />
               </PrivateRoute>
             }
           />
@@ -148,7 +148,7 @@ function App() {
             path="/offboarding"
             element={
               <PrivateRoute requireAdmin>
-                <Offboarding />
+                <OnboardingMoved />
               </PrivateRoute>
             }
           />
