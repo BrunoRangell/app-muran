@@ -44,7 +44,7 @@ const adminMenuItems: MenuItem[] = [
     path: "/clientes",
     submenu: financialSubMenu
   },
-  { icon: ListTodo, label: "Tarefas", path: "/tarefas", external: true },
+  { icon: ListTodo, label: "Tarefas", path: "https://clickup.muranmarketing.com.br", external: true },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
@@ -53,7 +53,7 @@ const adminMenuItems: MenuItem[] = [
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { icon: ListTodo, label: "Tarefas", path: "/tarefas", external: true },
+  { icon: ListTodo, label: "Tarefas", path: "https://clickup.muranmarketing.com.br", external: true },
   { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },

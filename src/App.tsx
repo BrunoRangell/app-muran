@@ -1,9 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { TaskPrivateRoute } from "@/components/auth/TaskPrivateRoute";
-import TasksLogin from "@/pages/TasksLogin";
-import TasksSetPassword from "@/pages/TasksSetPassword";
+import { GestorRedirect } from "@/components/GestorRedirect";
 import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -68,9 +66,6 @@ const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"))
 const ReportMoved = lazyWithTimeout(() => import("@/pages/ReportMoved"));
 const AnunciosAtivos = lazyWithTimeout(() => import("@/pages/AnunciosAtivos"));
 const OAuthConsent = lazyWithTimeout(() => import("@/pages/OAuthConsent"));
-const TaskSpaces = lazyWithTimeout(() => import("@/pages/TaskSpaces"));
-const TaskMembers = lazyWithTimeout(() => import("@/pages/TaskMembers"));
-const TasksShell = lazyWithTimeout(() => import("@/components/tasks/TasksShell"));
 
 function App() {
   return (
@@ -86,37 +81,9 @@ function App() {
 
         <Route path="/login" element={<Login />} />
 
-        {/* Autenticação própria do módulo de tarefas */}
-        <Route path="/tarefas/login" element={<TasksLogin />} />
-        <Route path="/tarefas/definir-senha" element={<TasksSetPassword />} />
-
-        {/* Módulo de tarefas — app standalone, fora do layout do app-muran */}
-        <Route
-          path="/tarefas"
-          element={
-            <TaskPrivateRoute>
-              <Suspense fallback={<LoadingState />}>
-                <TasksShell />
-              </Suspense>
-            </TaskPrivateRoute>
-          }
-        >
-          <Route index element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="espacos" element={<TaskSpaces />} />
-          <Route path="minhas" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="clientes" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="internas" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route path="leads" element={<Navigate to="/tarefas/espacos" replace />} />
-          <Route
-            path="membros"
-            element={
-              <TaskPrivateRoute requireAdmin>
-                <TaskMembers />
-              </TaskPrivateRoute>
-            }
-          />
-        </Route>
-
+        {/* O módulo de tarefas antigo saiu: tudo em /tarefas vai para o gestor (clickup.muranmarketing.com.br),
+            mantendo caminho, ?query e #hash (o link de convite/senha usa o #hash). As páginas antigas ficam no repositório. */}
+        <Route path="/tarefas/*" element={<GestorRedirect />} />
 
         <Route
           element={
